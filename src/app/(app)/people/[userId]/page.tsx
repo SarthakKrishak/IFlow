@@ -166,7 +166,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
         <StatTile label="Completed (all-time)" value={completedAllTime.toString()} />
         <StatTile label="Avg. time in progress" value={avgDaysInProgress ?? "—"} />
         <div
-          className="rounded-xl p-4"
+          className="rounded-3xl p-4"
           style={{ background: "hsl(var(--surface-elevated))", border: "1px solid hsl(var(--surface-border))" }}
         >
           <p className="text-xs text-muted-foreground mb-1 font-medium uppercase tracking-wider">Open workload</p>
@@ -192,7 +192,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
       {/* Activity heatmap */}
       <div
-        className="rounded-xl p-5 mb-6"
+        className="rounded-3xl p-5 mb-6"
         style={{ background: "hsl(var(--surface-elevated))", border: "1px solid hsl(var(--surface-border))" }}
       >
         <h2 className="text-sm font-semibold text-text-primary mb-4">Activity — last 12 months</h2>
@@ -201,7 +201,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
       {/* Recent activity feed */}
       <div
-        className="rounded-xl p-5"
+        className="rounded-3xl p-5"
         style={{ background: "hsl(var(--surface-elevated))", border: "1px solid hsl(var(--surface-border))" }}
       >
         <h2 className="text-sm font-semibold text-text-primary mb-4">Recent activity</h2>
@@ -236,7 +236,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
     <div
-      className="rounded-xl p-4"
+      className="rounded-3xl p-4"
       style={{ background: "hsl(var(--surface-elevated))", border: "1px solid hsl(var(--surface-border))" }}
     >
       <p className="text-xs text-muted-foreground mb-1 font-medium uppercase tracking-wider">{label}</p>

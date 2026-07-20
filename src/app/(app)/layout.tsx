@@ -34,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }),
     prisma.user.findMany({
       where: { isActive: true },
-      select: { id: true, displayName: true },
+      select: { id: true, displayName: true, avatarColor: true, role: true, lastSeenAt: true },
       orderBy: { displayName: "asc" },
     })
   ]);
@@ -50,9 +50,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         displayName={session.user.displayName}
         avatarColor={session.user.avatarColor}
       />
-      <main className="flex-1 flex flex-col min-w-0 bg-surface-base">
+      <main className="flex-1 flex flex-col min-w-0 bg-surface-base h-screen overflow-hidden">
         <TopNav />
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col">
           {children}
         </div>
       </main>

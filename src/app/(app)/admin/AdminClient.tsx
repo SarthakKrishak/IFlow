@@ -123,7 +123,7 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
         </div>
         <button
           onClick={() => setShowCreateDialog(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-semibold text-white transition-all"
           style={{ background: "#5B5FEF" }}
           onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#4B4FE0")}
           onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#5B5FEF")}
@@ -136,20 +136,20 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
 
       {/* Feedback */}
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-lg text-sm text-[#D1495B] bg-[#D1495B]/10 border border-[#D1495B]/30">
+        <div className="mb-4 px-4 py-3 rounded-2xl text-sm text-[#D1495B] bg-[#D1495B]/10 border border-[#D1495B]/30">
           {error}
           <button onClick={() => setError(null)} className="ml-2 underline text-xs">Dismiss</button>
         </div>
       )}
       {success && (
-        <div className="mb-4 px-4 py-3 rounded-lg text-sm text-[#1EAE7C] bg-[#1EAE7C]/10 border border-[#1EAE7C]/30">
+        <div className="mb-4 px-4 py-3 rounded-2xl text-sm text-[#1EAE7C] bg-[#1EAE7C]/10 border border-[#1EAE7C]/30">
           {success}
           <button onClick={() => setSuccess(null)} className="ml-2 underline text-xs">Dismiss</button>
         </div>
       )}
 
       {/* User table */}
-      <div className="rounded-xl overflow-hidden border border-surface-border">
+      <div className="rounded-3xl overflow-hidden border border-surface-border">
         <table className="w-full">
           <thead>
             <tr className="bg-surface-elevated border-b border-surface-border">
@@ -263,7 +263,7 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
                     <input
                       {...register("displayName")}
                       placeholder="Priya Sharma"
-                      className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground"
+                      className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground"
                       id="create-displayName"
                       aria-label="Display name"
                     />
@@ -272,7 +272,7 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
                     <input
                       {...register("username")}
                       placeholder="priya_s (3–20 chars, lowercase)"
-                      className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground font-mono"
+                      className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground font-mono"
                       id="create-username"
                       aria-label="Username"
                     />
@@ -282,7 +282,7 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
                       {...register("tempPassword")}
                       type="text"
                       placeholder="iflow123 (min 8 chars)"
-                      className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground font-mono"
+                      className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground font-mono"
                       id="create-tempPassword"
                       aria-label="Temporary password"
                     />
@@ -291,7 +291,7 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
                     <Field label="Department" error={errors.department?.message}>
                       <select
                         {...register("department")}
-                        className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
+                        className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
                         id="create-department"
                         aria-label="Department"
                       >
@@ -304,7 +304,7 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
                     <Field label="Role" error={errors.role?.message}>
                       <select
                         {...register("role")}
-                        className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
+                        className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
                         id="create-role"
                         aria-label="Role"
                       >
@@ -319,14 +319,14 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
                   <button
                     type="button"
                     onClick={() => setShowCreateDialog(false)}
-                    className="flex-1 py-2 rounded-lg text-sm text-text-secondary bg-surface-border hover:bg-surface-border/80 transition-colors"
+                    className="flex-1 py-2 rounded-2xl text-sm text-text-secondary bg-surface-border hover:bg-surface-border/80 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 py-2 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2"
+                    className="flex-1 py-2 rounded-2xl text-sm font-semibold text-white flex items-center justify-center gap-2"
                     style={{ background: "#5B5FEF" }}
                   >
                     {isSubmitting && <Loader2 size={14} className="animate-spin" />}

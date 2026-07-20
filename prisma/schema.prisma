@@ -10,6 +10,7 @@ datasource db {
 
 enum Role {
   ADMIN
+  MANAGER
   MEMBER
 }
 
@@ -53,6 +54,7 @@ model User {
   isActive           Boolean    @default(true)
   mustChangePassword Boolean    @default(true)
   createdAt          DateTime   @default(now())
+  lastSeenAt         DateTime?
 
   ticketsAssigned Ticket[]      @relation("AssignedTo")
   ticketsCreated  Ticket[]      @relation("CreatedBy")

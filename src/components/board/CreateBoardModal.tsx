@@ -49,7 +49,7 @@ export function CreateBoardModal({ projectId, users, onClose }: CreateBoardModal
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-surface-elevated border border-surface-border rounded-xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+      <div className="bg-surface-elevated border border-surface-border rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-surface-border">
           <h2 className="text-lg font-semibold text-text-primary">Create New Board</h2>
           <button onClick={onClose} className="text-text-secondary hover:text-text-primary">
@@ -66,7 +66,7 @@ export function CreateBoardModal({ projectId, users, onClose }: CreateBoardModal
               name="name"
               required
               autoFocus
-              className="w-full px-3 py-2 rounded-lg bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF]"
+              className="w-full px-3 py-2 rounded-2xl bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF]"
               placeholder="e.g. Frontend Team"
             />
           </div>
@@ -76,7 +76,7 @@ export function CreateBoardModal({ projectId, users, onClose }: CreateBoardModal
             <select
               name="department"
               required
-              className="w-full px-3 py-2 rounded-lg bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF]"
+              className="w-full px-3 py-2 rounded-2xl bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF]"
             >
               <option value="DEV">Development</option>
               <option value="DESIGN">Design</option>
@@ -90,7 +90,7 @@ export function CreateBoardModal({ projectId, users, onClose }: CreateBoardModal
             <textarea
               name="description"
               rows={2}
-              className="w-full px-3 py-2 rounded-lg bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF] resize-none"
+              className="w-full px-3 py-2 rounded-2xl bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF] resize-none"
               placeholder="What is this board for?"
             />
           </div>
@@ -127,7 +127,7 @@ export function CreateBoardModal({ projectId, users, onClose }: CreateBoardModal
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm bg-[#5B5FEF] text-white rounded-lg hover:bg-[#4B4FE0] transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm bg-[#5B5FEF] text-white rounded-2xl hover:bg-[#4B4FE0] transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {isSubmitting && <Loader2 size={14} className="animate-spin" />}
               Create Board

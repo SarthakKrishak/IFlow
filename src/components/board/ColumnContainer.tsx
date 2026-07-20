@@ -67,7 +67,7 @@ export function ColumnContainer({ column, board, currentUserId }: ColumnContaine
       {/* Tickets */}
       <div
         ref={setNodeRef}
-        className={`flex flex-col gap-2 min-h-[80px] rounded-xl p-2 transition-colors ${
+        className={`flex flex-col gap-2 min-h-[80px] rounded-3xl p-2 transition-colors ${
           isOver ? "bg-[#5B5FEF]/5 border border-dashed border-[#5B5FEF]/30" : "bg-surface-elevated/50"
         }`}
       >
@@ -99,7 +99,7 @@ export function ColumnContainer({ column, board, currentUserId }: ColumnContaine
       {!showQuickAdd && (
         <button
           onClick={() => setShowQuickAdd(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-text-secondary hover:bg-surface-border transition-all w-full"
+          className="flex items-center gap-2 px-3 py-2 rounded-2xl text-sm text-muted-foreground hover:text-text-secondary hover:bg-surface-border transition-all w-full"
         >
           <Plus size={14} />
           Add ticket

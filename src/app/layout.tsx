@@ -17,7 +17,7 @@ import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { TopLoader } from "@/components/shared/TopLoader";
 
 export const metadata: Metadata = {
-  title: "IFlow — Imaginum",
+  title: "IFlow | Imaginum",
   description: "Internal project and ticket tracker for Imaginum",
 };
 

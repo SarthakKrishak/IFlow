@@ -56,7 +56,7 @@ export function QuickAddInput({ boardId, columnId, onClose }: QuickAddInputProps
   };
 
   return (
-    <div className="rounded-lg p-2 bg-surface-base border border-[#5B5FEF]/40">
+    <div className="rounded-2xl p-2 bg-surface-base border border-[#5B5FEF]/40">
       <input
         ref={inputRef}
         value={title}

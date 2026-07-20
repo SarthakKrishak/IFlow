@@ -61,7 +61,7 @@ export default function ChangePasswordPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg mb-4 shadow-lg"
+            className="w-12 h-12 rounded-3xl flex items-center justify-center text-white font-bold text-lg mb-4 shadow-lg"
             style={{ background: "linear-gradient(135deg, #5B5FEF 0%, #4B4FE0 100%)" }}
           >
             IF
@@ -73,7 +73,7 @@ export default function ChangePasswordPage() {
           style={{ background: "hsl(var(--surface-elevated))", border: "1px solid hsl(var(--surface-border))" }}
         >
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-[#5B5FEF]/15 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-2xl bg-[#5B5FEF]/15 flex items-center justify-center">
               <ShieldCheck size={16} className="text-[#5B5FEF]" />
             </div>
             <h1 className="text-lg font-semibold text-text-primary">Set your password</h1>
@@ -96,7 +96,7 @@ export default function ChangePasswordPage() {
                     autoComplete="current-password"
                     autoFocus
                     {...register("currentPassword")}
-                    className="w-full px-3 py-2.5 pr-10 rounded-lg text-sm text-text-primary placeholder-muted-foreground"
+                    className="w-full px-3 py-2.5 pr-10 rounded-2xl text-sm text-text-primary placeholder-muted-foreground"
                     style={{
                       background: "hsl(var(--surface-base))",
                       border: errors.currentPassword ? "1px solid #D1495B" : "1px solid hsl(var(--surface-border))",
@@ -131,7 +131,7 @@ export default function ChangePasswordPage() {
                     type={showNew ? "text" : "password"}
                     autoComplete="new-password"
                     {...register("newPassword")}
-                    className="w-full px-3 py-2.5 pr-10 rounded-lg text-sm text-text-primary placeholder-muted-foreground"
+                    className="w-full px-3 py-2.5 pr-10 rounded-2xl text-sm text-text-primary placeholder-muted-foreground"
                     style={{
                       background: "hsl(var(--surface-base))",
                       border: errors.newPassword ? "1px solid #D1495B" : "1px solid hsl(var(--surface-border))",
@@ -162,7 +162,7 @@ export default function ChangePasswordPage() {
 
               {serverError && (
                 <div
-                  className="px-3 py-2.5 rounded-lg text-sm text-[#D1495B]"
+                  className="px-3 py-2.5 rounded-2xl text-sm text-[#D1495B]"
                   style={{ background: "#D1495B18", border: "1px solid #D1495B40" }}
                   role="alert"
                 >
@@ -173,7 +173,7 @@ export default function ChangePasswordPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 px-4 rounded-lg text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 mt-2"
+                className="w-full py-2.5 px-4 rounded-2xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 mt-2"
                 style={{
                   background: isLoading ? "#4B4FE0" : "#5B5FEF",
                   opacity: isLoading ? 0.8 : 1,

@@ -75,7 +75,7 @@ export function TicketCard({ ticket, isDragging = false }: TicketCardProps) {
           setOpenTicketId(ticket.id);
         }
       }}
-      className="cursor-pointer rounded-lg p-3 transition-colors select-none"
+      className="cursor-pointer rounded-2xl p-3 transition-colors select-none"
       style={{
         ...style,
         background: "hsl(var(--surface-elevated))",

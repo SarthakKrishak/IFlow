@@ -9,14 +9,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "@/lib/validators";
 import type { z } from "zod";
 import { Eye, EyeOff, Loader2, User, Lock, ArrowRight } from "lucide-react";
-import Image from "next/image";
 
 type LoginForm = z.infer<typeof loginSchema>;
 
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams?.get("callbackUrl") ?? "/dashboard";
+  const callbackUrl = searchParams?.get("callbackUrl") ?? "/overview";
 
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -52,21 +51,18 @@ function LoginFormContent() {
   };
 
   return (
-    <div className="w-full max-w-[400px] mx-auto space-y-8">
+    <div className="w-full space-y-8">
       {/* Logo & Header */}
       <div className="flex flex-col items-center">
-        {/* Placeholder for the logo - User will replace this with their actual logo in public/logo.png */}
         <div className="flex items-center gap-2 mb-6">
-          <div className="relative w-8 h-8">
-            <Image
+          <div className="relative w-8 h-8 flex-shrink-0">
+            <img
               src="/logo.png"
               alt="IFlow Logo"
-              width={32}
-              height={32}
-              className="object-contain"
+              className="w-full h-full object-contain"
               onError={(e) => {
-                // Fallback if logo is not yet placed
                 e.currentTarget.style.display = 'none';
+                e.currentTarget.parentElement!.innerHTML = '<div style="width: 100%; height: 100%; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 15px; font-weight: bold; background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);">IF</div>';
               }}
             />
           </div>
@@ -96,9 +92,9 @@ function LoginFormContent() {
                 autoComplete="username"
                 autoFocus
                 {...register("username")}
-                className="w-full pl-10 pr-3 py-3 rounded-xl text-sm text-text-primary placeholder-muted-foreground transition-all"
+                className="w-full pl-10 pr-3 py-3 rounded-2xl text-sm text-text-primary placeholder-muted-foreground transition-all"
                 style={{
-                  background: "transparent",
+                  background: "hsl(var(--surface-base))",
                   border: errors.username ? "1px solid #D1495B" : "1px solid hsl(var(--surface-border))",
                   outline: "none",
                 }}
@@ -134,9 +130,9 @@ function LoginFormContent() {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 {...register("password")}
-                className="w-full pl-10 pr-10 py-3 rounded-xl text-sm text-text-primary placeholder-muted-foreground transition-all"
+                className="w-full pl-10 pr-10 py-3 rounded-2xl text-sm text-text-primary placeholder-muted-foreground transition-all"
                 style={{
-                  background: "transparent",
+                  background: "hsl(var(--surface-base))",
                   border: errors.password ? "1px solid #D1495B" : "1px solid hsl(var(--surface-border))",
                   outline: "none",
                 }}
@@ -167,9 +163,15 @@ function LoginFormContent() {
           </div>
         </div>
 
+        <div className="flex justify-end">
+          <button type="button" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+            Forgot password?
+          </button>
+        </div>
+
         {authError && (
           <div
-            className="px-4 py-3 rounded-xl text-sm text-[#D1495B]"
+            className="px-4 py-3 rounded-2xl text-sm text-[#D1495B]"
             style={{ background: "#D1495B18", border: "1px solid #D1495B40" }}
             role="alert"
           >
@@ -180,7 +182,7 @@ function LoginFormContent() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-3.5 px-4 rounded-xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 group shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
+          className="w-full py-3.5 px-4 rounded-2xl text-sm font-semibold text-white transition-all flex items-center justify-center gap-2 group shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
           style={{
             background: "linear-gradient(90deg, #3B82F6 0%, #2563EB 100%)",
             opacity: isLoading ? 0.8 : 1,
@@ -202,7 +204,7 @@ function LoginFormContent() {
           <div className="w-full border-t border-surface-border"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-surface-base text-muted-foreground">or</span>
+          <span className="px-4 bg-surface-elevated text-muted-foreground">or</span>
         </div>
       </div>
 
@@ -218,51 +220,46 @@ function LoginFormContent() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen w-full flex bg-[#0F172A] overflow-hidden">
-      
-      {/* Left Pane - Blue Gradient & Logo */}
-      <div className="hidden lg:flex relative w-[40%] flex-col items-center justify-center overflow-hidden">
-        {/* Deep blue background gradient */}
-        <div 
-          className="absolute inset-0 z-0" 
-          style={{ 
-            background: "radial-gradient(circle at top left, #1E3A8A 0%, #0F172A 70%)" 
-          }} 
-        />
+    <div 
+      className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden"
+      style={{ background: "var(--surface-base)" }}
+    >
+      <div className="w-full max-w-5xl bg-surface-elevated rounded-[40px] shadow-2xl border border-surface-border/50 overflow-hidden flex flex-col md:flex-row relative z-10 animate-fade-in">
         
-        {/* Abstract lines/stars placeholder */}
-        <div className="absolute inset-0 z-0 opacity-30 mix-blend-overlay">
-           {/* If you have a background pattern image, you can add it here: <Image src="/login-bg.png" fill className="object-cover" /> */}
-           <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-white rounded-full shadow-[0_0_10px_white] animate-pulse" />
-           <div className="absolute bottom-1/3 right-1/4 w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_15px_#60A5FA] animate-pulse" style={{ animationDelay: "1s" }} />
-           <div className="absolute top-1/2 left-1/2 w-96 h-96 border border-blue-500/20 rounded-full rounded-tl-none -translate-x-1/2 -translate-y-1/2" />
-           <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] border border-blue-500/10 rounded-full rounded-br-none -translate-x-1/2 -translate-y-1/2" />
+        {/* Left Side: Abstract Branding */}
+        <div className="hidden md:flex flex-col w-1/2 p-12 relative overflow-hidden justify-between" style={{ background: "radial-gradient(circle at top left, #1E3A8A 0%, #0F172A 100%)" }}>
+          {/* Abstract Background Elements */}
+          <div className="absolute inset-0 z-0 opacity-40 mix-blend-overlay pointer-events-none">
+             <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-white rounded-full shadow-[0_0_10px_white] animate-pulse" />
+             <div className="absolute bottom-1/3 right-1/4 w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_15px_#60A5FA] animate-pulse" style={{ animationDelay: "1s" }} />
+             <div className="absolute top-1/2 left-1/2 w-[600px] h-[600px] border border-blue-500/20 rounded-full -translate-x-1/2 -translate-y-1/2" />
+             <div className="absolute top-1/2 left-1/2 w-[800px] h-[800px] border border-blue-500/10 rounded-full -translate-x-1/2 -translate-y-1/2" />
+          </div>
+
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-10 h-10">
+                <img src="/logo.png" alt="IFlow Logo" className="w-full h-full object-contain" />
+              </div>
+              <span className="text-2xl font-bold text-white tracking-tight">IFlow</span>
+            </div>
+            <p className="text-blue-200/80 text-sm font-medium">Developed By Imaginum</p>
+          </div>
+
+          <div className="relative z-10">
+            <h2 className="text-4xl font-bold text-white mb-4 leading-tight">Master your<br/>workflow.</h2>
+            <p className="text-blue-200/80 text-lg">The premium project management tool for modern teams.</p>
+          </div>
         </div>
 
-        {/* Large Centered Logo */}
-        <div className="relative z-10 w-64 h-64 flex items-center justify-center">
-           {/* User will place their large logo in public/logo-large.png */}
-           <Image
-              src="/logo-large.png"
-              alt="IFlow Hero"
-              fill
-              className="object-contain drop-shadow-2xl"
-              onError={(e) => {
-                // Fallback 3D box if image isn't added yet
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-           
+        {/* Right Side: Form */}
+        <div className="w-full md:w-1/2 p-8 sm:p-12 lg:p-16 bg-surface-elevated flex flex-col justify-center">
+          <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="animate-spin text-[#2563EB]" /></div>}>
+            <LoginFormContent />
+          </Suspense>
         </div>
-      </div>
 
-      {/* Right Pane - Login Form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 lg:rounded-l-[40px] bg-surface-base shadow-[-20px_0_40px_rgba(0,0,0,0.2)] z-10 overflow-y-auto">
-        <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="animate-spin text-[#2563EB]" /></div>}>
-          <LoginFormContent />
-        </Suspense>
       </div>
-
     </div>
   );
 }

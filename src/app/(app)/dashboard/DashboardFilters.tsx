@@ -33,7 +33,7 @@ export function DashboardFilters({
       <select
         name="dept"
         defaultValue={filterDept}
-        className="px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-elevated border border-surface-border outline-none"
+        className="px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-elevated border border-surface-border outline-none"
         onChange={(e) => updateParam("dept", e.target.value)}
         aria-label="Filter by department"
       >
@@ -47,7 +47,7 @@ export function DashboardFilters({
       <select
         name="priority"
         defaultValue={filterPriority}
-        className="px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-elevated border border-surface-border outline-none"
+        className="px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-elevated border border-surface-border outline-none"
         onChange={(e) => updateParam("priority", e.target.value)}
         aria-label="Filter by priority"
       >
@@ -61,7 +61,7 @@ export function DashboardFilters({
       <select
         name="assignee"
         defaultValue={filterAssignee}
-        className="px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-elevated border border-surface-border outline-none"
+        className="px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-elevated border border-surface-border outline-none"
         onChange={(e) => updateParam("assignee", e.target.value)}
         aria-label="Filter by assignee"
       >

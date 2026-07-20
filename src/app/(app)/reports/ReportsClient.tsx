@@ -59,7 +59,7 @@ export function ReportsClient({
 
       {/* Controls */}
       <div className="flex flex-wrap gap-3 mb-6">
-        <div className="flex rounded-lg border border-surface-border overflow-hidden">
+        <div className="flex rounded-2xl border border-surface-border overflow-hidden">
           {[
             { label: "Last 7 Days", value: "week" },
             { label: "Last 4 Weeks", value: "30d" },
@@ -89,7 +89,7 @@ export function ReportsClient({
         ].map((tile) => (
           <div
             key={tile.label}
-            className="rounded-xl p-4 bg-surface-elevated border border-surface-border shadow-sm"
+            className="rounded-3xl p-4 bg-surface-elevated border border-surface-border shadow-sm"
           >
             <p className="text-xs text-muted-foreground mb-1 font-medium uppercase tracking-wider">{tile.label}</p>
             <p className="text-2xl font-bold font-mono" style={{ color: tile.color }}>
@@ -100,7 +100,7 @@ export function ReportsClient({
       </div>
 
       {/* Productivity chart */}
-      <div className="rounded-xl p-5 mb-6 bg-surface-elevated border border-surface-border shadow-sm">
+      <div className="rounded-3xl p-5 mb-6 bg-surface-elevated border border-surface-border shadow-sm">
         <h2 className="text-sm font-semibold text-text-primary mb-4">Individual Productivity Score (%)</h2>
         {chartData.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
@@ -134,7 +134,7 @@ export function ReportsClient({
       </div>
 
       {/* Overdue tickets */}
-      <div className="rounded-xl overflow-hidden border border-surface-border shadow-sm">
+      <div className="rounded-3xl overflow-hidden border border-surface-border shadow-sm">
         <div className="px-5 py-3 border-b border-surface-border bg-surface-elevated">
           <h2 className="text-sm font-semibold text-text-primary">
             Overdue tickets

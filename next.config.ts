@@ -7,6 +7,15 @@ const nextConfig: NextConfig = {
       allowedOrigins: ["localhost:3000"],
     },
   },
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/overview',
+        permanent: false,
+      },
+    ]
+  },
   webpack(config) {
     // Ensure webpack uses the real @prisma/client runtime, not the .prisma/client
     // type-only directory that tsconfig paths points to for TypeScript type resolution.

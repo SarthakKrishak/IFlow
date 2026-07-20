@@ -28,7 +28,7 @@ export function DashboardHeader({ boards, projectId, users, isAdmin }: Dashboard
           <Link
             key={b.id}
             href={`/board/${b.id}`}
-            className="px-3 py-1.5 rounded-lg text-sm text-text-secondary bg-surface-elevated border border-surface-border hover:text-text-primary hover:border-[#5B5FEF]/50 transition-all"
+            className="px-3 py-1.5 rounded-2xl text-sm text-text-secondary bg-surface-elevated border border-surface-border hover:text-text-primary hover:border-[#5B5FEF]/50 transition-all"
           >
             {b.name}
           </Link>
@@ -37,7 +37,7 @@ export function DashboardHeader({ boards, projectId, users, isAdmin }: Dashboard
         {isAdmin && (
           <button
             onClick={() => setIsCreating(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-[#5B5FEF] bg-[#5B5FEF]/10 border border-[#5B5FEF]/20 hover:bg-[#5B5FEF]/20 transition-all font-medium"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-sm text-[#5B5FEF] bg-[#5B5FEF]/10 border border-[#5B5FEF]/20 hover:bg-[#5B5FEF]/20 transition-all font-medium"
           >
             <Plus size={14} />
             New Board

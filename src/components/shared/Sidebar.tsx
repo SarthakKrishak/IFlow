@@ -33,6 +33,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Tasks", href: "/my-tasks", icon: Kanban },
   { label: "People", href: "/people", icon: Users },
   { label: "Reports", href: "/reports", icon: BarChart2 },
   { label: "Admin", href: "/admin", icon: Settings, adminOnly: true },
@@ -80,20 +81,22 @@ export function Sidebar({ isAdmin, projects, activeProject, boards, users, displ
       <div className={`flex items-center py-5 ${collapsed ? 'px-4 justify-center' : 'px-6 gap-3 justify-between'}`}>
         {!collapsed ? (
           <>
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="relative w-8 h-8 flex-shrink-0">
+            <Link href="/overview" className="flex items-center gap-3">
+              <div className="relative w-9 h-9 flex-shrink-0">
                 <img
                   src="/logo.png"
                   alt="IFlow Logo"
                   className="w-full h-full object-contain"
                   onError={(e) => {
-                    // Fallback if logo not found
                     e.currentTarget.style.display = 'none';
                     e.currentTarget.parentElement!.innerHTML = '<div style="width: 100%; height: 100%; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 15px; font-weight: bold; background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);">IF</div>';
                   }}
                 />
               </div>
-              <span className="text-xl font-bold text-foreground tracking-tight">IFlow</span>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold text-foreground tracking-tight leading-tight">IFlow</span>
+                <span className="text-[10px] text-muted-foreground font-medium tracking-wider leading-tight">By Imaginum</span>
+              </div>
             </Link>
             <button
               onClick={() => setCollapsed(true)}
@@ -135,7 +138,7 @@ export function Sidebar({ isAdmin, projects, activeProject, boards, users, displ
         <Link
           href="/overview"
           onClick={() => setMobileOpen(false)}
-          className={`flex items-center px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all group ${
+          className={`flex items-center px-3 py-2.5 rounded-3xl text-[14px] font-medium transition-all group ${
             pathname === "/overview"
               ? "bg-primary/10 text-primary"
               : "text-muted-foreground hover:text-foreground hover:bg-surface-border/50"
@@ -166,7 +169,7 @@ export function Sidebar({ isAdmin, projects, activeProject, boards, users, displ
               key={item.label}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className={`flex items-center px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all group ${
+              className={`flex items-center px-3 py-2.5 rounded-3xl text-[14px] font-medium transition-all group ${
                 isActive
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground hover:bg-surface-border/50"
@@ -204,7 +207,7 @@ export function Sidebar({ isAdmin, projects, activeProject, boards, users, displ
                   key={board.id}
                   href={`/board/${board.id}`}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all ${
+                  className={`flex items-center px-3 py-2.5 rounded-3xl text-[14px] font-medium transition-all ${
                     isActive
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-surface-border/50"
@@ -230,22 +233,22 @@ export function Sidebar({ isAdmin, projects, activeProject, boards, users, displ
       {/* User profile dropdown area */}
       <div className="p-4 relative" ref={profileMenuRef}>
         {profileMenuOpen && (
-          <div className="absolute bottom-full left-4 mb-2 w-56 bg-surface-base border border-surface-border rounded-xl shadow-lg overflow-hidden flex flex-col z-50">
+          <div className="absolute bottom-full left-4 mb-2 w-56 bg-surface-base border border-surface-border rounded-3xl shadow-lg overflow-hidden flex flex-col z-50">
             <div className="px-4 py-3 border-b border-surface-border">
               <p className="text-sm font-bold text-foreground truncate">{displayName}</p>
               <p className="text-xs text-muted-foreground truncate">{isAdmin ? 'Admin' : 'Member'}</p>
             </div>
             <div className="p-1">
-              <Link href="/change-password" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-surface-elevated rounded-lg transition-colors">
+              <Link href="/change-password" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-surface-elevated rounded-2xl transition-colors">
                 <KeyRound size={16} />
                 Change Password
               </Link>
-              <div className="flex items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-surface-elevated rounded-lg transition-colors">
+              <div className="flex items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-surface-elevated rounded-2xl transition-colors">
                 <span className="flex items-center gap-2"><ThemeToggle /></span>
               </div>
               <button 
                 onClick={() => signOut({ callbackUrl: "/login" })}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors text-left"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-2xl transition-colors text-left"
               >
                 <LogOut size={16} />
                 Log out
@@ -256,7 +259,7 @@ export function Sidebar({ isAdmin, projects, activeProject, boards, users, displ
 
         <div 
           onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-          className={`flex items-center cursor-pointer hover:bg-surface-border/50 p-2 rounded-xl transition-colors ${collapsed ? 'justify-center' : 'gap-3'}`}
+          className={`flex items-center cursor-pointer hover:bg-surface-border/50 p-2 rounded-3xl transition-colors ${collapsed ? 'justify-center' : 'gap-3'}`}
         >
           <div
             className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 shadow-sm"
@@ -282,7 +285,7 @@ export function Sidebar({ isAdmin, projects, activeProject, boards, users, displ
     <>
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 w-9 h-9 flex items-center justify-center rounded-lg bg-surface-elevated border border-surface-border text-foreground shadow-sm"
+        className="lg:hidden fixed top-4 left-4 z-50 w-9 h-9 flex items-center justify-center rounded-2xl bg-surface-elevated border border-surface-border text-foreground shadow-sm"
       >
         <Menu size={18} />
       </button>

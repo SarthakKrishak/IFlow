@@ -91,7 +91,7 @@ export function PeopleClient({ initialUsers, isAdmin, currentUserId, boards }: P
         {isAdmin && (
           <button
             onClick={() => setShowCreateDialog(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-semibold text-white transition-all shadow-sm"
             style={{ background: "#5B5FEF" }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#4B4FE0")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#5B5FEF")}
@@ -109,21 +109,21 @@ export function PeopleClient({ initialUsers, isAdmin, currentUserId, boards }: P
           {users.map((user) => {
             return (
               <Link key={user.id} href={`/people/${user.id}`}>
-                <div className="rounded-xl p-5 transition-all cursor-pointer group bg-surface-elevated border border-surface-border hover:border-primary/50 relative">
+                <div className="rounded-3xl p-5 transition-all cursor-pointer group bg-surface-elevated border border-surface-border hover:border-primary/50 relative">
                   
                   {/* Admin Actions Overlay */}
                   {isAdmin && user.id !== currentUserId && (
                     <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={(e) => openManageAccess(e, user)}
-                        className="p-1.5 rounded-lg bg-surface-base border border-surface-border text-muted-foreground hover:text-primary transition-colors shadow-sm"
+                        className="p-1.5 rounded-2xl bg-surface-base border border-surface-border text-muted-foreground hover:text-primary transition-colors shadow-sm"
                         title="Manage Board Access"
                       >
                         <ShieldCheck size={14} />
                       </button>
                       <button 
                         onClick={(e) => handleDeactivate(e, user.id, user.displayName)}
-                        className="p-1.5 rounded-lg bg-surface-base border border-surface-border text-muted-foreground hover:text-destructive transition-colors shadow-sm"
+                        className="p-1.5 rounded-2xl bg-surface-base border border-surface-border text-muted-foreground hover:text-destructive transition-colors shadow-sm"
                         title="Block User"
                         disabled={actionLoading === user.id}
                       >
@@ -188,13 +188,13 @@ export function PeopleClient({ initialUsers, isAdmin, currentUserId, boards }: P
       {/* Board Access Modal */}
       {managingAccessFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-surface-elevated border border-surface-border rounded-xl p-6 w-full max-w-sm shadow-2xl">
+          <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 w-full max-w-sm shadow-2xl">
             <h2 className="text-lg font-semibold text-text-primary mb-1">Manage Access</h2>
             <p className="text-xs text-muted-foreground mb-4">Select boards {managingAccessFor.displayName} can access.</p>
             
             <div className="space-y-2 mb-6 max-h-60 overflow-y-auto">
               {boards.map(b => (
-                <label key={b.id} className="flex items-center gap-3 p-2 rounded-lg bg-surface-base border border-surface-border cursor-pointer hover:border-primary/50 transition-colors">
+                <label key={b.id} className="flex items-center gap-3 p-2 rounded-2xl bg-surface-base border border-surface-border cursor-pointer hover:border-primary/50 transition-colors">
                   <input
                     type="checkbox"
                     checked={selectedBoards.has(b.id)}
@@ -216,7 +216,7 @@ export function PeopleClient({ initialUsers, isAdmin, currentUserId, boards }: P
               <button
                 onClick={saveBoardAccess}
                 disabled={actionLoading === 'save-boards'}
-                className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 text-sm bg-primary text-white rounded-2xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
                 {actionLoading === 'save-boards' && <Loader2 size={14} className="animate-spin" />}
                 Save Access

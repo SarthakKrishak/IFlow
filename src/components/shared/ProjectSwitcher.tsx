@@ -54,7 +54,7 @@ export function ProjectSwitcher({
     <div className="relative mb-4 px-3">
       <button
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center justify-between p-2 rounded-lg bg-surface-elevated border border-surface-border hover:border-surface-border/80 transition-all ${
+        className={`w-full flex items-center justify-between p-2 rounded-2xl bg-surface-elevated border border-surface-border hover:border-surface-border/80 transition-all ${
           collapsed ? "justify-center" : ""
         }`}
       >
@@ -77,7 +77,7 @@ export function ProjectSwitcher({
             className="fixed inset-0 z-10"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute top-full left-3 right-3 mt-1 bg-surface-elevated border border-surface-border rounded-lg shadow-xl overflow-hidden z-20">
+          <div className="absolute top-full left-3 right-3 mt-1 bg-surface-elevated border border-surface-border rounded-2xl shadow-xl overflow-hidden z-20">
             <div className="max-h-60 overflow-y-auto p-1">
               {projects.map((p) => (
                 <div key={p.id} className="flex items-center justify-between group">
@@ -139,7 +139,7 @@ export function ProjectSwitcher({
               <button
                 type="button"
                 onClick={() => setIsDeleting(null)}
-                className="flex-1 px-4 py-2 text-sm font-medium text-text-secondary bg-surface-base border border-surface-border rounded-lg hover:bg-surface-border transition-colors"
+                className="flex-1 px-4 py-2 text-sm font-medium text-text-secondary bg-surface-base border border-surface-border rounded-2xl hover:bg-surface-border transition-colors"
                 disabled={isSubmitting}
               >
                 Cancel
@@ -148,7 +148,7 @@ export function ProjectSwitcher({
                 type="button"
                 onClick={() => handleDelete(isDeleting)}
                 disabled={isSubmitting}
-                className="flex-1 px-4 py-2 text-sm font-bold text-white bg-destructive rounded-lg hover:bg-destructive/90 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 text-sm font-bold text-white bg-destructive rounded-2xl hover:bg-destructive/90 transition-colors flex items-center justify-center gap-2"
               >
                 {isSubmitting && <Loader2 size={14} className="animate-spin" />}
                 Confirm Delete
@@ -161,7 +161,7 @@ export function ProjectSwitcher({
       {/* Create Modal */}
       {isCreating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-surface-elevated border border-surface-border rounded-xl p-6 w-full max-w-md shadow-2xl">
+          <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 w-full max-w-md shadow-2xl">
             <h2 className="text-lg font-semibold text-text-primary mb-4">Create New Project</h2>
             <form
               onSubmit={async (e) => {
@@ -186,7 +186,7 @@ export function ProjectSwitcher({
                   name="name"
                   required
                   autoFocus
-                  className="w-full px-3 py-2 rounded-lg bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF]"
+                  className="w-full px-3 py-2 rounded-2xl bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF]"
                   placeholder="e.g. Acme Website"
                 />
               </div>
@@ -195,7 +195,7 @@ export function ProjectSwitcher({
                 <textarea
                   name="description"
                   rows={3}
-                  className="w-full px-3 py-2 rounded-lg bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF] resize-none"
+                  className="w-full px-3 py-2 rounded-2xl bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF] resize-none"
                   placeholder="Optional description"
                 />
               </div>
@@ -211,7 +211,7 @@ export function ProjectSwitcher({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 text-sm bg-[#5B5FEF] text-white rounded-lg hover:bg-[#4B4FE0] transition-colors disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 text-sm bg-[#5B5FEF] text-white rounded-2xl hover:bg-[#4B4FE0] transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   {isSubmitting && <Loader2 size={14} className="animate-spin" />}
                   Create

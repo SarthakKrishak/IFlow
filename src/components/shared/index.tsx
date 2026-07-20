@@ -58,30 +58,28 @@ interface AvatarProps {
   avatarColor: string;
   size?: "sm" | "md" | "lg";
   className?: string;
+  isOnline?: boolean;
 }
 
-export function Avatar({ displayName, avatarColor, size = "md", className = "" }: AvatarProps) {
-  const initials = displayName
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
-
+export function Avatar({ displayName, avatarColor, size = "md", className = "", isOnline }: AvatarProps) {
   const sizeClasses = {
     sm: "w-6 h-6 text-[10px]",
-    md: "w-8 h-8 text-xs",
-    lg: "w-10 h-10 text-sm",
+    md: "w-8 h-8 text-[12px]",
+    lg: "w-10 h-10 text-[14px]",
   };
 
   return (
-    <div
-      className={`rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 ${sizeClasses[size]} ${className}`}
-      style={{ background: avatarColor }}
-      title={displayName}
-      aria-label={displayName}
-    >
-      {initials}
+    <div className="relative group">
+      <div
+        className={`rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 ${sizeClasses[size]} ${className}`}
+        style={{ background: avatarColor }}
+        title={displayName}
+      >
+        {displayName.charAt(0).toUpperCase()}
+      </div>
+      {isOnline && (
+        <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 rounded-full ring-2 ring-surface-base"></div>
+      )}
     </div>
   );
 }
@@ -133,7 +131,8 @@ export function RelativeTime({ date, className = "" }: RelativeTimeProps) {
   );
 }
 
-export { Sidebar } from "./Sidebar";
-export { ThemeProvider } from "./ThemeProvider";
-export { ThemeToggle } from "./ThemeToggle";
-export { ProjectSwitcher } from "./ProjectSwitcher";
+export * from "./Sidebar";
+export * from "./TopNav";
+export * from "./ThemeToggle";
+export * from "./ProjectSwitcher";
+export * from "./ChartFilterDropdown";

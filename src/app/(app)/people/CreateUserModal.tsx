@@ -35,7 +35,7 @@ export function CreateUserModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-surface-elevated border border-surface-border rounded-xl p-6 w-full max-w-sm shadow-2xl relative">
+      <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
         <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground">
           <X size={18} />
         </button>
@@ -45,7 +45,7 @@ export function CreateUserModal({ onClose }: { onClose: () => void }) {
         {success ? (
           <div className="text-center">
             <div className="mb-4 text-sm text-[#1EAE7C] bg-[#1EAE7C]/10 p-3 rounded font-medium">{success}</div>
-            <button onClick={onClose} className="px-4 py-2 bg-primary text-white rounded-lg text-sm">Done</button>
+            <button onClick={onClose} className="px-4 py-2 bg-primary text-white rounded-2xl text-sm">Done</button>
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -55,7 +55,7 @@ export function CreateUserModal({ onClose }: { onClose: () => void }) {
                 <input
                   {...register("displayName")}
                   placeholder="Priya Sharma"
-                  className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground"
+                  className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground"
                 />
                 {errors.displayName && <p className="text-xs text-destructive mt-1">{errors.displayName.message}</p>}
               </div>
@@ -64,7 +64,7 @@ export function CreateUserModal({ onClose }: { onClose: () => void }) {
                 <input
                   {...register("username")}
                   placeholder="priya_s"
-                  className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground font-mono"
+                  className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground font-mono"
                 />
                 {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
               </div>
@@ -74,7 +74,7 @@ export function CreateUserModal({ onClose }: { onClose: () => void }) {
                   {...register("tempPassword")}
                   type="text"
                   placeholder="iflow123 (min 8 chars)"
-                  className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground font-mono"
+                  className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground font-mono"
                 />
                 {errors.tempPassword && <p className="text-xs text-destructive mt-1">{errors.tempPassword.message}</p>}
               </div>
@@ -83,7 +83,7 @@ export function CreateUserModal({ onClose }: { onClose: () => void }) {
                   <label className="block text-xs font-medium text-text-secondary mb-1">Department</label>
                   <select
                     {...register("department")}
-                    className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
+                    className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
                   >
                     <option value="DEV">Dev</option>
                     <option value="DESIGN">Design</option>
@@ -95,7 +95,7 @@ export function CreateUserModal({ onClose }: { onClose: () => void }) {
                   <label className="block text-xs font-medium text-text-secondary mb-1">Role</label>
                   <select
                     {...register("role")}
-                    className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
+                    className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
                   >
                     <option value="MEMBER">Member</option>
                     <option value="ADMIN">Admin</option>
@@ -108,14 +108,14 @@ export function CreateUserModal({ onClose }: { onClose: () => void }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2 rounded-lg text-sm text-text-secondary bg-surface-border hover:bg-surface-border/80 transition-colors"
+                className="flex-1 py-2 rounded-2xl text-sm text-text-secondary bg-surface-border hover:bg-surface-border/80 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2 bg-primary hover:bg-primary/90"
+                className="flex-1 py-2 rounded-2xl text-sm font-semibold text-white flex items-center justify-center gap-2 bg-primary hover:bg-primary/90"
               >
                 {isSubmitting && <Loader2 size={14} className="animate-spin" />}
                 Create user

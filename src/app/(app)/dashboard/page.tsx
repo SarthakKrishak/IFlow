@@ -4,12 +4,14 @@ import { getActiveProject } from "@/lib/project";
 import type { Metadata } from "next";
 import { Folder, CheckCircle, Clock, CheckCircle2, MoreVertical, ArrowUp } from "lucide-react";
 import { DashboardChart } from "./DashboardChart";
-import { Avatar } from "@/components/shared";
+import { Avatar, ChartFilterDropdown } from "@/components/shared";
 import Link from "next/link";
 
 export const metadata: Metadata = { title: "Dashboard - IFlow" };
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: { searchParams: Promise<{ range?: string }> }) {
+  const searchParams = await props.searchParams;
+  const range = searchParams.range === "30d" ? 30 : 7;
   const session = await auth();
   if (!session?.user) return null;
 
@@ -61,16 +63,32 @@ export default async function DashboardPage() {
     { name: "Done", count: completedCount, color: "bg-green-500", items: tickets.filter(t => t.column.name.toLowerCase().includes("done")).slice(0, 4) }
   ];
 
-  // Chart data simulation (7 days)
-  const chartData = [
-    { name: "Mon", completed: 10, created: 5 },
-    { name: "Tue", completed: 15, created: 8 },
-    { name: "Wed", completed: 21, created: 10 },
-    { name: "Thu", completed: 18, created: 8 },
-    { name: "Fri", completed: 23, created: 9 },
-    { name: "Sat", completed: 19, created: 8 },
-    { name: "Sun", completed: 29, created: 16 },
-  ];
+  // Dynamic Chart Data
+  const chartDays = Array.from({ length: range }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - ((range - 1) - i));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
+  const chartData = chartDays.map(date => {
+    const nextDay = new Date(date);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const created = tickets.filter(t => t.createdAt >= date && t.createdAt < nextDay).length;
+    
+    // For completed, we look at tickets currently in a "Done" column and updated that day
+    const completed = tickets.filter(t => 
+      t.column.name.toLowerCase().includes("done") && 
+      t.updatedAt >= date && t.updatedAt < nextDay
+    ).length;
+
+    return {
+      name: range === 30 ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : date.toLocaleDateString("en-US", { weekday: "short" }),
+      completed,
+      created
+    };
+  });
 
   const formatRelativeTime = (date: Date) => {
     const diff = Date.now() - date.getTime();
@@ -80,7 +98,12 @@ export default async function DashboardPage() {
   };
 
   return (
-    <div className="p-8 max-w-[1400px] mx-auto space-y-6">
+    <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-fade-in">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-foreground">{activeProject.name} Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">Project statistics and activity</p>
+      </div>
+
       {/* Top Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-5 transition-colors duration-300">
@@ -136,11 +159,7 @@ export default async function DashboardPage() {
       <div className="bg-surface-elevated border border-surface-border rounded-2xl p-6 shadow-sm transition-colors duration-300">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-[16px] font-bold text-foreground">Project Velocity</h2>
-          <select className="bg-transparent text-[13px] text-muted-foreground font-medium outline-none cursor-pointer">
-            <option>This Week</option>
-            <option>Last Week</option>
-            <option>This Month</option>
-          </select>
+          <ChartFilterDropdown />
         </div>
         <div className="flex items-center gap-6 mb-4">
           <div className="flex items-center gap-2">
@@ -172,7 +191,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="space-y-2 flex-1">
                   {col.items.map(t => (
-                    <div key={t.id} className="p-3 bg-surface-base border border-surface-border rounded-xl shadow-sm hover:border-primary/50 transition-colors cursor-pointer">
+                    <div key={t.id} className="p-3 bg-surface-base border border-surface-border rounded-3xl shadow-sm hover:border-primary/50 transition-colors cursor-pointer">
                       <p className="text-[13px] font-medium text-foreground line-clamp-1">{t.title}</p>
                     </div>
                   ))}

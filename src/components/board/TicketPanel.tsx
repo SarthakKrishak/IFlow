@@ -40,7 +40,7 @@ export type TicketFull = Ticket & {
 
 interface TicketPanelProps {
   ticket: TicketFull;
-  allUsers: Pick<User, "id" | "displayName" | "avatarColor" | "isActive">[];
+  allUsers: Pick<User, "id" | "displayName" | "avatarColor" | "isActive" | "role" | "lastSeenAt">[];
   allLabels: Pick<Label, "id" | "name" | "color">[];
   allColumns: Pick<Column, "id" | "name" | "order">[];
   currentUserId: string;
@@ -224,7 +224,7 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
           {error && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#D1495B]/10 border border-[#D1495B]/30 text-sm text-[#D1495B]">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[#D1495B]/10 border border-[#D1495B]/30 text-sm text-[#D1495B]">
               <AlertCircle size={14} />
               {error}
               <button onClick={() => setError(null)} className="ml-auto text-xs underline">Dismiss</button>
@@ -263,7 +263,7 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
               <select
                 value={ticket.columnId}
                 onChange={(e) => handleColumnChange(e.target.value)}
-                className="w-full px-2.5 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
+                className="w-full px-2.5 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
                 aria-label="Ticket status"
               >
                 {allColumns.sort((a, b) => a.order - b.order).map((col) => (
@@ -280,7 +280,7 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
               <select
                 value={ticket.priority}
                 onChange={(e) => handlePriorityChange(e.target.value as Ticket["priority"])}
-                className="w-full px-2.5 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
+                className="w-full px-2.5 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
                 aria-label="Ticket priority"
               >
                 {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
@@ -297,11 +297,11 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
               <select
                 value={ticket.assigneeId ?? "none"}
                 onChange={(e) => handleAssigneeChange(e.target.value)}
-                className="w-full px-2.5 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
+                className="w-full px-2.5 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
                 aria-label="Ticket assignee"
               >
                 <option value="none" style={{ background: "hsl(var(--surface-base))" }}>Unassigned</option>
-                {allUsers.filter((u) => u.isActive).map((user) => (
+                {allUsers.filter((u) => u.isActive && u.role !== 'ADMIN').map((user) => (
                   <option key={user.id} value={user.id} style={{ background: "hsl(var(--surface-base))" }}>{user.displayName}</option>
                 ))}
               </select>
@@ -315,12 +315,13 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
               <input
                 type="date"
                 value={ticket.dueDate ? new Date(ticket.dueDate).toISOString().split("T")[0] : ""}
+                min={new Date().toISOString().split("T")[0]}
                 onChange={(e) => {
                   const val = e.target.value;
                   save({ dueDate: val ? new Date(val).toISOString() : null });
                   setTicket((t) => ({ ...t, dueDate: val ? new Date(val) : null }));
                 }}
-                className="w-full px-2.5 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
+                className="w-full px-2.5 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
                 aria-label="Due date"
               />
             </div>
@@ -364,7 +365,7 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
               onBlur={handleDescBlur}
               rows={4}
               placeholder="Add a description…"
-              className="w-full px-3 py-2 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none resize-none placeholder-muted-foreground"
+              className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none resize-none placeholder-muted-foreground"
               style={{ lineHeight: "1.5" }}
               aria-label="Ticket description"
               onFocus={(e) => (e.currentTarget.style.borderColor = "#5B5FEF")}
@@ -410,7 +411,7 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
                   }}
                   rows={2}
                   placeholder="Leave a comment… (Ctrl+Enter to send)"
-                  className="w-full px-3 py-2 pr-10 rounded-lg text-sm text-text-primary bg-surface-base border border-surface-border outline-none resize-none placeholder-muted-foreground"
+                  className="w-full px-3 py-2 pr-10 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none resize-none placeholder-muted-foreground"
                   aria-label="Comment body"
                   onFocus={(e) => (e.currentTarget.style.borderColor = "#5B5FEF")}
                   onBlur={(e) => (e.currentTarget.style.borderColor = "hsl(var(--surface-border))")}
