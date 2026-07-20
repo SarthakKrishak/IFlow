@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum Department {
+  DEV
+  DESIGN
+  MARKETING
+  GENERAL
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ActivityAction {
+  CREATED
+  MOVED
+  ASSIGNED
+  UNASSIGNED
+  COMMENTED
+  EDITED
+  COMPLETED
+  REOPENED
+  PRIORITY_CHANGED
+  DUE_DATE_CHANGED
+  LABEL_ADDED
+  LABEL_REMOVED
+}
+
+model User {
+  id                 String     @id @default(cuid())
+  username           String     @unique
+  passwordHash       String
+  displayName        String
+  role               Role       @default(MEMBER)
+  department         Department @default(GENERAL)
+  avatarColor        String     @default("#5B5FEF")
+  isActive           Boolean    @default(true)
+  mustChangePassword Boolean    @default(true)
+  createdAt          DateTime   @default(now())
+
+  ticketsAssigned Ticket[]      @relation("AssignedTo")
+  ticketsCreated  Ticket[]      @relation("CreatedBy")
+  activityLogs    ActivityLog[]
+  comments        Comment[]
+  accessibleBoards Board[]      @relation("BoardAccess")
+
+  @@index([department])
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  boards Board[]
+}
+
+model Board {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  department  Department
+  description String?
+  projectId   String
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  columns     Column[]
+  tickets     Ticket[]
+  members     User[]     @relation("BoardAccess")
+
+  @@index([projectId])
+}
+
+model Column {
+  id       String   @id @default(cuid())
+  boardId  String
+  board    Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name     String
+  order    Int
+  wipLimit Int?
+  tickets  Ticket[]
+
+  @@index([boardId])
+}
+
+model Ticket {
+  id          String     @id @default(cuid())
+  boardId     String
+  board       Board      @relation(fields: [boardId], references: [id])
+  columnId    String
+  column      Column     @relation(fields: [columnId], references: [id])
+  title       String
+  description String?    @db.Text
+  priority    Priority   @default(MEDIUM)
+  department  Department
+  order       Int
+
+  assigneeId  String?
+  assignee    User?   @relation("AssignedTo", fields: [assigneeId], references: [id])
+  createdById String
+  createdBy   User    @relation("CreatedBy", fields: [createdById], references: [id])
+
+  dueDate        DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastActivityAt DateTime  @default(now())
+
+  labels       Label[]       @relation("TicketLabels")
+  comments     Comment[]
+  activityLogs ActivityLog[]
+
+  @@index([boardId, columnId])
+  @@index([assigneeId])
+}
+
+model Label {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  color   String
+  tickets Ticket[] @relation("TicketLabels")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model ActivityLog {
+  id        String         @id @default(cuid())
+  ticketId  String
+  ticket    Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  action    ActivityAction
+  fromValue String?
+  toValue   String?
+  createdAt DateTime       @default(now())
+
+  @@index([ticketId])
+  @@index([userId, createdAt])
+}
