@@ -24,6 +24,7 @@ interface UserData {
   completedCount: number;
   prodStats: { total: number; onTime: number } | null;
   lastActivity: Date | null;
+  lastSeenAt: Date | null;
   boardIds: string[];
 }
 
@@ -138,6 +139,7 @@ export function PeopleClient({ initialUsers, isAdmin, currentUserId, boards }: P
                       displayName={user.displayName}
                       avatarColor={user.avatarColor}
                       size="lg"
+                      isOnline={user.lastSeenAt ? new Date(user.lastSeenAt).getTime() >= Date.now() - 5 * 60 * 1000 : false}
                     />
                     <div className="min-w-0 pr-12">
                       <p className="font-semibold text-text-primary truncate transition-colors">

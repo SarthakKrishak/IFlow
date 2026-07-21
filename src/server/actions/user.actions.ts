@@ -30,7 +30,7 @@ export async function createUser(input: {
   tempPassword: string;
   displayName: string;
   department: "DEV" | "DESIGN" | "MARKETING" | "GENERAL";
-  role: "ADMIN" | "MEMBER";
+  role: "ADMIN" | "MANAGER" | "MEMBER";
 }): Promise<Result<SafeUser>> {
   try {
     await requireAdmin();

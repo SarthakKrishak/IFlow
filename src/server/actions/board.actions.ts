@@ -37,7 +37,9 @@ export async function createBoard(input: {
   try {
     const session = await auth();
     if (!session?.user?.id) return { success: false, error: "Unauthorized" };
-    if (session.user.role !== Role.ADMIN) return { success: false, error: "Admin only" };
+    if (session.user.role !== Role.ADMIN && session.user.role !== Role.MANAGER) {
+      return { success: false, error: "Admin or Manager only" };
+    }
 
     const parsed = createBoardSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };

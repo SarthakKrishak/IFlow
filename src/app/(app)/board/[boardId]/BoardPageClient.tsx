@@ -22,7 +22,7 @@ type ColumnWithTickets = Column & {
 interface BoardPageClientProps {
   board: Board;
   columns: ColumnWithTickets[];
-  allUsers: Pick<User, "id" | "displayName" | "avatarColor" | "isActive" | "lastSeenAt">[];
+  allUsers: Pick<User, "id" | "displayName" | "avatarColor" | "isActive" | "role" | "lastSeenAt">[];
   allLabels: Pick<Label, "id" | "name" | "color">[];
   currentUserId: string;
   currentUserRole: "ADMIN" | "MANAGER" | "MEMBER";

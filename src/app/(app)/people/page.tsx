@@ -89,6 +89,7 @@ export default async function PeoplePage() {
     completedCount: completedMap.get(user.id) ?? 0,
     prodStats: productivityMap.get(user.id) || null,
     lastActivity: user.activityLogs[0]?.createdAt ?? null,
+    lastSeenAt: user.lastSeenAt,
     boardIds: user.accessibleBoards.map(b => b.id)
   }));
 

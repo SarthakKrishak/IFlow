@@ -23,6 +23,7 @@ import { ProjectSwitcher } from "./ProjectSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import { CreateBoardModal } from "../board/CreateBoardModal";
 import { Plus } from "lucide-react";
+import { setOffline } from "@/server/actions/ping";
 
 interface NavItem {
   label: string;
@@ -41,6 +42,7 @@ const NAV_ITEMS: NavItem[] = [
 
 interface SidebarProps {
   isAdmin: boolean;
+  isManager?: boolean;
   projects: Project[];
   activeProject: Project;
   boards: Pick<Board, "id" | "name" | "slug">[];
@@ -49,7 +51,7 @@ interface SidebarProps {
   avatarColor: string;
 }
 
-export function Sidebar({ isAdmin, projects, activeProject, boards, users, displayName, avatarColor }: SidebarProps) {
+export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, users, displayName, avatarColor }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -189,7 +191,7 @@ export function Sidebar({ isAdmin, projects, activeProject, boards, users, displ
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
                 Boards
               </p>
-              {isAdmin && (
+              {(isAdmin || isManager) && (
                 <button 
                   onClick={() => setIsCreatingBoard(true)}
                   className="text-muted-foreground hover:text-foreground transition-colors"
@@ -247,7 +249,10 @@ export function Sidebar({ isAdmin, projects, activeProject, boards, users, displ
                 <span className="flex items-center gap-2"><ThemeToggle /></span>
               </div>
               <button 
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={async () => {
+                  await setOffline();
+                  signOut({ callbackUrl: "/login" });
+                }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-2xl transition-colors text-left"
               >
                 <LogOut size={16} />

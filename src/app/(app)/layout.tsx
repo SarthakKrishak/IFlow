@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { TopNav } from "@/components/shared/TopNav";
 import { getActiveProject } from "@/lib/project";
+import { getCachedUsers } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -32,17 +33,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       select: { id: true, name: true, slug: true },
       orderBy: { createdAt: "asc" },
     }),
-    prisma.user.findMany({
-      where: { isActive: true },
-      select: { id: true, displayName: true, avatarColor: true, role: true, lastSeenAt: true },
-      orderBy: { displayName: "asc" },
-    })
+    getCachedUsers()
   ]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-base">
       <Sidebar
         isAdmin={session.user.role === "ADMIN"}
+        isManager={session.user.role === "MANAGER"}
         projects={projects}
         activeProject={activeProject}
         boards={boards}

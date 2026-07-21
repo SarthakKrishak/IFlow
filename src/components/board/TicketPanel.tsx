@@ -44,7 +44,7 @@ interface TicketPanelProps {
   allLabels: Pick<Label, "id" | "name" | "color">[];
   allColumns: Pick<Column, "id" | "name" | "order">[];
   currentUserId: string;
-  currentUserRole: "ADMIN" | "MEMBER";
+  currentUserRole: "ADMIN" | "MANAGER" | "MEMBER";
 }
 
 function activityToSentence(log: ActivityLog & { user: Pick<User, "id" | "displayName"> }): string {

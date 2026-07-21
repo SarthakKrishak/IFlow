@@ -22,7 +22,7 @@ interface AdminUser {
   id: string;
   username: string;
   displayName: string;
-  role: "ADMIN" | "MEMBER";
+  role: "ADMIN" | "MANAGER" | "MEMBER";
   department: "DEV" | "DESIGN" | "MARKETING" | "GENERAL";
   avatarColor: string;
   isActive: boolean;
@@ -59,7 +59,7 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
       tempPassword: string;
       displayName: string;
       department: "DEV" | "DESIGN" | "MARKETING" | "GENERAL";
-      role: "ADMIN" | "MEMBER";
+      role: "ADMIN" | "MANAGER" | "MEMBER";
     });
     if (!result.success) {
       setError(result.error);
@@ -186,6 +186,10 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
                     <span className="flex items-center gap-1 text-xs text-[#5B5FEF]">
                       <ShieldCheck size={12} />Admin
                     </span>
+                  ) : user.role === "MANAGER" ? (
+                    <span className="flex items-center gap-1 text-xs text-[#1EAE7C]">
+                      <ShieldCheck size={12} />Manager
+                    </span>
                   ) : (
                     <span className="flex items-center gap-1 text-xs text-text-secondary">
                       <UserIcon size={12} />Member
@@ -309,6 +313,7 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
                         aria-label="Role"
                       >
                         <option value="MEMBER">Member</option>
+                        <option value="MANAGER">Manager</option>
                         <option value="ADMIN">Admin</option>
                       </select>
                     </Field>

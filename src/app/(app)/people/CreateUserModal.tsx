@@ -98,6 +98,7 @@ export function CreateUserModal({ onClose }: { onClose: () => void }) {
                     className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
                   >
                     <option value="MEMBER">Member</option>
+                    <option value="MANAGER">Manager</option>
                     <option value="ADMIN">Admin</option>
                   </select>
                 </div>

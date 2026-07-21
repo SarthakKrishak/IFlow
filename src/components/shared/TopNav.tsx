@@ -8,10 +8,10 @@ export function TopNav() {
   
   // Format pathname into title
   let title = "Dashboard";
-  if (pathname.includes("/reports")) title = "Reports";
-  if (pathname.includes("/people")) title = "Team";
-  if (pathname.includes("/admin")) title = "Settings";
-  if (pathname.includes("/board")) title = "Board";
+  if (pathname?.includes("/reports")) title = "Reports";
+  if (pathname?.includes("/people")) title = "Team";
+  if (pathname?.includes("/admin")) title = "Settings";
+  if (pathname?.includes("/board")) title = "Board";
 
   return (
     <div className="flex items-center justify-between px-8 py-5 border-b border-surface-border bg-surface-elevated sticky top-0 z-30 transition-colors duration-300">

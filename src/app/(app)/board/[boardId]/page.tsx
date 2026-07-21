@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { BoardCanvas } from "@/components/board/BoardCanvas";
 import { TicketPanel } from "@/components/board/TicketPanel";
 import { BoardPageClient } from "./BoardPageClient";
+import { getCachedUsers } from "@/lib/queries";
 import type { Metadata } from "next";
 
 interface BoardPageProps {
@@ -43,11 +44,7 @@ export default async function BoardPage({ params }: BoardPageProps) {
   if (!board) notFound();
 
   const [allUsers, allLabels] = await Promise.all([
-    prisma.user.findMany({
-      where: { isActive: true },
-      select: { id: true, displayName: true, avatarColor: true, isActive: true },
-      orderBy: { displayName: "asc" },
-    }),
+    getCachedUsers(),
     prisma.label.findMany({ orderBy: { name: "asc" } }),
   ]);
 

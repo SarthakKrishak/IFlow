@@ -16,3 +16,14 @@ export async function pingPresence() {
     // Ignore errors for simple presence pings
   }
 }
+
+export async function setOffline() {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  try {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { lastSeenAt: null },
+    });
+  } catch (error) {}
+}
