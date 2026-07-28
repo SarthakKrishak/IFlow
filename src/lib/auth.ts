@@ -1,5 +1,13 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+
+class CustomError extends CredentialsSignin {
+  constructor(msg: string) {
+    super();
+    this.code = msg;
+  }
+}
+
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { authConfig } from "@/lib/auth.config";
@@ -89,7 +97,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         } catch (error: any) {
           console.error("FATAL ERROR IN NEXTAUTH AUTHORIZE:", error?.message || error);
-          return null;
+          throw new CustomError("DB_CRASH: " + (error?.message || "Unknown error"));
         }
       },
     }),
