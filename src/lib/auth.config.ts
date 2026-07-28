@@ -6,6 +6,7 @@ import type { NextAuthConfig } from "next-auth";
  * The full credentials auth is in src/lib/auth.ts.
  */
 export const authConfig: NextAuthConfig = {
+  trustHost: true,
   providers: [],
   pages: {
     signIn: "/login",
