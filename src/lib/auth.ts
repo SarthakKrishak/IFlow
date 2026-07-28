@@ -113,12 +113,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       // Refresh mustChangePassword from DB
       if (token.id && !user) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { mustChangePassword: true, isActive: true },
-        });
-        if (!dbUser?.isActive) return null as unknown as typeof token;
-        token.mustChangePassword = dbUser?.mustChangePassword ?? false;
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { mustChangePassword: true, isActive: true },
+          });
+          if (!dbUser?.isActive) return null as unknown as typeof token;
+          token.mustChangePassword = dbUser?.mustChangePassword ?? false;
+        } catch (error: any) {
+          console.error("FATAL ERROR IN JWT CALLBACK (Prisma Crash?):", error?.message || error);
+        }
       }
       return token;
     },
