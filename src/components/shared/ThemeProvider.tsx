@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
-import { Toaster } from "sonner";
+import dynamic from "next/dynamic";
+
+const Toaster = dynamic(() => import("sonner").then((m) => m.Toaster), { ssr: false });
 
 export function ThemeProvider({ children, ...props }: React.ComponentProps<typeof NextThemesProvider>) {
   return (

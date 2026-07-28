@@ -92,7 +92,10 @@ export async function updateTicket(input: {
 
     const { ticketId, changes } = parsed.data;
 
-    const existingTicket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    const existingTicket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { priority: true, dueDate: true },
+    });
     if (!existingTicket) return { success: false, error: "Ticket not found" };
 
     const ticket = await prisma.$transaction(async (tx) => {
@@ -159,9 +162,9 @@ export async function moveTicket(input: {
     const [existingTicket, toColumn] = await Promise.all([
       prisma.ticket.findUnique({
         where: { id: ticketId },
-        include: { column: true },
+        include: { column: { select: { name: true } } },
       }),
-      prisma.column.findUnique({ where: { id: toColumnId } }),
+      prisma.column.findUnique({ where: { id: toColumnId }, select: { name: true, id: true } }),
     ]);
 
     if (!existingTicket) return { success: false, error: "Ticket not found" };
@@ -222,20 +225,18 @@ export async function assignTicket(input: {
 
     const { ticketId, assigneeId } = parsed.data;
 
-    const existingTicket = await prisma.ticket.findUnique({
-      where: { id: ticketId },
-      include: { assignee: { select: { displayName: true } } },
-    });
+    // Parallelise: fetch existing ticket and new assignee simultaneously
+    const [existingTicket, newAssignee] = await Promise.all([
+      prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: { assignee: { select: { displayName: true } } },
+      }),
+      assigneeId
+        ? prisma.user.findUnique({ where: { id: assigneeId }, select: { displayName: true } })
+        : Promise.resolve(null),
+    ]);
     if (!existingTicket) return { success: false, error: "Ticket not found" };
-
-    let newAssigneeName: string | undefined;
-    if (assigneeId) {
-      const newAssignee = await prisma.user.findUnique({
-        where: { id: assigneeId },
-        select: { displayName: true },
-      });
-      newAssigneeName = newAssignee?.displayName;
-    }
+    const newAssigneeName = newAssignee?.displayName;
 
     const ticket = await prisma.$transaction(async (tx) => {
       const updated = await tx.ticket.update({
@@ -345,7 +346,10 @@ export async function deleteTicket(input: {
 
     const { ticketId } = parsed.data;
 
-    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { createdById: true },
+    });
     if (!ticket) return { success: false, error: "Ticket not found" };
 
     // Only ADMIN or the original creator can delete

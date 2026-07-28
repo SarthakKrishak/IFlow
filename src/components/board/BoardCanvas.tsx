@@ -51,7 +51,7 @@ export function BoardCanvas({ board, columns: initialColumns, currentUserId }: B
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // Require 8px movement before drag starts
+        distance: 3, // Reduced from 8 to make drag initiation feel instant
       },
     })
   );
@@ -82,89 +82,89 @@ export function BoardCanvas({ board, columns: initialColumns, currentUserId }: B
     [findTicketById]
   );
 
-  const handleDragOver = useCallback(
-    (event: DragOverEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-      const activeColId = findColumnByTicketId(active.id as string)?.id;
-      let overColId: string | undefined;
+    setColumns((prev) => {
+      const activeCol = prev.find((col) => col.tickets.some((t) => t.id === active.id));
+      if (!activeCol) return prev;
 
-      // Determine if we're over a column or a ticket
-      const overColumn = columns.find((c) => c.id === over.id);
-      if (overColumn) {
-        overColId = overColumn.id;
-      } else {
-        overColId = findColumnByTicketId(over.id as string)?.id;
+      const overCol = prev.find((col) => col.id === over.id) 
+        || prev.find((col) => col.tickets.some((t) => t.id === over.id));
+      
+      if (!overCol || activeCol.id === overCol.id) return prev;
+
+      const newCols = prev.map((col) => ({ ...col, tickets: [...col.tickets] }));
+      const fromCol = newCols.find((c) => c.id === activeCol.id)!;
+      const toCol = newCols.find((c) => c.id === overCol.id)!;
+
+      const activeIndex = fromCol.tickets.findIndex((t) => t.id === active.id);
+      if (activeIndex === -1) return prev;
+
+      const [ticket] = fromCol.tickets.splice(activeIndex, 1);
+      const overIndex = toCol.tickets.findIndex((t) => t.id === over.id);
+      const insertAt = overIndex >= 0 ? overIndex : toCol.tickets.length;
+      
+      toCol.tickets.splice(insertAt, 0, { ...ticket, columnId: overCol.id });
+      return newCols;
+    });
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveTicket(null);
+    if (!over) return;
+
+    let finalColId: string | undefined;
+    let finalOrder: number | undefined;
+
+    setColumns((prev) => {
+      const activeCol = prev.find((col) => col.tickets.some((t) => t.id === active.id));
+      if (!activeCol) return prev;
+
+      const overCol = prev.find((col) => col.id === over.id)
+        || prev.find((col) => col.tickets.some((t) => t.id === over.id));
+
+      if (!overCol) {
+        finalColId = activeCol.id;
+        finalOrder = activeCol.tickets.findIndex((t) => t.id === active.id);
+        return prev;
       }
 
-      if (!activeColId || !overColId) return;
-      if (activeColId === overColId) return;
-
-      setColumns((prev) => {
-        const newCols = prev.map((col) => ({ ...col, tickets: [...col.tickets] }));
-        const fromCol = newCols.find((c) => c.id === activeColId)!;
-        const toCol = newCols.find((c) => c.id === overColId)!;
-
-        const activeIndex = fromCol.tickets.findIndex((t) => t.id === active.id);
-        const [ticket] = fromCol.tickets.splice(activeIndex, 1);
-
-        const overIndex = toCol.tickets.findIndex((t) => t.id === over.id);
-        const insertAt = overIndex >= 0 ? overIndex : toCol.tickets.length;
-        toCol.tickets.splice(insertAt, 0, { ...ticket, columnId: overColId! });
-
-        return newCols;
-      });
-    },
-    [columns, findColumnByTicketId]
-  );
-
-  const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      const { active, over } = event;
-      setActiveTicket(null);
-
-      if (!over) return;
-
-      // Find where the ticket ended up after optimistic update
-      const destinationCol = findColumnByTicketId(active.id as string);
-      if (!destinationCol) return;
-
-      // Handle same-column reorder
-      if (active.id !== over.id) {
-        const overInSameCol = destinationCol.tickets.find((t) => t.id === over.id);
-        if (overInSameCol) {
-          setColumns((prev) =>
-            prev.map((col) => {
-              if (col.id !== destinationCol.id) return col;
-              const oldIndex = col.tickets.findIndex((t) => t.id === active.id);
-              const newIndex = col.tickets.findIndex((t) => t.id === over.id);
-              if (oldIndex === -1 || newIndex === -1) return col;
-              return { ...col, tickets: arrayMove(col.tickets, oldIndex, newIndex) };
-            })
-          );
+      if (activeCol.id === overCol.id && active.id !== over.id) {
+        const oldIndex = activeCol.tickets.findIndex((t) => t.id === active.id);
+        const newIndex = activeCol.tickets.findIndex((t) => t.id === over.id);
+        
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newCols = prev.map((col) => {
+            if (col.id !== activeCol.id) return col;
+            return { ...col, tickets: arrayMove(col.tickets, oldIndex, newIndex) };
+          });
+          finalColId = activeCol.id;
+          finalOrder = newIndex;
+          return newCols;
         }
       }
 
-      const finalCol = columns.find((c) => c.id === destinationCol.id) ?? destinationCol;
-      const finalOrder = finalCol.tickets.findIndex((t) => t.id === active.id);
+      finalColId = activeCol.id;
+      finalOrder = activeCol.tickets.findIndex((t) => t.id === active.id);
+      return prev;
+    });
 
-      // Persist to server
-      const result = await moveTicket({
-        ticketId: active.id as string,
-        toColumnId: destinationCol.id,
-        toOrder: finalOrder,
-      });
+    if (!finalColId || finalOrder === undefined || finalOrder === -1) return;
 
-      if (result.success) {
-        // toast.success("Ticket moved"); // Might be too noisy for drag-and-drop
-      } else {
-        toast.error("Failed to move ticket");
-        // Revert columns if needed...
+    // Fire and forget server persistence to keep UI immediately responsive
+    moveTicket({
+      ticketId: active.id as string,
+      toColumnId: finalColId,
+      toOrder: finalOrder,
+    }).then((result) => {
+      if (!result.success) {
+        toast.error("Failed to move ticket on server");
       }
-    },
-    [columns, findColumnByTicketId]
-  );
+    });
+  }, []);
 
   const allTicketIds = columns.flatMap((c) => c.tickets.map((t) => t.id));
 

@@ -1,246 +1,268 @@
-import { auth } from "@/lib/auth";
+import { getCachedSession, getCachedUsers } from "@/lib/queries";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
-import { Folder, CheckCircle, Clock, CheckCircle2, MoreVertical, ArrowUp } from "lucide-react";
-import { DashboardChart } from "../dashboard/DashboardChart";
-import { Avatar, ChartFilterDropdown } from "@/components/shared";
-import Link from "next/link";
+import { OverviewDashboard } from "./OverviewDashboard";
 
 export const metadata: Metadata = { title: "Overview - IFlow" };
 
-export default async function OverviewPage(props: { searchParams: Promise<{ range?: string }> }) {
+export default async function OverviewPage(props: { searchParams: Promise<{ range?: string, projectId?: string }> }) {
   const searchParams = await props.searchParams;
-  const range = searchParams.range === "30d" ? 30 : 7;
-  const session = await auth();
+  const rangeMap: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
+  const range = rangeMap[searchParams.range || "7d"] || 7;
+  const projectId = searchParams.projectId;
+  
+  const session = await getCachedSession();
   if (!session?.user) return null;
 
   const isAdmin = session.user.role === "ADMIN";
-  const boardWhere = isAdmin ? {} : { members: { some: { id: session.user.id } } };
+  const boardWhere: any = isAdmin ? {} : { members: { some: { id: session.user.id } } };
+  
+  if (projectId) {
+    boardWhere.projectId = projectId;
+  }
 
-  // Fetch all necessary data globally
-  const [tickets, allProjects, activityLogs] = await Promise.all([
-    prisma.ticket.findMany({
-      where: { board: boardWhere },
-      include: {
-        assignee: { select: { id: true, displayName: true, avatarColor: true } },
-        labels: { select: { id: true, name: true, color: true } },
-        column: { select: { name: true, order: true } },
-        board: { select: { id: true, name: true } },
-      },
-      orderBy: { lastActivityAt: "desc" },
-    }),
+  const rangeStart = new Date();
+  rangeStart.setDate(rangeStart.getDate() - range);
+  rangeStart.setHours(0, 0, 0, 0);
+
+  // We optimize this with Promise.all and concurrent queries, just as before.
+  const [
+    allProjectsData,
+    statusGroups,
+    activityLogs,
+    chartTickets,
+    upcomingDeadlines,
+    allUsers,
+  ] = await Promise.all([
     prisma.project.findMany({
-      select: { id: true, name: true, _count: { select: { boards: true } } }
+      select: { 
+        id: true, 
+        name: true, 
+        createdAt: true,
+        boards: {
+          select: {
+            id: true,
+            tickets: {
+              select: {
+                id: true,
+                column: { select: { name: true, order: true } }
+              }
+            }
+          }
+        }
+      }
+    }),
+    prisma.ticket.groupBy({
+      by: ["columnId"],
+      where: { board: boardWhere },
+      _count: { id: true },
     }),
     prisma.activityLog.findMany({
       where: { ticket: { board: boardWhere } },
       include: {
         user: { select: { id: true, displayName: true, avatarColor: true } },
-        ticket: { select: { id: true, title: true } }
+        ticket: { select: { id: true, title: true, board: { select: { name: true } } } }
       },
       orderBy: { createdAt: "desc" },
-      take: 8
-    })
+      take: 20
+    }),
+    prisma.ticket.findMany({
+      where: { 
+        board: boardWhere, 
+        OR: [{ createdAt: { gte: rangeStart } }, { updatedAt: { gte: rangeStart } }] 
+      },
+      select: { createdAt: true, updatedAt: true, dueDate: true, column: { select: { name: true, order: true } } },
+      take: 2000,
+    }),
+    prisma.ticket.findMany({
+      where: { 
+        board: boardWhere, 
+        dueDate: { gte: new Date() },
+        column: { name: { notIn: ["Done", "Completed"] } } 
+      },
+      select: {
+        id: true,
+        title: true,
+        dueDate: true,
+        board: { select: { name: true, project: { select: { name: true } } } },
+        assignee: { select: { id: true, displayName: true, avatarColor: true } }
+      },
+      orderBy: { dueDate: "asc" },
+      take: 4
+    }),
+    getCachedUsers()
   ]);
 
-  // Statistics
-  const openTasksCount = tickets.filter(t => t.column.order < 2).length; 
-  const inProgressCount = tickets.filter(t => t.column.order === 2 || t.column.name.toLowerCase().includes("progress")).length;
-  const completedCount = tickets.filter(t => t.column.name.toLowerCase().includes("done")).length;
+  const allColumnIds = statusGroups.map(g => g.columnId);
+  const columnDetails = await prisma.column.findMany({
+    where: { id: { in: allColumnIds } },
+    select: { id: true, name: true, order: true },
+  });
+  const columnMap = new Map(columnDetails.map(c => [c.id, c]));
 
-  const columnsGroups = [
-    { name: "To Do", count: openTasksCount, color: "bg-slate-400 dark:bg-slate-500", items: tickets.filter(t => t.column.order < 2).slice(0, 4) },
-    { name: "In Progress", count: inProgressCount, color: "bg-blue-500", items: tickets.filter(t => t.column.order === 2 || t.column.name.toLowerCase().includes("progress")).slice(0, 4) },
-    { name: "Review", count: tickets.filter(t => t.column.name.toLowerCase().includes("review")).length, color: "bg-yellow-500", items: tickets.filter(t => t.column.name.toLowerCase().includes("review")).slice(0, 4) },
-    { name: "Done", count: completedCount, color: "bg-green-500", items: tickets.filter(t => t.column.name.toLowerCase().includes("done")).slice(0, 4) }
-  ];
+  const openTasksCount = statusGroups
+    .filter(g => (columnMap.get(g.columnId)?.order ?? 99) < 2)
+    .reduce((sum, g) => sum + g._count.id, 0);
+    
+  const inProgressCount = statusGroups
+    .filter(g => {
+      const col = columnMap.get(g.columnId);
+      return col?.order === 2 || col?.name.toLowerCase().includes("progress");
+    })
+    .reduce((sum, g) => sum + g._count.id, 0);
+    
+  const completedCount = statusGroups
+    .filter(g => columnMap.get(g.columnId)?.name.toLowerCase().includes("done"))
+    .reduce((sum, g) => sum + g._count.id, 0);
 
-  // Dynamic Chart Data
-  const chartDays = Array.from({ length: range }, (_, i) => {
+  const projectsFormatted = allProjectsData.map(p => {
+    let totalTasks = 0;
+    let completedTasks = 0;
+    let openTasks = 0;
+    
+    p.boards.forEach(b => {
+      b.tickets.forEach(t => {
+        totalTasks++;
+        if (t.column?.name.toLowerCase().includes("done")) completedTasks++;
+        else openTasks++;
+      });
+    });
+
+    const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+    let status: 'On Track' | 'At Risk' | 'Behind' = 'On Track';
+    if (progress < 30 && openTasks > 10) status = 'Behind';
+    else if (progress < 60 && openTasks > 5) status = 'At Risk';
+
+    return {
+      id: p.id,
+      name: p.name,
+      boardsCount: p.boards.length,
+      openTasks,
+      progress,
+      status
+    };
+  });
+
+  const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const onlineUsers = allUsers.filter(u => u.lastSeenAt && new Date(u.lastSeenAt) > fiveMinsAgo);
+
+  // Real Sparkline Data Calculation (Last 7 days)
+  const sparklineDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - ((range - 1) - i));
+    d.setDate(d.getDate() - (6 - i));
     d.setHours(0, 0, 0, 0);
     return d;
   });
 
-  const chartData = chartDays.map(date => {
+  const sparklineData = sparklineDays.map(date => {
     const nextDay = new Date(date);
     nextDay.setDate(nextDay.getDate() + 1);
-
-    const created = tickets.filter(t => t.createdAt >= date && t.createdAt < nextDay).length;
     
-    // As a simple heuristic for the chart since we don't have robust status tracking:
-    const completed = tickets.filter(t => 
-      t.column.name.toLowerCase().includes("done") && 
-      t.updatedAt >= date && t.updatedAt < nextDay
-    ).length;
+    let created = 0;
+    let inProg = 0;
+    let done = 0;
 
-    return {
-      name: range === 30 ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : date.toLocaleDateString("en-US", { weekday: "short" }),
-      completed,
-      created
-    };
+    // Filter tickets that were created or updated in this 24hr window
+    chartTickets.forEach(t => {
+      if (t.createdAt >= date && t.createdAt < nextDay) created++;
+      if (t.updatedAt >= date && t.updatedAt < nextDay) {
+        if (t.column?.name.toLowerCase().includes("done")) done++;
+        if (t.column?.name.toLowerCase().includes("progress")) inProg++;
+      }
+    });
+
+    return { created, inProg, done };
   });
 
-  const formatRelativeTime = (date: Date) => {
-    const diff = Date.now() - date.getTime();
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    return `${Math.floor(diff / 86400000)}d ago`;
+  const calcTrend = (recent: number, total: number) => {
+    const prev = total - recent;
+    return prev > 0 ? (recent / prev) * 100 : (recent > 0 ? 100 : 0);
+  };
+
+  const recentProjects = allProjectsData.filter(p => p.createdAt >= rangeStart).length;
+  
+  const recentOpen = chartTickets.filter(t => t.createdAt >= rangeStart && (t.column?.order ?? 99) < 2).length;
+  const recentInProgress = chartTickets.filter(t => t.updatedAt >= rangeStart && (t.column?.order === 2 || t.column?.name.toLowerCase().includes("progress"))).length;
+  const recentCompleted = chartTickets.filter(t => t.updatedAt >= rangeStart && t.column?.name.toLowerCase().includes("done")).length;
+
+  const topStats = {
+    totalProjects: allProjectsData.length,
+    openTasks: openTasksCount,
+    inProgress: inProgressCount,
+    completed: completedCount,
+    sparklines: sparklineData,
+    trends: {
+      projects: calcTrend(recentProjects, allProjectsData.length),
+      open: calcTrend(recentOpen, openTasksCount),
+      inProgress: calcTrend(recentInProgress, inProgressCount),
+      completed: calcTrend(recentCompleted, completedCount),
+    }
+  };
+
+  const recentUsers = allUsers.filter(u => new Date(u.createdAt) >= rangeStart).length;
+  const userTrend = calcTrend(recentUsers, allUsers.length);
+
+  // Calculate workload balance
+  const openAssignedTickets = await prisma.ticket.findMany({
+    where: { 
+       board: boardWhere, 
+       column: { name: { notIn: ["Done", "Completed"] } },
+       assigneeId: { not: null }
+    },
+    select: { assigneeId: true }
+  });
+
+  const workloadCounts: Record<string, number> = {};
+  openAssignedTickets.forEach(t => {
+    if (t.assigneeId) {
+      workloadCounts[t.assigneeId] = (workloadCounts[t.assigneeId] || 0) + 1;
+    }
+  });
+
+  const workloads = Object.values(workloadCounts);
+  let balanceScore = 100;
+  let balanceText = "Good balance across the team";
+  if (workloads.length > 0) {
+    const max = Math.max(...workloads);
+    const min = Math.min(...workloads);
+    const avg = workloads.reduce((a, b) => a + b, 0) / workloads.length;
+    
+    if (max - min > 5 && max > avg * 1.5) {
+      balanceScore = Math.max(0, 100 - (max - min) * 5);
+      balanceText = "Uneven workload distribution";
+    } else if (max - min > 2) {
+      balanceScore = Math.max(50, 100 - (max - min) * 3);
+      balanceText = "Moderate balance across the team";
+    } else {
+      balanceScore = 95;
+    }
+  } else {
+    balanceScore = 100;
+    balanceText = "No assigned tasks right now";
+  }
+
+  const teamStats = {
+    total: allUsers.length,
+    online: onlineUsers,
+    all: allUsers,
+    trend: userTrend,
+    balanceScore,
+    balanceText,
   };
 
   return (
-    <div className="p-8 max-w-[1400px] mx-auto space-y-6 animate-fade-in">
-      {/* Top Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-5 transition-colors duration-300">
-          <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-            <Folder size={24} />
-          </div>
-          <div>
-            <p className="text-[14px] text-muted-foreground font-medium">Total Projects</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-foreground">{allProjects.length}</span>
-            </div>
-            <p className="text-[12px] text-green-500 flex items-center gap-1 mt-1 font-medium"><ArrowUp size={12} /> 10% <span className="text-muted-foreground font-normal">vs last month</span></p>
-          </div>
-        </div>
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-5 transition-colors duration-300">
-          <div className="w-14 h-14 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500">
-            <CheckCircle size={24} />
-          </div>
-          <div>
-            <p className="text-[14px] text-muted-foreground font-medium">Global Open Tasks</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-foreground">{openTasksCount}</span>
-            </div>
-          </div>
-        </div>
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-5 transition-colors duration-300">
-          <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-500">
-            <Clock size={24} />
-          </div>
-          <div>
-            <p className="text-[14px] text-muted-foreground font-medium">Global In Progress</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-foreground">{inProgressCount}</span>
-            </div>
-          </div>
-        </div>
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-5 transition-colors duration-300">
-          <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500">
-            <CheckCircle2 size={24} />
-          </div>
-          <div>
-            <p className="text-[14px] text-muted-foreground font-medium">Global Completed</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-foreground">{completedCount}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Middle Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Overview Chart */}
-        <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 shadow-sm lg:col-span-2 transition-colors duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-[16px] font-bold text-foreground">Overview</h2>
-            <ChartFilterDropdown />
-          </div>
-          <DashboardChart data={chartData} />
-        </div>
-
-        {/* Projects List */}
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-6 shadow-sm transition-colors duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-[16px] font-bold text-foreground">All Projects</h2>
-            <Link href="#" className="text-[13px] font-medium text-primary">View All</Link>
-          </div>
-          <div className="space-y-6">
-            {allProjects.map((p, i) => {
-              const colors = ["#4F46E5", "#2563EB", "#F43F5E", "#F97316"];
-              // Get tickets for this project to calculate true progress
-              const projectTickets = tickets.filter(t => t.board.id.startsWith(p.id) || t.board.name.includes("")); 
-              // Wait, the ticket doesn't have projectId directly. It has boardId. I should fetch project progress better.
-              // Let me just approximate for now or assume we have the boards. 
-              // Actually, I can query it directly in the data fetch!
-              // For now, let's just use 0 if we can't reliably map tickets to projects yet, but let me do it right:
-              // I will leave this as a dummy if I can't filter correctly, or let me just fetch it.
-              const progressPct = Math.floor(Math.random() * 100); // Wait, I shouldn't fake it. Let me just use 0 for now if there are no tickets.
-
-              return (
-                <div key={p.id} className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 w-1/3">
-                    <div className="w-10 h-10 rounded-3xl flex items-center justify-center text-white font-bold shadow-sm" style={{ backgroundColor: colors[i % colors.length] }}>
-                      {p.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-[14px] font-semibold text-foreground line-clamp-1">{p.name}</p>
-                      <p className="text-[12px] text-muted-foreground">{p._count.boards} boards</p>
-                    </div>
-                  </div>
-                  <div className="flex-1 flex items-center gap-3">
-                    <div className="flex-1 h-2 rounded-full bg-surface-base">
-                      <div className="h-full rounded-full" style={{ width: `0%`, backgroundColor: colors[i % colors.length] }}></div>
-                    </div>
-                    <span className="text-[12px] font-medium text-muted-foreground w-8">0%</span>
-                    <button className="text-muted-foreground hover:text-foreground"><MoreVertical size={16} /></button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-6 shadow-sm lg:col-span-2 transition-colors duration-300">
-          <h2 className="text-[16px] font-bold text-foreground mb-6">Global Task Status</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {columnsGroups.map(col => (
-              <div key={col.name} className="flex flex-col">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${col.color}`}></div>
-                    <span className="text-[14px] font-semibold text-foreground">{col.name}</span>
-                  </div>
-                  <span className="text-[12px] font-medium text-muted-foreground bg-surface-base px-2 py-0.5 rounded-md border border-surface-border">{col.count}</span>
-                </div>
-                <div className="space-y-2 flex-1">
-                  {col.items.map(t => (
-                    <div key={t.id} className="p-3 bg-surface-base border border-surface-border rounded-3xl shadow-sm hover:border-primary/50 transition-colors cursor-pointer">
-                      <p className="text-[13px] font-medium text-foreground line-clamp-1">{t.title}</p>
-                      <p className="text-[11px] text-muted-foreground mt-1 line-clamp-1">in {t.board.name}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-6 shadow-sm transition-colors duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-[16px] font-bold text-foreground">Global Recent Activity</h2>
-            <Link href="#" className="text-[13px] font-medium text-primary">View All</Link>
-          </div>
-          <div className="space-y-5">
-            {activityLogs.map((log) => (
-              <div key={log.id} className="flex gap-3">
-                <Avatar displayName={log.user.displayName} avatarColor={log.user.avatarColor} size="sm" />
-                <div>
-                  <p className="text-[13px] text-foreground leading-snug">
-                    <span className="font-semibold">{log.user.displayName}</span> {log.action.toLowerCase().replace('_', ' ')} <span className="font-medium text-muted-foreground">"{log.ticket.title}"</span>
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{formatRelativeTime(log.createdAt)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+    <div className="w-full h-full bg-surface-base text-foreground"> 
+      {/* We pass all the computed data down to the Client Component which will handle interactivity */}
+      <OverviewDashboard 
+        stats={topStats}
+        projects={projectsFormatted}
+        activityLogs={activityLogs}
+        chartTickets={chartTickets}
+        upcomingDeadlines={upcomingDeadlines}
+        teamStats={teamStats}
+        range={range}
+        projectId={projectId}
+      />
     </div>
   );
 }

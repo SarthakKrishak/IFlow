@@ -4,8 +4,7 @@ import { AnimatePresence } from "framer-motion";
 import { useUIStore } from "@/stores/ui.store";
 import { BoardCanvas } from "@/components/board/BoardCanvas";
 import { TicketPanel, type TicketFull } from "@/components/board/TicketPanel";
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { pingPresence } from "@/server/actions/ping";
 import type { Board, Column, Ticket, User, Label } from "@prisma/client";
 
@@ -28,7 +27,6 @@ interface BoardPageClientProps {
   currentUserRole: "ADMIN" | "MANAGER" | "MEMBER";
 }
 
-
 export function BoardPageClient({
   board,
   columns,
@@ -40,46 +38,17 @@ export function BoardPageClient({
   const { openTicketId } = useUIStore();
   const [openTicketData, setOpenTicketData] = useState<TicketFull | null>(null);
   const [isLoadingTicket, setIsLoadingTicket] = useState(false);
-  const router = useRouter();
-  
-  // Smart Polling: Refresh the board data every 8 seconds if the window is focused
+
+  // Presence ping only — no more router.refresh() polling every 8 seconds.
+  // The board canvas updates via optimistic state on drag-and-drop.
+  // Supabase Realtime handles live updates from other users.
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    const handleFocus = () => {
-      // Immediate refresh on focus
-      pingPresence();
-      router.refresh();
-      // Start polling
-      interval = setInterval(() => {
-        if (document.hasFocus()) {
-          pingPresence();
-          router.refresh();
-        }
-      }, 8000);
-    };
-
-    const handleBlur = () => {
-      clearInterval(interval);
-    };
-
-    // Initial setup
     pingPresence();
-    interval = setInterval(() => {
-      if (document.hasFocus()) {
-        pingPresence();
-        router.refresh();
-      }
-    }, 8000);
-
-    window.addEventListener("focus", handleFocus);
-    window.addEventListener("blur", handleBlur);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("blur", handleBlur);
-    };
-  }, [router]);
+    const interval = setInterval(() => {
+      pingPresence();
+    }, 30_000); // Ping every 30 seconds (presence only, no full page re-render)
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch full ticket data when panel opens
   useEffect(() => {
@@ -98,7 +67,7 @@ export function BoardPageClient({
   }, [openTicketId]);
 
   const allColumns = columns.map((c) => ({ id: c.id, name: c.name, order: c.order }));
-  
+
   // Calculate online users (last seen within 5 minutes)
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
   const onlineUsers = allUsers.filter(u => u.lastSeenAt && new Date(u.lastSeenAt) >= fiveMinutesAgo);
@@ -152,6 +121,18 @@ export function BoardPageClient({
             currentUserId={currentUserId}
             currentUserRole={currentUserRole}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Loading indicator while ticket data is being fetched */}
+      <AnimatePresence>
+        {openTicketId && isLoadingTicket && (
+          <div className="fixed inset-y-0 right-0 w-full sm:w-[520px] bg-surface-elevated border-l border-surface-border flex items-center justify-center z-40">
+            <div className="flex flex-col items-center gap-3 text-muted-foreground">
+              <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <p className="text-sm">Loading ticket...</p>
+            </div>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import type { Ticket, User, Label, Column, Comment, ActivityLog } from "@prisma/client";
 import { useUIStore } from "@/stores/ui.store";
 import {
@@ -80,62 +80,71 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
 
   const canDelete = currentUserRole === "ADMIN" || ticket.createdById === currentUserId;
 
+  // Single refresh on panel close — not on every individual action.
+  const handleClose = useCallback(() => {
+    closeTicketPanel();
+    router.refresh(); // One refresh when the panel closes to sync board state
+  }, [closeTicketPanel, router]);
+
   const save = useCallback(async (changes: Parameters<typeof updateTicket>[0]["changes"]) => {
     setIsSaving(true);
     setError(null);
     const result = await updateTicket({ ticketId: ticket.id, changes });
     if (!result.success) {
       setError("Couldn't save that change — retry?");
-    } else {
-      router.refresh();
     }
+    // No router.refresh() here — local optimistic state is already updated below
     setIsSaving(false);
   }, [ticket.id]);
 
   const handleTitleBlur = async () => {
     setEditingTitle(false);
     if (titleValue.trim() !== ticket.title && titleValue.trim()) {
-      await save({ title: titleValue.trim() });
       setTicket((t) => ({ ...t, title: titleValue.trim() }));
+      await save({ title: titleValue.trim() });
     }
   };
 
   const handleDescBlur = async () => {
     if (descValue !== (ticket.description ?? "")) {
-      await save({ description: descValue });
       setTicket((t) => ({ ...t, description: descValue }));
+      await save({ description: descValue });
     }
   };
 
   const handleAssigneeChange = async (assigneeId: string) => {
-    await assignTicket({ ticketId: ticket.id, assigneeId: assigneeId === "none" ? null : assigneeId });
     const newAssignee = allUsers.find((u) => u.id === assigneeId) ?? null;
+    // Optimistic update first — UI is instant
     setTicket((t) => ({ ...t, assigneeId: assigneeId === "none" ? null : assigneeId, assignee: newAssignee }));
-    router.refresh();
+    await assignTicket({ ticketId: ticket.id, assigneeId: assigneeId === "none" ? null : assigneeId });
+    // No router.refresh() — board canvas will sync on panel close
   };
 
   const handlePriorityChange = async (priority: Ticket["priority"]) => {
-    await save({ priority });
     setTicket((t) => ({ ...t, priority }));
+    await save({ priority });
   };
 
   const handleColumnChange = async (columnId: string) => {
-    await moveTicket({ ticketId: ticket.id, toColumnId: columnId, toOrder: 0 });
     const newColumn = allColumns.find((c) => c.id === columnId)!;
+    // Optimistic update first — UI is instant
     setTicket((t) => ({ ...t, columnId, column: newColumn as Column }));
-    router.refresh();
+    await moveTicket({ ticketId: ticket.id, toColumnId: columnId, toOrder: 0 });
+    // No router.refresh() — board canvas will sync on panel close
   };
 
   const handleLabelToggle = async (labelId: string, isSelected: boolean) => {
     if (isSelected) {
-      await removeLabel({ ticketId: ticket.id, labelId });
+      // Optimistic remove
       setTicket((t) => ({ ...t, labels: t.labels.filter((l) => l.id !== labelId) }));
+      await removeLabel({ ticketId: ticket.id, labelId });
     } else {
-      await addLabel({ ticketId: ticket.id, labelId });
       const newLabel = allLabels.find((l) => l.id === labelId)!;
+      // Optimistic add
       setTicket((t) => ({ ...t, labels: [...t.labels, newLabel] }));
+      await addLabel({ ticketId: ticket.id, labelId });
     }
-    router.refresh();
+    // No router.refresh() — board card label dots will sync on panel close
   };
 
   const handleAddComment = async () => {
@@ -144,7 +153,7 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
     const result = await addComment({ ticketId: ticket.id, body: commentBody.trim() });
     if (result.success) {
       setCommentBody("");
-      // Append comment optimistically
+      // Optimistic append
       const currentUser = allUsers.find((u) => u.id === currentUserId);
       if (currentUser) {
         setTicket((t) => ({
@@ -165,8 +174,8 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
   const handleDelete = async () => {
     if (!confirm("Delete this ticket? This can't be undone.")) return;
     await deleteTicket({ ticketId: ticket.id });
-    router.refresh();
     closeTicketPanel();
+    router.refresh(); // Refresh needed after delete to remove card from board
   };
 
   return (
@@ -174,7 +183,7 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-40 bg-black/50"
-        onClick={closeTicketPanel}
+        onClick={handleClose}
         aria-hidden="true"
       />
 
@@ -212,7 +221,7 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
               </button>
             )}
             <button
-              onClick={closeTicketPanel}
+              onClick={handleClose}
               className="p-1.5 rounded text-muted-foreground hover:text-text-primary hover:bg-surface-border transition-all"
               aria-label="Close panel"
             >
@@ -318,8 +327,8 @@ export function TicketPanel({ ticket: initialTicket, allUsers, allLabels, allCol
                 min={new Date().toISOString().split("T")[0]}
                 onChange={(e) => {
                   const val = e.target.value;
-                  save({ dueDate: val ? new Date(val).toISOString() : null });
                   setTicket((t) => ({ ...t, dueDate: val ? new Date(val) : null }));
+                  save({ dueDate: val ? new Date(val).toISOString() : null });
                 }}
                 className="w-full px-2.5 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
                 aria-label="Due date"

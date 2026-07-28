@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -186,12 +187,18 @@ export default function ChangePasswordPage() {
           </form>
         </div>
 
-        <div className="text-center mt-4">
-          <button
-            onClick={async () => { const { signOut } = await import("next-auth/react"); signOut({ callbackUrl: "/login" }); }}
+        <div className="flex flex-col items-center gap-4 mt-6">
+          <Link
+            href="/dashboard"
             className="text-sm text-muted-foreground hover:text-text-secondary transition-colors"
           >
-            Sign out
+            Cancel & Return
+          </Link>
+          <button
+            onClick={async () => { const { signOut } = await import("next-auth/react"); signOut({ callbackUrl: "/login" }); }}
+            className="text-sm text-[#D1495B] hover:text-[#D1495B]/80 transition-colors"
+          >
+            Sign out instead
           </button>
         </div>
       </div>

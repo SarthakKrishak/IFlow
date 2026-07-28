@@ -25,29 +25,32 @@ export function DepartmentTag({ department, className = "" }: DepartmentTagProps
   );
 }
 
+import { ArrowDown, ArrowUp } from "lucide-react";
+
 interface PriorityChipProps {
   priority: Priority;
   className?: string;
 }
 
-const PRIORITY_CONFIG: Record<Priority, { color: string; label: string }> = {
-  LOW: { color: "hsl(var(--muted-foreground))", label: "Low" },
-  MEDIUM: { color: "#C79A3D", label: "Medium" },
-  HIGH: { color: "#D9713C", label: "High" },
-  URGENT: { color: "#D1495B", label: "Urgent" },
+const PRIORITY_CONFIG: Record<Priority, { color: string; bg: string; label: string; icon: React.ReactNode }> = {
+  LOW: { color: "#10B981", bg: "rgba(16, 185, 129, 0.1)", label: "Low", icon: <ArrowDown size={14} /> },
+  MEDIUM: { color: "#F59E0B", bg: "rgba(245, 158, 11, 0.1)", label: "Medium", icon: <ArrowUp size={14} /> },
+  HIGH: { color: "#EF4444", bg: "rgba(239, 68, 68, 0.1)", label: "High", icon: <ArrowUp size={14} /> },
+  URGENT: { color: "#B91C1C", bg: "rgba(185, 28, 28, 0.1)", label: "Urgent", icon: <ArrowUp size={14} /> },
 };
 
 export function PriorityChip({ priority, className = "" }: PriorityChipProps) {
   const config = PRIORITY_CONFIG[priority];
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${className}`}
       style={{
         color: config.color,
-        background: `${config.color}18`,
+        background: config.bg,
         border: `1px solid ${config.color}30`,
       }}
     >
+      {config.icon}
       {config.label}
     </span>
   );
@@ -56,7 +59,7 @@ export function PriorityChip({ priority, className = "" }: PriorityChipProps) {
 interface AvatarProps {
   displayName: string;
   avatarColor: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
   isOnline?: boolean;
 }
@@ -66,6 +69,7 @@ export function Avatar({ displayName, avatarColor, size = "md", className = "", 
     sm: "w-6 h-6 text-[10px]",
     md: "w-8 h-8 text-[12px]",
     lg: "w-10 h-10 text-[14px]",
+    xl: "w-full h-full text-[32px]",
   };
 
   return (

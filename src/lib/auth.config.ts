@@ -37,10 +37,7 @@ export const authConfig: NextAuthConfig = {
         return Response.redirect(new URL("/change-password", nextUrl));
       }
 
-      // Already changed password — redirect away from change-password
-      if (!auth?.user?.mustChangePassword && isChangePassword) {
-        return Response.redirect(new URL("/dashboard", nextUrl));
-      }
+      // Allow manual password changes even if mustChangePassword is false
 
       return true;
     },

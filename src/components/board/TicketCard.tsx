@@ -4,7 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Ticket, User, Label } from "@prisma/client";
 import { PriorityChip, Avatar, RelativeTime } from "@/components/shared";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Calendar, Tag, MoreVertical } from "lucide-react";
 import { useUIStore } from "@/stores/ui.store";
 import { motion } from "framer-motion";
 
@@ -75,18 +75,21 @@ export function TicketCard({ ticket, isDragging = false }: TicketCardProps) {
           setOpenTicketId(ticket.id);
         }
       }}
-      className="cursor-pointer rounded-2xl p-3 transition-colors select-none"
+      className="cursor-pointer rounded-2xl p-3.5 transition-all select-none relative group overflow-hidden shadow-sm flex flex-col gap-2"
       style={{
         ...style,
         background: "hsl(var(--surface-elevated))",
         border: "1px solid hsl(var(--surface-border))",
       }}
-
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "#363D4E";
+        (e.currentTarget as HTMLDivElement).style.borderRightColor = "#363D4E";
+        (e.currentTarget as HTMLDivElement).style.borderTopColor = "#363D4E";
+        (e.currentTarget as HTMLDivElement).style.borderBottomColor = "#363D4E";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "hsl(var(--surface-border))";
+        (e.currentTarget as HTMLDivElement).style.borderRightColor = "hsl(var(--surface-border))";
+        (e.currentTarget as HTMLDivElement).style.borderTopColor = "hsl(var(--surface-border))";
+        (e.currentTarget as HTMLDivElement).style.borderBottomColor = "hsl(var(--surface-border))";
       }}
       role="button"
       tabIndex={0}
@@ -98,24 +101,29 @@ export function TicketCard({ ticket, isDragging = false }: TicketCardProps) {
         }
       }}
     >
+      {/* Menu Icon */}
+      <div className="absolute top-3 right-2 text-muted-foreground/60 hover:text-white transition-colors p-1 rounded-md z-10">
+        <MoreVertical size={16} />
+      </div>
       {/* Labels */}
       {ticket.labels.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-2">
+        <div className="flex flex-wrap gap-1.5 pr-6">
           {visibleLabels.map((label) => (
             <span
               key={label.id}
-              className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium"
               style={{
                 color: label.color,
-                background: `${label.color}20`,
-                border: `1px solid ${label.color}30`,
+                background: `${label.color}15`,
+                border: `1px solid ${label.color}25`,
               }}
             >
+              <Tag size={10} strokeWidth={2.5} />
               {label.name}
             </span>
           ))}
           {extraLabelCount > 0 && (
-            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] text-muted-foreground bg-surface-border">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[10px] text-muted-foreground bg-surface-border">
               +{extraLabelCount}
             </span>
           )}
@@ -123,13 +131,13 @@ export function TicketCard({ ticket, isDragging = false }: TicketCardProps) {
       )}
 
       {/* Title */}
-      <p className="text-sm text-text-primary font-medium line-clamp-2 leading-snug mb-2">
+      <p className="text-[14.5px] text-white font-bold line-clamp-2 leading-snug pr-6 tracking-tight">
         {ticket.title}
       </p>
 
       {/* Footer */}
       <div className="flex items-center justify-between gap-2 mt-1">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           {ticket.assignee && (
             <Avatar
               displayName={ticket.assignee.displayName}
@@ -137,28 +145,35 @@ export function TicketCard({ ticket, isDragging = false }: TicketCardProps) {
               size="sm"
             />
           )}
-          <PriorityChip priority={ticket.priority} />
+          <PriorityChip priority={ticket.priority} className="!rounded-lg !px-1.5 !py-0.5 !text-[10px]" />
           {dueDateStyle && (
             <span
-              className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[10px] font-medium whitespace-nowrap"
               style={{
                 color: dueDateStyle.color,
-                background: `${dueDateStyle.color}18`,
+                background: `${dueDateStyle.color}15`,
+                border: `1px solid ${dueDateStyle.color}25`
               }}
             >
+              <Calendar size={11} strokeWidth={2.5} />
               {dueDateStyle.text}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity ml-auto">
           {ticket._count.comments > 0 && (
-            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <MessageSquare size={10} />
-              {ticket._count.comments}
-            </span>
+            <>
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground/80 font-medium">
+                <MessageSquare size={11} strokeWidth={2} />
+                {ticket._count.comments}
+              </span>
+              <span className="text-muted-foreground/40 text-[9px] mx-0.5">·</span>
+            </>
           )}
-          <RelativeTime date={ticket.lastActivityAt} />
+          <span className="text-[11px] text-muted-foreground/80 font-medium">
+            <RelativeTime date={ticket.lastActivityAt} />
+          </span>
         </div>
       </div>
     </motion.div>

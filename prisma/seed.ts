@@ -18,7 +18,6 @@ async function main() {
 
   const hash = await bcrypt.hash(TEMP_PASSWORD, BCRYPT_COST);
 
-  // ── Projects ─────────────────────────────────────────────────────────────
   const unidealsProject = await prisma.project.upsert({
     where: { slug: "unideals" },
     update: {},
@@ -30,7 +29,6 @@ async function main() {
   });
   console.log(`  ✓ Project: ${unidealsProject.name}`);
 
-  // ── Users ──────────────────────────────────────────────────────────────
   const usersData = [
     {
       username: "admin",
@@ -88,13 +86,12 @@ async function main() {
     console.log(`  ✓ User: ${u.username}`);
   }
 
-  // ── Labels ─────────────────────────────────────────────────────────────
   const labelsData = [
     { name: "Bug", color: "#D1495B" },
     { name: "Feature", color: "#5B5FEF" },
     { name: "Urgent", color: "#D9713C" },
     { name: "Content", color: "#1EAE7C" },
-    { name: "Design Review", color: "#9B59B6" },
+    { name: "Design", color: "#9B59B6" },
   ];
 
   const labels: Record<string, { id: string }> = {};
@@ -108,7 +105,6 @@ async function main() {
     console.log(`  ✓ Label: ${l.name}`);
   }
 
-  // ── Boards + Columns + Sample Tickets ──────────────────────────────────
   const boardsData = [
     { name: "Dev Board", slug: "dev-board", department: "DEV" as const },
     { name: "Design Board", slug: "design-board", department: "DESIGN" as const },

@@ -64,6 +64,10 @@
 }
 
 @layer base {
+  html {
+    font-size: 14px;
+  }
+  
   * {
     border-color: hsl(var(--border));
   }
@@ -123,12 +127,14 @@
     height: 100%;
     padding-bottom: 1rem;
     align-items: flex-start;
+    scroll-snap-type: x mandatory;
   }
 
   .board-column {
     min-width: 300px;
     max-width: 300px;
     flex-shrink: 0;
+    scroll-snap-align: center;
   }
 }
 

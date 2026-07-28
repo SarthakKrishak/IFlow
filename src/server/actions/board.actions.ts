@@ -157,3 +157,22 @@ export async function reorderColumn(input: {
     return { success: false, error: "Failed to reorder column" };
   }
 }
+
+export async function deleteBoard(boardId: string): Promise<Result<void>> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+    if (session.user.role !== Role.ADMIN) {
+      return { success: false, error: "Admin only" };
+    }
+
+    await prisma.board.delete({
+      where: { id: boardId },
+    });
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error("deleteBoard error:", error);
+    return { success: false, error: "Failed to delete board" };
+  }
+}

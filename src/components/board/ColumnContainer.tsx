@@ -96,12 +96,12 @@ export function ColumnContainer({ column, board, currentUserId }: ColumnContaine
       </div>
 
       {/* Add ticket button at bottom */}
-      {!showQuickAdd && (
+      {!showQuickAdd && column.name.toLowerCase() !== "backlog" && (
         <button
           onClick={() => setShowQuickAdd(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-2xl text-sm text-muted-foreground hover:text-text-secondary hover:bg-surface-border transition-all w-full"
+          className="flex items-center gap-3 p-4 rounded-2xl text-[15px] font-medium text-primary hover:bg-primary/5 transition-all w-full border border-dashed border-surface-border shadow-sm mt-2"
         >
-          <Plus size={14} />
+          <Plus size={18} strokeWidth={2.5} />
           Add ticket
         </button>
       )}

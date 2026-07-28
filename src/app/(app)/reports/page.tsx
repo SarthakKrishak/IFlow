@@ -111,16 +111,10 @@ export default async function ReportsPage({
       const userTickets = completedTickets.filter(t => 
         t.assigneeId === u.id && 
         t.completedAt! >= intStart && 
-        t.completedAt! < intEnd && 
-        t.dueDate != null
+        t.completedAt! < intEnd
       );
       
-      if (userTickets.length === 0) {
-        intervalData[u.displayName] = 0; // or null if we want gaps
-      } else {
-        const onTime = userTickets.filter(t => t.completedAt! <= t.dueDate!).length;
-        intervalData[u.displayName] = Math.round((onTime / userTickets.length) * 100);
-      }
+      intervalData[u.displayName] = userTickets.length;
     });
     
     chartData.push(intervalData);

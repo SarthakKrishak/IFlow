@@ -1,70 +1,68 @@
-import { auth } from "@/lib/auth";
+import { getCachedSession, getCachedActiveProject } from "@/lib/queries";
 import { prisma } from "@/lib/prisma";
-import { getActiveProject } from "@/lib/project";
 import type { Metadata } from "next";
 import { PeopleClient } from "./PeopleClient";
 
 export const metadata: Metadata = { title: "People - IFlow" };
 
 export default async function PeoplePage() {
-  const session = await auth();
+  const session = await getCachedSession();
   if (!session?.user) return null;
 
-  const activeProject = await getActiveProject();
+  const activeProject = await getCachedActiveProject();
   if (!activeProject) return <div>No active project</div>;
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const users = await prisma.user.findMany({
-    where: { isActive: true },
-    include: {
-      _count: {
-        select: {
-          ticketsAssigned: {
-            where: { completedAt: null, board: { projectId: activeProject.id } },
+  // All 4 queries run simultaneously instead of sequentially
+  const [users, allBoards, completedThisMonth, completedWithDueDates] = await Promise.all([
+    prisma.user.findMany({
+      where: { isActive: true },
+      include: {
+        _count: {
+          select: {
+            ticketsAssigned: {
+              where: { completedAt: null, board: { projectId: activeProject.id } },
+            },
           },
         },
+        activityLogs: {
+          where: { ticket: { board: { projectId: activeProject.id } } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { createdAt: true },
+        },
+        accessibleBoards: { select: { id: true } }
       },
-      activityLogs: {
-        where: { ticket: { board: { projectId: activeProject.id } } },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { createdAt: true },
+      orderBy: { displayName: "asc" },
+    }),
+    prisma.board.findMany({
+      where: { projectId: activeProject.id },
+      select: { id: true, name: true },
+      orderBy: { createdAt: 'asc' }
+    }),
+    prisma.ticket.groupBy({
+      by: ["assigneeId"],
+      where: {
+        board: { projectId: activeProject.id },
+        completedAt: { gte: startOfMonth },
+        assigneeId: { not: null },
       },
-      accessibleBoards: { select: { id: true } }
-    },
-    orderBy: { displayName: "asc" },
-  });
+      _count: { id: true },
+    }),
+    prisma.ticket.findMany({
+      where: {
+        board: { projectId: activeProject.id },
+        assigneeId: { not: null },
+        completedAt: { not: null },
+        dueDate: { not: null },
+      },
+      select: { assigneeId: true, completedAt: true, dueDate: true }
+    }),
+  ]);
 
-  const allBoards = await prisma.board.findMany({
-    where: { projectId: activeProject.id },
-    select: { id: true, name: true },
-    orderBy: { createdAt: 'asc' }
-  });
-
-  // Get completed-this-month counts per user for this project
-  const completedThisMonth = await prisma.ticket.groupBy({
-    by: ["assigneeId"],
-    where: {
-      board: { projectId: activeProject.id },
-      completedAt: { gte: startOfMonth },
-      assigneeId: { not: null },
-    },
-    _count: { id: true },
-  });
   const completedMap = new Map(completedThisMonth.map((r) => [r.assigneeId!, r._count.id]));
-
-  // Get productivity score
-  const completedWithDueDates = await prisma.ticket.findMany({
-    where: {
-      board: { projectId: activeProject.id },
-      assigneeId: { not: null },
-      completedAt: { not: null },
-      dueDate: { not: null },
-    },
-    select: { assigneeId: true, completedAt: true, dueDate: true }
-  });
 
   const productivityMap = new Map<string, { total: number; onTime: number }>();
   for (const t of completedWithDueDates) {

@@ -1,23 +1,16 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ProfileClient } from "@/components/people/ProfileClient";
 import type { Metadata } from "next";
 
-interface PersonPageProps {
-  params: Promise<{ userId: string }>;
-}
+export const metadata: Metadata = { title: "My Profile — IFlow" };
 
-export async function generateMetadata(props: PersonPageProps): Promise<Metadata> {
-  const { userId } = await props.params;
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { displayName: true } });
-  return { title: user ? `${user.displayName} — IFlow` : "Person — IFlow" };
-}
-
-export default async function PersonPage(props: PersonPageProps) {
-  const { userId } = await props.params;
+export default async function MyProfilePage() {
   const session = await auth();
-  if (!session?.user) return null;
+  if (!session?.user) redirect("/login");
+
+  const userId = session.user.id;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },

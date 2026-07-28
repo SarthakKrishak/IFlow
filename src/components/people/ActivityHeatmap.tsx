@@ -6,7 +6,7 @@ interface ActivityHeatmapProps {
   data: Record<string, number>; // "YYYY-MM-DD" -> count
 }
 
-const DAYS = ["", "Mon", "", "Wed", "", "Fri", ""];
+const DAYS = ["", "Mon", "", "Wed",  "", "Fri", ""];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function getColor(count: number): string {
@@ -19,7 +19,12 @@ function getColor(count: number): string {
 
 export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   const weeks = useMemo(() => {
-    const today = new Date();
+    const keys = Object.keys(data);
+    const maxDate = keys.length > 0 
+      ? new Date(keys.reduce((a, b) => (a > b ? a : b))) 
+      : new Date();
+      
+    const today = maxDate;
     const startDate = new Date(today);
     startDate.setDate(today.getDate() - 364);
     // Align to Sunday
@@ -31,21 +36,24 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
     while (current <= today) {
       const week: Array<{ date: string; count: number }> = [];
       for (let d = 0; d < 7; d++) {
+        if (current > today) {
+          break;
+        }
         const dateStr = current.toISOString().split("T")[0];
-        const isFuture = current > today;
         week.push({
-          date: isFuture ? "" : dateStr,
-          count: isFuture ? -1 : (data[dateStr] ?? 0),
+          date: dateStr,
+          count: data[dateStr] ?? 0,
         });
         current.setDate(current.getDate() + 1);
       }
-      allWeeks.push(week);
+      if (week.length > 0) {
+        allWeeks.push(week);
+      }
     }
 
     return allWeeks;
   }, [data]);
 
-  // Get month labels
   const monthLabels = useMemo(() => {
     const labels: { label: string; weekIndex: number }[] = [];
     let prevMonth = -1;
@@ -68,14 +76,14 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
 
   return (
     <div className="overflow-x-auto">
-      <div style={{ minWidth: totalW + 30 }}>
+      <div className="w-fit mx-auto" style={{ minWidth: totalW + 30 }}>
         {/* Month labels */}
-        <div className="flex mb-1 ml-8">
+        <div className="relative mb-1 ml-8 h-4">
           {monthLabels.map(({ label, weekIndex }, i) => (
             <span
               key={i}
               className="text-[10px] text-muted-foreground absolute font-mono"
-              style={{ left: `${weekIndex * (cellSize + gap) + 32}px`, position: "relative" }}
+              style={{ left: `${weekIndex * (cellSize + gap)}px` }}
             >
               {label}
             </span>

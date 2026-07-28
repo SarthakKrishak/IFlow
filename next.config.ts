@@ -6,6 +6,17 @@ const nextConfig: NextConfig = {
     serverActions: {
       allowedOrigins: ["localhost:3000"],
     },
+    optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "recharts"],
+  },
+  // Mark packages that should NOT be bundled into the server bundle
+  serverExternalPackages: ["@prisma/client", "bcryptjs"],
+  // Skip type checking during build (types are checked separately)
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  // Skip linting during build for speed
+  eslint: {
+    ignoreDuringBuilds: true,
   },
   async redirects() {
     return [

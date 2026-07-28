@@ -1,44 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard,
   Users,
   BarChart2,
   Settings,
-  LogOut,
   Menu,
   X,
-  Globe,
   ChevronLeft,
-  KeyRound,
+  ChevronDown,
+  Plus,
+  Home,
+  SlidersHorizontal,
+  Code2,
+  PenTool,
+  Megaphone,
+  ChevronsLeft,
   Kanban,
-  MoreVertical,
+  Github,
+  Calendar,
+  Trash2
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import type { Board, Project, User } from "@prisma/client";
-import { ProjectSwitcher } from "./ProjectSwitcher";
-import { ThemeToggle } from "./ThemeToggle";
 import { CreateBoardModal } from "../board/CreateBoardModal";
-import { Plus } from "lucide-react";
-import { setOffline } from "@/server/actions/ping";
+import { ProjectSwitcher } from "./ProjectSwitcher";
+import { deleteBoard } from "@/server/actions/board.actions";
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
   adminOnly?: boolean;
+  badge?: number;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "My Tasks", href: "/my-tasks", icon: Kanban },
+  { label: "Overview", href: "/overview", icon: Home },
+  { label: "My Tasks", href: "/my-tasks", icon: SlidersHorizontal, badge: 12 },
+  { label: "Calendar", href: "/calendar", icon: Calendar },
   { label: "People", href: "/people", icon: Users },
   { label: "Reports", href: "/reports", icon: BarChart2 },
+  { label: "GitHub Tracker", href: "/github", icon: Github },
   { label: "Admin", href: "/admin", icon: Settings, adminOnly: true },
 ];
+
+const PROJECT_COLORS = ["bg-indigo-600", "bg-blue-600", "bg-rose-500", "bg-orange-500", "bg-emerald-500"];
 
 interface SidebarProps {
   isAdmin: boolean;
@@ -47,46 +55,60 @@ interface SidebarProps {
   activeProject: Project;
   boards: Pick<Board, "id" | "name" | "slug">[];
   users: Pick<User, "id" | "displayName">[];
-  displayName: string;
-  avatarColor: string;
+  myTasksCount?: number;
 }
 
-export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, users, displayName, avatarColor }: SidebarProps) {
+export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, users, myTasksCount }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [isCreatingBoard, setIsCreatingBoard] = useState(false);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-  const initials = displayName
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
-
-  // Close profile menu on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setProfileMenuOpen(false);
+  const handleDeleteBoard = async (e: React.MouseEvent, boardId: string) => {
+    e.preventDefault();
+    if (!confirm("Are you sure you want to delete this board? This action cannot be undone.")) return;
+    setIsDeleting(boardId);
+    const res = await deleteBoard(boardId);
+    if (res.success) {
+      if (pathname === `/board/${boardId}`) {
+        router.push("/overview");
+      } else {
+        router.refresh();
       }
+    } else {
+      alert(res.error);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    setIsDeleting(null);
+  };
+
+  const navItems = NAV_ITEMS.map(item => {
+    if (item.label === "My Tasks" && myTasksCount !== undefined) {
+      return { ...item, badge: myTasksCount };
+    }
+    return item;
+  });
+
+  // Fallback icons for boards if we want to match the design roughly based on name
+  const getBoardIcon = (name: string) => {
+    const lower = name.toLowerCase();
+    if (lower.includes("dev")) return Code2;
+    if (lower.includes("design")) return PenTool;
+    if (lower.includes("marketing") || lower.includes("launch")) return Megaphone;
+    return Kanban;
+  };
 
   const SidebarContent = (
-    <nav className="flex flex-col h-full bg-surface-elevated border-r border-surface-border transition-all duration-300" aria-label="Main navigation">
-      {/* Logo */}
-      <div className={`flex items-center py-5 ${collapsed ? 'px-4 justify-center' : 'px-6 gap-3 justify-between'}`}>
+    <nav className="flex flex-col h-full bg-surface-base border-r border-surface-border transition-all duration-300" aria-label="Main navigation">
+      {/* Header / Logo */}
+      <div className={`flex items-center py-5 ${collapsed ? 'px-4 justify-center' : 'px-6 justify-between'}`}>
         {!collapsed ? (
           <>
             <Link href="/overview" className="flex items-center gap-3">
               <div className="relative w-9 h-9 flex-shrink-0">
                 <img
-                  src="/logo.png"
+                  src="/logo-large.png"
                   alt="IFlow Logo"
                   className="w-full h-full object-contain"
                   onError={(e) => {
@@ -96,27 +118,26 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
                 />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-bold text-foreground tracking-tight leading-tight">IFlow</span>
-                <span className="text-[10px] text-muted-foreground font-medium tracking-wider leading-tight">By Imaginum</span>
+                <span className="text-[17px] font-bold text-foreground tracking-tight leading-tight">IFlow</span>
+                <span className="text-[11px] text-muted-foreground font-medium tracking-wide leading-tight">By Imaginum</span>
               </div>
             </Link>
             <button
               onClick={() => setCollapsed(true)}
-              className="text-muted-foreground hover:text-foreground hidden lg:block"
+              className="text-muted-foreground hover:text-foreground hidden lg:block transition-colors"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={18} />
             </button>
           </>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <Link href="/dashboard">
+            <Link href="/overview">
               <div className="relative w-8 h-8 flex-shrink-0">
                 <img
-                  src="/logo.png"
+                    src="/logo-large.png"
                   alt="IFlow Logo"
                   className="w-full h-full object-contain"
                   onError={(e) => {
-                    // Fallback if logo not found
                     e.currentTarget.style.display = 'none';
                     e.currentTarget.parentElement!.innerHTML = '<div style="width: 100%; height: 100%; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 15px; font-weight: bold; background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);">IF</div>';
                   }}
@@ -127,68 +148,59 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
               onClick={() => setCollapsed(false)}
               className="text-muted-foreground hover:text-foreground hidden lg:block"
             >
-              <Menu size={20} />
+              <Menu size={18} />
             </button>
           </div>
         )}
       </div>
 
-      <div className="h-px bg-surface-border mx-4 mb-3" />
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-2 custom-scrollbar">
+        
+        {/* Workspace Section */}
+        <div className="mb-6">
+          {!collapsed && <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-3 ml-2">Workspace</p>}
+          
+          <div className="-mx-1">
+             <ProjectSwitcher projects={projects} activeProject={activeProject} collapsed={collapsed} isAdmin={isAdmin} />
+          </div>
+        </div>
 
-      {/* Global Nav */}
-      <div className="px-3 pb-3">
-        <Link
-          href="/overview"
-          onClick={() => setMobileOpen(false)}
-          className={`flex items-center px-3 py-2.5 rounded-3xl text-[14px] font-medium transition-all group ${
-            pathname === "/overview"
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:text-foreground hover:bg-surface-border/50"
-          } ${collapsed ? "justify-center" : "gap-3"}`}
-          title={collapsed ? "Global Overview" : undefined}
-        >
-          <Globe size={18} className="flex-shrink-0" strokeWidth={pathname === "/overview" ? 2.5 : 2} />
-          {!collapsed && <span>Overview</span>}
-        </Link>
-      </div>
-
-      <div className="h-px bg-surface-border mx-4 mb-3" />
-
-      {/* Project Switcher */}
-      <div className={collapsed ? "px-2" : "px-4"}>
-        <ProjectSwitcher projects={projects} activeProject={activeProject} collapsed={collapsed} isAdmin={isAdmin} />
-      </div>
-
-      <div className="h-px bg-surface-border mx-4 my-3" />
-
-      {/* Main nav */}
-      <div className="flex-1 overflow-y-auto px-3 space-y-1">
-        {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href || (pathname?.startsWith(item.href + "/") ?? false);
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center px-3 py-2.5 rounded-3xl text-[14px] font-medium transition-all group ${
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-surface-border/50"
-              } ${collapsed ? "justify-center" : "gap-3"}`}
-              title={collapsed ? item.label : undefined}
-            >
-              <Icon size={18} className="flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          );
-        })}
+        {/* Main Nav Items */}
+        <div className="space-y-1 mb-8">
+          {navItems.filter((item) => !item.adminOnly || isAdmin).map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || (pathname?.startsWith(item.href + "/") ?? false);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all group ${
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
+                } ${collapsed ? "justify-center" : ""}`}
+                title={collapsed ? item.label : undefined}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon size={18} className="flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />
+                  {!collapsed && <span>{item.label}</span>}
+                </div>
+                {!collapsed && item.badge && (
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-primary-foreground/20 text-white' : 'bg-surface-elevated border border-surface-border text-foreground'}`}>
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
 
         {/* Boards List */}
-        <div className="pt-4">
+        <div className="mb-4">
           {!collapsed && (
             <div className="flex items-center justify-between px-3 pb-2">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                 Boards
               </p>
               {(isAdmin || isManager) && (
@@ -197,31 +209,46 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
                   className="text-muted-foreground hover:text-foreground transition-colors"
                   title="Create new board"
                 >
-                  <Plus size={14} />
+                  <Plus size={16} />
                 </button>
               )}
             </div>
           )}
+          <div className="space-y-1">
             {boards.map((board) => {
               const isActive = pathname === `/board/${board.id}`;
+              const BoardIcon = getBoardIcon(board.name);
               return (
                 <Link
                   key={board.id}
                   href={`/board/${board.id}`}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center px-3 py-2.5 rounded-3xl text-[14px] font-medium transition-all ${
+                  className={`group flex items-center justify-between px-3 py-2 rounded-xl text-[13px] font-medium transition-all ${
                     isActive
                       ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-surface-border/50"
-                  } ${collapsed ? "justify-center" : "gap-3"}`}
+                      : "text-muted-foreground hover:text-foreground hover:bg-surface-elevated"
+                  } ${collapsed ? "justify-center" : ""}`}
                   title={collapsed ? board.name : undefined}
                 >
-                  <Kanban size={18} className="flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />
-                  {!collapsed && <span className="truncate">{board.name}</span>}
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <BoardIcon size={16} className="flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />
+                    {!collapsed && <span className="truncate">{board.name}</span>}
+                  </div>
+                  {!collapsed && isAdmin && (
+                    <button
+                      onClick={(e) => handleDeleteBoard(e, board.id)}
+                      disabled={isDeleting === board.id}
+                      className={`transition-all ${isDeleting === board.id ? 'opacity-100 animate-pulse text-[#D1495B]' : 'opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-[#D1495B]'}`}
+                      title="Delete board"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </Link>
               );
             })}
           </div>
+        </div>
 
         {isCreatingBoard && (
           <CreateBoardModal
@@ -232,57 +259,17 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
         )}
       </div>
 
-      {/* User profile dropdown area */}
-      <div className="p-4 relative" ref={profileMenuRef}>
-        {profileMenuOpen && (
-          <div className="absolute bottom-full left-4 mb-2 w-56 bg-surface-base border border-surface-border rounded-3xl shadow-lg overflow-hidden flex flex-col z-50">
-            <div className="px-4 py-3 border-b border-surface-border">
-              <p className="text-sm font-bold text-foreground truncate">{displayName}</p>
-              <p className="text-xs text-muted-foreground truncate">{isAdmin ? 'Admin' : 'Member'}</p>
-            </div>
-            <div className="p-1">
-              <Link href="/change-password" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-surface-elevated rounded-2xl transition-colors">
-                <KeyRound size={16} />
-                Change Password
-              </Link>
-              <div className="flex items-center justify-between px-3 py-2 text-sm text-foreground hover:bg-surface-elevated rounded-2xl transition-colors">
-                <span className="flex items-center gap-2"><ThemeToggle /></span>
-              </div>
-              <button 
-                onClick={async () => {
-                  await setOffline();
-                  signOut({ callbackUrl: "/login" });
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-2xl transition-colors text-left"
-              >
-                <LogOut size={16} />
-                Log out
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div 
-          onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-          className={`flex items-center cursor-pointer hover:bg-surface-border/50 p-2 rounded-3xl transition-colors ${collapsed ? 'justify-center' : 'gap-3'}`}
-        >
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 shadow-sm"
-            style={{ background: avatarColor }}
+      {/* Bottom Collapse Button */}
+      {!collapsed && (
+        <div className="p-4 mt-auto">
+          <button 
+            onClick={() => setCollapsed(true)}
+            className="flex items-center text-muted-foreground hover:text-foreground transition-colors p-2"
           >
-            {initials}
-          </div>
-          {!collapsed && (
-            <>
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-semibold text-foreground truncate">{displayName}</p>
-                <p className="text-[12px] text-muted-foreground truncate">{isAdmin ? 'Admin' : 'Member'}</p>
-              </div>
-              <MoreVertical size={16} className="text-muted-foreground" />
-            </>
-          )}
+            <ChevronsLeft size={20} />
+          </button>
         </div>
-      </div>
+      )}
     </nav>
   );
 
@@ -290,7 +277,7 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
     <>
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 w-9 h-9 flex items-center justify-center rounded-2xl bg-surface-elevated border border-surface-border text-foreground shadow-sm"
+        className="lg:hidden fixed top-4 left-4 z-50 w-9 h-9 flex items-center justify-center rounded-xl bg-surface-elevated border border-surface-border text-foreground shadow-sm"
       >
         <Menu size={18} />
       </button>
@@ -303,7 +290,7 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
       )}
 
       <div
-        className={`lg:hidden fixed top-0 left-0 h-full z-50 bg-surface-elevated transition-transform duration-300 ease-out shadow-2xl w-[260px] ${
+        className={`lg:hidden fixed top-0 left-0 h-full z-50 bg-surface-base transition-transform duration-300 ease-out shadow-2xl w-[260px] ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -320,5 +307,11 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
         {SidebarContent}
       </aside>
     </>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
   );
 }

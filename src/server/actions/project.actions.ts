@@ -45,3 +45,17 @@ export async function createProject(data: { name: string; description?: string }
   revalidatePath("/");
   return { success: true, data: project };
 }
+
+export async function updateGithubRepo(projectId: string, githubRepo: string | null) {
+  try {
+    const project = await prisma.project.update({
+      where: { id: projectId },
+      data: { githubRepo },
+    });
+    revalidatePath("/github");
+    return { success: true, data: project };
+  } catch (error: any) {
+    console.error("Failed to update github repo:", error);
+    return { success: false, error: String(error.message || error) };
+  }
+}
