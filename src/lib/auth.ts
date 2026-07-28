@@ -53,39 +53,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!checkRateLimit(username).allowed) return null;
 
-        const user = await prisma.user.findUnique({ where: { username } });
+        try {
+          const user = await prisma.user.findUnique({ where: { username } });
 
-        if (!user) {
-          console.error(`Login failed: User '${username}' not found in database.`);
-          recordFailedAttempt(username);
+          if (!user) {
+            console.error(`Login failed: User '${username}' not found in database.`);
+            recordFailedAttempt(username);
+            return null;
+          }
+
+          if (!user.isActive) {
+            console.error(`Login failed: User '${username}' is not active.`);
+            recordFailedAttempt(username);
+            return null;
+          }
+
+          const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+
+          if (!passwordMatch) {
+            console.error(`Login failed: Invalid password for user '${username}'.`);
+            recordFailedAttempt(username);
+            return null;
+          }
+
+          clearAttempts(username);
+
+          return {
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName,
+            role: user.role,
+            department: user.department,
+            avatarColor: user.avatarColor,
+            mustChangePassword: user.mustChangePassword,
+          };
+        } catch (error: any) {
+          console.error("FATAL ERROR IN NEXTAUTH AUTHORIZE:", error?.message || error);
           return null;
         }
-
-        if (!user.isActive) {
-          console.error(`Login failed: User '${username}' is not active.`);
-          recordFailedAttempt(username);
-          return null;
-        }
-
-        const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-
-        if (!passwordMatch) {
-          console.error(`Login failed: Invalid password for user '${username}'.`);
-          recordFailedAttempt(username);
-          return null;
-        }
-
-        clearAttempts(username);
-
-        return {
-          id: user.id,
-          username: user.username,
-          displayName: user.displayName,
-          role: user.role,
-          department: user.department,
-          avatarColor: user.avatarColor,
-          mustChangePassword: user.mustChangePassword,
-        };
       },
     }),
   ],
