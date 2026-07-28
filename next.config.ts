@@ -8,8 +8,6 @@ const nextConfig: NextConfig = {
     },
     optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "recharts"],
   },
-  // Mark packages that should NOT be bundled into the server bundle
-  serverExternalPackages: ["@prisma/client", "bcryptjs"],
   // Skip type checking during build (types are checked separately)
   typescript: {
     ignoreBuildErrors: false,
