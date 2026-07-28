@@ -41,7 +41,7 @@ function LoginFormContent() {
     });
 
     if (result?.error) {
-      setAuthError("That username or password isn't right.");
+      setAuthError(result.error === "CredentialsSignin" ? "That username or password isn't right." : `System Error: ${result.error}`);
       setIsLoading(false);
       return;
     }

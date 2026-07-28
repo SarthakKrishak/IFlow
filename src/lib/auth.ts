@@ -55,7 +55,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await prisma.user.findUnique({ where: { username } });
 
-        if (!user || !user.isActive) {
+        if (!user) {
+          console.error(`Login failed: User '${username}' not found in database.`);
+          recordFailedAttempt(username);
+          return null;
+        }
+
+        if (!user.isActive) {
+          console.error(`Login failed: User '${username}' is not active.`);
           recordFailedAttempt(username);
           return null;
         }
@@ -63,6 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
         if (!passwordMatch) {
+          console.error(`Login failed: Invalid password for user '${username}'.`);
           recordFailedAttempt(username);
           return null;
         }
