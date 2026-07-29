@@ -20,7 +20,9 @@ import {
   Kanban,
   Github,
   Calendar,
-  Trash2
+  Trash2,
+  Server,
+  Banknote
 } from "lucide-react";
 import { useState } from "react";
 import type { Board, Project, User } from "@prisma/client";
@@ -42,7 +44,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Calendar", href: "/calendar", icon: Calendar },
   { label: "People", href: "/people", icon: Users },
   { label: "Reports", href: "/reports", icon: BarChart2 },
+  { label: "Project Expenses", href: "/expenses", icon: Banknote },
   { label: "GitHub Tracker", href: "/github", icon: Github },
+  { label: "Environments", href: "/environments", icon: Server },
   { label: "Admin", href: "/admin", icon: Settings, adminOnly: true },
 ];
 
@@ -261,13 +265,15 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
 
       {/* Bottom Collapse Button */}
       {!collapsed && (
-        <div className="p-4 mt-auto">
+        <div className="p-4 mt-auto flex items-center justify-between border-t border-surface-border">
           <button 
             onClick={() => setCollapsed(true)}
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors p-2"
+            className="flex items-center text-muted-foreground hover:text-foreground transition-colors p-2 rounded-lg hover:bg-surface-elevated"
+            title="Collapse Sidebar"
           >
             <ChevronsLeft size={20} />
           </button>
+          <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mr-2 select-none">V2.0</span>
         </div>
       )}
     </nav>

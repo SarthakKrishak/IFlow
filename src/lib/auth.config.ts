@@ -23,7 +23,7 @@ export const authConfig: NextAuthConfig = {
       if (isPublic) {
         // If logged in and doesn't need to change password, redirect to dashboard
         if (isLoggedIn && !auth?.user?.mustChangePassword) {
-          return Response.redirect(new URL("/dashboard", nextUrl));
+          return Response.redirect(new URL("/overview", nextUrl));
         }
         return true;
       }

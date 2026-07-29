@@ -41,3 +41,7 @@ yarn-error.log*
 next-env.d.ts
 test-db.js
 test-vercel.js
+test-env-vars.ts
+test-envs.ts
+
+scratch/

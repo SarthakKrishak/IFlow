@@ -71,7 +71,10 @@ async function main() {
   for (const u of usersData) {
     const user = await prisma.user.upsert({
       where: { username: u.username },
-      update: {},
+      update: {
+        passwordHash: hash,
+        mustChangePassword: true,
+      },
       create: {
         username: u.username,
         passwordHash: hash,
@@ -185,7 +188,7 @@ async function main() {
         assigneeId: getAssignee().id,
         completedAt: pastDate(5),
         dueDate: pastDate(4), // Completed before due date (On-Time!)
-        labelNames: isDevBoard ? ["Bug"] : ["Design Review"],
+        labelNames: isDevBoard ? ["Bug"] : ["Design"],
       },
       {
         title: `Late task example`,

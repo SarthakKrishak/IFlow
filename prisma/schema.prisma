@@ -62,6 +62,8 @@ model User {
   activityLogs    ActivityLog[]
   comments        Comment[]
   accessibleBoards Board[]      @relation("BoardAccess")
+  createdEnvironments  Environment[] @relation("EnvironmentCreator")
+  accessibleEnvironments Environment[] @relation("EnvironmentAccess")
 
   @@index([department])
 }
@@ -74,7 +76,8 @@ model Project {
   githubRepo  String?
   createdAt   DateTime @default(now())
 
-  boards Board[]
+  boards      Board[]
+  environments Environment[]
 }
 
 model Board {
@@ -168,4 +171,32 @@ model ActivityLog {
 
   @@index([ticketId])
   @@index([userId, createdAt])
+}
+
+model Environment {
+  id          String   @id @default(cuid())
+  name        String
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation("EnvironmentCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  
+  variables   EnvironmentVariable[]
+  allowedUsers User[]  @relation("EnvironmentAccess")
+
+  @@index([projectId])
+}
+
+model EnvironmentVariable {
+  id            String      @id @default(cuid())
+  key           String
+  value         String      @db.Text
+  environmentId String
+  environment   Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([environmentId, key])
+  @@index([environmentId])
 }

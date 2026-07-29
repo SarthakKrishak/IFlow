@@ -189,7 +189,7 @@ export default function ChangePasswordPage() {
 
         <div className="flex flex-col items-center gap-4 mt-6">
           <Link
-            href="/dashboard"
+            href="/overview"
             className="text-sm text-muted-foreground hover:text-text-secondary transition-colors"
           >
             Cancel & Return

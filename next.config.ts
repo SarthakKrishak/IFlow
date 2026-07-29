@@ -4,7 +4,7 @@ import path from "path";
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000"],
+      allowedOrigins: ["localhost:3000", "iflow-imag.vercel.app"],
     },
     optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "recharts"],
   },

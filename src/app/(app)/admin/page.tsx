@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Admin - IFlow" };
 export default async function AdminPage() {
   const session = await getCachedSession();
   if (!session?.user) return null;
-  if (session.user.role !== "ADMIN") redirect("/dashboard");
+  if (session.user.role !== "ADMIN") redirect("/overview");
 
   const users = await prisma.user.findMany({
     select: {

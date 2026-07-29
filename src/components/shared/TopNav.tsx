@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Calendar, ChevronDown, Upload, KeyRound, LogOut, Settings, User as UserIcon, Loader2, Folder, LayoutDashboard, Users, CheckSquare } from "lucide-react";
+import { Bell, Calendar, ChevronDown, Upload, KeyRound, LogOut, Settings, User as UserIcon, Loader2, Folder, LayoutDashboard, Users, CheckSquare, Server } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
@@ -132,6 +132,17 @@ export function TopNav({ displayName, avatarColor, isAdmin, projects, activeProj
   } else if (pathname?.includes("/calendar")) {
     title = "Calendar";
     subtitle = "Manage your team's schedule and deadlines";
+  } else if (pathname?.includes("/environments")) {
+    title = "Environments";
+    subtitle = "Manage secure environment variables and secrets";
+    icon = <Server size={22} className="text-primary" />;
+  } else if (pathname?.includes("/expenses")) {
+    title = "Project Expenses";
+    subtitle = "Track and manage your project budgets and expenses";
+  } else if (pathname?.includes("/profile")) {
+    title = "Profile";
+    subtitle = "Manage your account settings";
+    icon = <UserIcon size={22} className="text-primary" />;
   }
 
   return (

@@ -1,13 +1,5 @@
-import NextAuth, { CredentialsSignin } from "next-auth";
+import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-
-class CustomError extends CredentialsSignin {
-  constructor(msg: string) {
-    super();
-    this.code = msg;
-  }
-}
-
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { authConfig } from "@/lib/auth.config";
@@ -65,13 +57,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const user = await prisma.user.findUnique({ where: { username } });
 
           if (!user) {
-            console.error(`Login failed: User '${username}' not found in database.`);
             recordFailedAttempt(username);
             return null;
           }
 
           if (!user.isActive) {
-            console.error(`Login failed: User '${username}' is not active.`);
             recordFailedAttempt(username);
             return null;
           }
@@ -79,7 +69,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
           if (!passwordMatch) {
-            console.error(`Login failed: Invalid password for user '${username}'.`);
             recordFailedAttempt(username);
             return null;
           }
@@ -95,9 +84,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             avatarColor: user.avatarColor,
             mustChangePassword: user.mustChangePassword,
           };
-        } catch (error: any) {
-          console.error("FATAL ERROR IN NEXTAUTH AUTHORIZE:", error?.message || error);
-          throw new CustomError("DB_CRASH: " + (error?.message || "Unknown error"));
+        } catch (error) {
+          console.error("Auth error:", error);
+          return null;
         }
       },
     }),
@@ -119,7 +108,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.avatarColor = (user as { avatarColor: string }).avatarColor;
         token.mustChangePassword = (user as { mustChangePassword: boolean }).mustChangePassword;
       }
-      // Refresh mustChangePassword from DB
+      // Refresh mustChangePassword from DB periodically
       if (token.id && !user) {
         try {
           const dbUser = await prisma.user.findUnique({
@@ -128,8 +117,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           });
           if (!dbUser?.isActive) return null as unknown as typeof token;
           token.mustChangePassword = dbUser?.mustChangePassword ?? false;
-        } catch (error: any) {
-          console.error("FATAL ERROR IN JWT CALLBACK (Prisma Crash?):", error?.message || error);
+        } catch {
+          // Silently continue with cached token data on DB errors
         }
       }
       return token;
