@@ -12,9 +12,11 @@ type EnvironmentData = {
   name: string;
   createdAt: string;
   hasAccess: boolean;
+  hasWriteAccess: boolean;
   project: { name: string };
   createdBy: UserBasic;
   allowedUsers: UserBasic[];
+  writeUsers: UserBasic[];
   _count: { variables: number };
 };
 
@@ -39,9 +41,12 @@ export function EnvironmentsClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingEnvId, setLoadingEnvId] = useState<string | null>(null);
   
+  const [selectedWriteUsers, setSelectedWriteUsers] = useState<string[]>([]);
+  
   // Access Management State
   const [editingAccessEnv, setEditingAccessEnv] = useState<EnvironmentData | null>(null);
   const [editAccessUsers, setEditAccessUsers] = useState<string[]>([]);
+  const [editWriteUsers, setEditWriteUsers] = useState<string[]>([]);
   const [isUpdatingAccess, setIsUpdatingAccess] = useState(false);
 
   const handleCardClick = (env: EnvironmentData) => {
@@ -65,12 +70,14 @@ export function EnvironmentsClient({
       await createEnvironment({
         name: newName,
         projectId: selectedProjectId,
-        allowedUserIds: selectedUsers
+        allowedUserIds: selectedUsers,
+        writeUserIds: selectedWriteUsers
       });
       toast.success("Environment created");
       setIsModalOpen(false);
       setNewName("");
       setSelectedUsers([]);
+      setSelectedWriteUsers([]);
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Failed to create environment");
@@ -97,10 +104,11 @@ export function EnvironmentsClient({
     
     setIsUpdatingAccess(true);
     try {
-      await updateEnvironmentAccess(editingAccessEnv.id, editAccessUsers);
+      await updateEnvironmentAccess(editingAccessEnv.id, editAccessUsers, editWriteUsers);
       toast.success("Access updated successfully");
       setEditingAccessEnv(null);
       setEditAccessUsers([]);
+      setEditWriteUsers([]);
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Failed to update access");
@@ -114,6 +122,7 @@ export function EnvironmentsClient({
     if (!isAdmin) return;
     setEditingAccessEnv(env);
     setEditAccessUsers(env.allowedUsers.map(u => u.id));
+    setEditWriteUsers(env.writeUsers.map(u => u.id));
   };
 
   return (
@@ -271,34 +280,64 @@ export function EnvironmentsClient({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-text-primary mb-2">Allowed Access (Optional)</label>
-                <div className="bg-surface-base border border-surface-border rounded-xl max-h-40 overflow-y-auto custom-scrollbar p-2 space-y-1">
-                  {users.filter(u => u.id !== currentUserId).map(user => (
-                    <label key={user.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-elevated cursor-pointer transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={selectedUsers.includes(user.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) setSelectedUsers([...selectedUsers, user.id]);
-                          else setSelectedUsers(selectedUsers.filter(id => id !== user.id));
-                        }}
-                        className="w-4 h-4 rounded text-[#5B5FEF] border-surface-border bg-surface-base focus:ring-[#5B5FEF]"
-                      />
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] text-white font-bold" style={{ backgroundColor: user.avatarColor }}>
-                          {user.displayName.charAt(0).toUpperCase()}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-2">Read Access (Optional)</label>
+                  <div className="bg-surface-base border border-surface-border rounded-xl max-h-40 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                    {users.filter(u => u.id !== currentUserId).map(user => (
+                      <label key={user.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-elevated cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.includes(user.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedUsers([...selectedUsers, user.id]);
+                            else setSelectedUsers(selectedUsers.filter(id => id !== user.id));
+                          }}
+                          className="w-4 h-4 rounded text-[#5B5FEF] border-surface-border bg-surface-base focus:ring-[#5B5FEF]"
+                        />
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] text-white font-bold" style={{ backgroundColor: user.avatarColor }}>
+                            {user.displayName.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm text-text-primary">{user.displayName}</span>
                         </div>
-                        <span className="text-sm text-text-primary">{user.displayName}</span>
-                      </div>
-                    </label>
-                  ))}
-                  {users.length <= 1 && (
-                    <p className="text-sm text-muted-foreground p-2">No other users to add.</p>
-                  )}
+                      </label>
+                    ))}
+                    {users.length <= 1 && (
+                      <p className="text-sm text-muted-foreground p-2">No other users.</p>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Admins automatically have full access to all environments.</p>
+
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-2">Write Access (Optional)</label>
+                  <div className="bg-surface-base border border-surface-border rounded-xl max-h-40 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                    {users.filter(u => u.id !== currentUserId).map(user => (
+                      <label key={user.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-elevated cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedWriteUsers.includes(user.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedWriteUsers([...selectedWriteUsers, user.id]);
+                            else setSelectedWriteUsers(selectedWriteUsers.filter(id => id !== user.id));
+                          }}
+                          className="w-4 h-4 rounded text-[#5B5FEF] border-surface-border bg-surface-base focus:ring-[#5B5FEF]"
+                        />
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] text-white font-bold" style={{ backgroundColor: user.avatarColor }}>
+                            {user.displayName.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm text-text-primary">{user.displayName}</span>
+                        </div>
+                      </label>
+                    ))}
+                    {users.length <= 1 && (
+                      <p className="text-sm text-muted-foreground p-2">No other users.</p>
+                    )}
+                  </div>
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">Admins automatically have full access to all environments.</p>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-surface-border">
                 <button
@@ -330,34 +369,64 @@ export function EnvironmentsClient({
             </div>
             
             <form onSubmit={handleUpdateAccess} className="p-6 space-y-5">
-              <div>
-                <label className="block text-sm font-semibold text-text-primary mb-2">Allowed Users</label>
-                <div className="bg-surface-base border border-surface-border rounded-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
-                  {users.filter(u => u.id !== currentUserId).map(user => (
-                    <label key={user.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-elevated cursor-pointer transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={editAccessUsers.includes(user.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) setEditAccessUsers([...editAccessUsers, user.id]);
-                          else setEditAccessUsers(editAccessUsers.filter(id => id !== user.id));
-                        }}
-                        className="w-4 h-4 rounded text-[#5B5FEF] border-surface-border bg-surface-base focus:ring-[#5B5FEF]"
-                      />
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] text-white font-bold" style={{ backgroundColor: user.avatarColor }}>
-                          {user.displayName.charAt(0).toUpperCase()}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-2">Read Access</label>
+                  <div className="bg-surface-base border border-surface-border rounded-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                    {users.filter(u => u.id !== currentUserId).map(user => (
+                      <label key={user.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-elevated cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={editAccessUsers.includes(user.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) setEditAccessUsers([...editAccessUsers, user.id]);
+                            else setEditAccessUsers(editAccessUsers.filter(id => id !== user.id));
+                          }}
+                          className="w-4 h-4 rounded text-[#5B5FEF] border-surface-border bg-surface-base focus:ring-[#5B5FEF]"
+                        />
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] text-white font-bold" style={{ backgroundColor: user.avatarColor }}>
+                            {user.displayName.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm text-text-primary">{user.displayName}</span>
                         </div>
-                        <span className="text-sm text-text-primary">{user.displayName}</span>
-                      </div>
-                    </label>
-                  ))}
-                  {users.length <= 1 && (
-                    <p className="text-sm text-muted-foreground p-2">No other users to add.</p>
-                  )}
+                      </label>
+                    ))}
+                    {users.length <= 1 && (
+                      <p className="text-sm text-muted-foreground p-2">No other users.</p>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Admins automatically have full access.</p>
+
+                <div>
+                  <label className="block text-sm font-semibold text-text-primary mb-2">Write Access</label>
+                  <div className="bg-surface-base border border-surface-border rounded-xl max-h-60 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                    {users.filter(u => u.id !== currentUserId).map(user => (
+                      <label key={user.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-elevated cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={editWriteUsers.includes(user.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) setEditWriteUsers([...editWriteUsers, user.id]);
+                            else setEditWriteUsers(editWriteUsers.filter(id => id !== user.id));
+                          }}
+                          className="w-4 h-4 rounded text-[#5B5FEF] border-surface-border bg-surface-base focus:ring-[#5B5FEF]"
+                        />
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] text-white font-bold" style={{ backgroundColor: user.avatarColor }}>
+                            {user.displayName.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm text-text-primary">{user.displayName}</span>
+                        </div>
+                      </label>
+                    ))}
+                    {users.length <= 1 && (
+                      <p className="text-sm text-muted-foreground p-2">No other users.</p>
+                    )}
+                  </div>
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">Admins automatically have full access.</p>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-surface-border">
                 <button
@@ -365,6 +434,7 @@ export function EnvironmentsClient({
                   onClick={() => {
                     setEditingAccessEnv(null);
                     setEditAccessUsers([]);
+                    setEditWriteUsers([]);
                   }}
                   className="px-5 py-2.5 text-text-secondary font-medium hover:bg-surface-base rounded-xl transition-colors"
                 >

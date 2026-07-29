@@ -22,6 +22,8 @@ export const metadata: Metadata = {
   }
 };
 
+import { ThemeProvider } from "@/components/ThemeProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,7 +32,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          themes={['light', 'dark', 'ocean', 'forest', 'sunset']}
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

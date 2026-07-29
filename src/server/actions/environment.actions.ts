@@ -33,6 +33,25 @@ async function verifyAccess(environmentId: string) {
   return session.user;
 }
 
+async function verifyWriteAccess(environmentId: string) {
+  const session = await getCachedSession();
+  if (!session?.user) throw new Error("Unauthorized");
+  
+  if (session.user.role === "ADMIN") return session.user;
+  
+  const env = await prisma.environment.findUnique({
+    where: { id: environmentId },
+    include: { writeUsers: { select: { id: true } } }
+  });
+  
+  if (!env) throw new Error("Environment not found");
+  
+  const hasAccess = env.writeUsers.some(u => u.id === session.user!.id);
+  if (!hasAccess) throw new Error("Forbidden: You do not have write access to this environment");
+  
+  return session.user;
+}
+
 export async function getEnvironments() {
   const session = await getCachedSession();
   if (!session?.user) return [];
@@ -43,6 +62,7 @@ export async function getEnvironments() {
       createdBy: { select: { id: true, displayName: true, avatarColor: true } },
       project: { select: { name: true } },
       allowedUsers: { select: { id: true, displayName: true, avatarColor: true } },
+      writeUsers: { select: { id: true, displayName: true, avatarColor: true } },
       _count: { select: { variables: true } }
     },
     orderBy: { createdAt: "desc" }
@@ -50,15 +70,17 @@ export async function getEnvironments() {
   
   return envs.map(env => {
     const hasAccess = session.user!.role === "ADMIN" || env.allowedUsers.some(u => u.id === session.user!.id);
+    const hasWriteAccess = session.user!.role === "ADMIN" || env.writeUsers.some(u => u.id === session.user!.id);
     return { 
       ...env, 
       createdAt: env.createdAt.toISOString(),
-      hasAccess 
+      hasAccess,
+      hasWriteAccess
     };
   });
 }
 
-export async function createEnvironment(data: { name: string, projectId: string, allowedUserIds: string[] }) {
+export async function createEnvironment(data: { name: string, projectId: string, allowedUserIds: string[], writeUserIds?: string[] }) {
   const user = await verifyAdmin();
   
   const env = await prisma.environment.create({
@@ -68,6 +90,9 @@ export async function createEnvironment(data: { name: string, projectId: string,
       createdById: user.id,
       allowedUsers: {
         connect: data.allowedUserIds.map(id => ({ id }))
+      },
+      writeUsers: {
+        connect: (data.writeUserIds || []).map(id => ({ id }))
       }
     }
   });
@@ -92,7 +117,7 @@ export async function getEnvironmentVariables(environmentId: string) {
 }
 
 export async function saveEnvironmentVariable(environmentId: string, key: string, value: string) {
-  await verifyAdmin();
+  await verifyWriteAccess(environmentId);
   
   const encryptedValue = encryptValue(value);
   
@@ -107,7 +132,7 @@ export async function saveEnvironmentVariable(environmentId: string, key: string
 }
 
 export async function deleteEnvironmentVariable(id: string, environmentId: string) {
-  await verifyAdmin();
+  await verifyWriteAccess(environmentId);
   
   await prisma.environmentVariable.delete({
     where: { id }
@@ -126,7 +151,7 @@ export async function deleteEnvironment(id: string) {
   revalidatePath("/environments");
 }
 
-export async function updateEnvironmentAccess(id: string, allowedUserIds: string[]) {
+export async function updateEnvironmentAccess(id: string, allowedUserIds: string[], writeUserIds: string[] = []) {
   await verifyAdmin();
   await prisma.environment.update({
     where: { id },
@@ -134,6 +159,10 @@ export async function updateEnvironmentAccess(id: string, allowedUserIds: string
       allowedUsers: {
         set: [],
         connect: allowedUserIds.map(userId => ({ id: userId }))
+      },
+      writeUsers: {
+        set: [],
+        connect: writeUserIds.map(userId => ({ id: userId }))
       }
     }
   });
@@ -141,7 +170,7 @@ export async function updateEnvironmentAccess(id: string, allowedUserIds: string
 }
 
 export async function saveMultipleEnvironmentVariables(environmentId: string, variables: { key: string, value: string }[]) {
-  await verifyAdmin();
+  await verifyWriteAccess(environmentId);
   const results = [];
   for (const { key, value } of variables) {
     const encryptedValue = encryptValue(value);

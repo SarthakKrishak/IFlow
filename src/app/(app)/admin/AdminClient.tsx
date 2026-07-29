@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createUserSchema } from "@/lib/validators";
-import { createUser, deactivateUser, resetPassword } from "@/server/actions/user.actions";
+import { createUser, deactivateUser, resetPassword, updateUserRole } from "@/server/actions/user.actions";
 import { Avatar, DepartmentTag } from "@/components/shared";
 import type { z } from "zod";
 import {
@@ -113,6 +113,20 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
     setActionLoading(null);
   };
 
+  const handleRoleChange = async (userId: string, name: string, newRole: AdminUser["role"]) => {
+    if (!confirm(`Change role of ${name} to ${newRole}?`)) return;
+    setActionLoading(userId + "-role");
+    setError(null);
+    const result = await updateUserRole({ userId, newRole });
+    if (!result.success) {
+      setError(result.error);
+    } else {
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role: newRole } : u));
+      setSuccess(`${name}'s role updated to ${newRole}`);
+    }
+    setActionLoading(null);
+  };
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -182,18 +196,21 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
                   <DepartmentTag department={user.department} />
                 </td>
                 <td className="px-5 py-3">
-                  {user.role === "ADMIN" ? (
+                  {user.id === currentUserId ? (
                     <span className="flex items-center gap-1 text-xs text-[#5B5FEF]">
-                      <ShieldCheck size={12} />Admin
-                    </span>
-                  ) : user.role === "MANAGER" ? (
-                    <span className="flex items-center gap-1 text-xs text-[#1EAE7C]">
-                      <ShieldCheck size={12} />Manager
+                      <ShieldCheck size={12} />{user.role}
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-xs text-text-secondary">
-                      <UserIcon size={12} />Member
-                    </span>
+                    <select
+                      value={user.role}
+                      onChange={(e) => handleRoleChange(user.id, user.displayName, e.target.value as AdminUser["role"])}
+                      disabled={actionLoading === user.id + "-role"}
+                      className="bg-surface-base border border-surface-border rounded-lg text-xs px-2 py-1 outline-none focus:border-[#5B5FEF] text-text-primary disabled:opacity-50"
+                    >
+                      <option value="MEMBER">Member</option>
+                      <option value="MANAGER">Manager</option>
+                      <option value="ADMIN">Admin</option>
+                    </select>
                   )}
                 </td>
                 <td className="px-5 py-3 hidden sm:table-cell">

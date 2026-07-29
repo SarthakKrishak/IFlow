@@ -132,6 +132,32 @@ export async function resetPassword(input: {
   }
 }
 
+export async function updateUserRole(input: {
+  userId: string;
+  newRole: "ADMIN" | "MANAGER" | "MEMBER";
+}): Promise<Result<void>> {
+  try {
+    const session = await requireAdmin();
+
+    if (input.userId === session.user.id) {
+      return { success: false, error: "You cannot change your own role" };
+    }
+
+    await prisma.user.update({
+      where: { id: input.userId },
+      data: { role: input.newRole },
+    });
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    if (error instanceof Error && error.message === "Admin only") {
+      return { success: false, error: "Admin only" };
+    }
+    console.error("updateUserRole error:", error);
+    return { success: false, error: "Failed to update role" };
+  }
+}
+
 export async function updateOwnPassword(input: {
   currentPassword: string;
   newPassword: string;

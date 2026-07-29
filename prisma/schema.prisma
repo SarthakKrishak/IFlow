@@ -64,6 +64,7 @@ model User {
   accessibleBoards Board[]      @relation("BoardAccess")
   createdEnvironments  Environment[] @relation("EnvironmentCreator")
   accessibleEnvironments Environment[] @relation("EnvironmentAccess")
+  writableEnvironments   Environment[] @relation("EnvironmentWriteAccess")
 
   @@index([department])
 }
@@ -184,6 +185,7 @@ model Environment {
   
   variables   EnvironmentVariable[]
   allowedUsers User[]  @relation("EnvironmentAccess")
+  writeUsers   User[]  @relation("EnvironmentWriteAccess")
 
   @@index([projectId])
 }
