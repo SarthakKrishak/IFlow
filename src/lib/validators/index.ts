@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Priority, Department, Role } from "@prisma/client";
+import { Priority, Department, Role } from "@/lib/prisma-client";
 
 export const usernameSchema = z
   .string()

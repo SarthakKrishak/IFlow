@@ -11,8 +11,8 @@ import {
   labelTicketSchema,
   deleteTicketSchema,
 } from "@/lib/validators";
-import type { Ticket } from "@prisma/client";
-import { Role } from "@prisma/client";
+import type { Ticket } from "@/lib/prisma-client";
+import { Role } from "@/lib/prisma-client";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 

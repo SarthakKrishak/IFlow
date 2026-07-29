@@ -8,8 +8,8 @@ import {
   resetPasswordSchema,
   updateOwnPasswordSchema,
 } from "@/lib/validators";
-import type { User } from "@prisma/client";
-import { Role } from "@prisma/client";
+import type { User } from "@/lib/prisma-client";
+import { Role } from "@/lib/prisma-client";
 import bcrypt from "bcryptjs";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };

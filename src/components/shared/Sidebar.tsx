@@ -25,7 +25,7 @@ import {
   Banknote
 } from "lucide-react";
 import { useState } from "react";
-import type { Board, Project, User } from "@prisma/client";
+import type { Board, Project, User } from "@/lib/prisma-client";
 import { CreateBoardModal } from "../board/CreateBoardModal";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { deleteBoard } from "@/server/actions/board.actions";

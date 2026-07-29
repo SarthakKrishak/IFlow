@@ -1,4 +1,4 @@
-import type { Prisma, ActivityAction } from "@prisma/client";
+import type { Prisma, ActivityAction } from "@/lib/prisma-client";
 
 
 type PrismaTransactionClient = Omit<

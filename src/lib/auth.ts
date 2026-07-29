@@ -3,7 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { authConfig } from "@/lib/auth.config";
-import type { Role, Department } from "@prisma/client";
+import type { Role, Department } from "@/lib/prisma-client";
 
 // Simple in-memory login rate limiter (reset on server restart, fine for 5–7 users)
 const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();

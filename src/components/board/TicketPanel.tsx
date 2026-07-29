@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import type { Ticket, User, Label, Column, Comment, ActivityLog } from "@prisma/client";
+import type { Ticket, User, Label, Column, Comment, ActivityLog } from "@/lib/prisma-client";
 import { useUIStore } from "@/stores/ui.store";
 import {
   updateTicket,

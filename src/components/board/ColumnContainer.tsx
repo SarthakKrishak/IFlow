@@ -4,7 +4,7 @@ import { useState } from "react";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 
-import type { Board, Column, Ticket, User, Label } from "@prisma/client";
+import type { Board, Column, Ticket, User, Label } from "@/lib/prisma-client";
 import { TicketCard } from "./TicketCard";
 import { QuickAddInput } from "./QuickAddInput";
 import { Plus, AlertTriangle } from "lucide-react";

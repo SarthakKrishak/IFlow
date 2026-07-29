@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Folder, Clock, Calendar as CalendarIcon, Shield, ChevronDown, MessageSquare, LayoutTemplate, PenLine, Plus, AlertCircle, ArrowUp, ArrowDown, UserPlus, UserMinus, Tag, CheckCircle2, RotateCcw } from "lucide-react";
 import { Avatar, RelativeTime } from "@/components/shared";
 import { ActivityHeatmap } from "@/components/people/ActivityHeatmap";
-import type { ActivityLog } from "@prisma/client";
+import type { ActivityLog } from "@/lib/prisma-client";
 
 interface ProfileClientProps {
   user: {

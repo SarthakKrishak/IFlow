@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { Ticket, User, Label } from "@prisma/client";
+import type { Ticket, User, Label } from "@/lib/prisma-client";
 import { PriorityChip, Avatar, RelativeTime } from "@/components/shared";
 import { MessageSquare, Calendar, Tag, MoreVertical } from "lucide-react";
 import { useUIStore } from "@/stores/ui.store";

@@ -7,8 +7,8 @@ import {
   createColumnSchema,
   reorderColumnSchema,
 } from "@/lib/validators";
-import type { Board, Column } from "@prisma/client";
-import { Role } from "@prisma/client";
+import type { Board, Column } from "@/lib/prisma-client";
+import { Role } from "@/lib/prisma-client";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 
