@@ -4,146 +4,149 @@
 
 @layer base {
   :root {
-    /* Pure light mode for new design */
+    /* Elegant Clean Light Mode (Lark/Linear inspired) */
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 226 71% 40%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222 47% 11%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 221 83% 53%; /* Lark blue */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 226 71% 40%;
-    --radius: 0.75rem;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 221 83% 53%;
+    --radius: 0.5rem;
 
-    --surface-base: 0 0% 100%;
+    --surface-base: 240 5% 98%;
     --surface-elevated: 0 0% 100%;
-    --surface-border: 214 32% 91%;
-    --text-primary: 222 47% 11%;
-    --text-secondary: 215.4 16.3% 46.9%;
+    --surface-border: 240 5.9% 90%;
+    --text-primary: 240 10% 3.9%;
+    --text-secondary: 240 3.8% 46.1%;
   }
 
   .dark {
-    /* Premium dark mode tokens */
-    --background: 222 18% 8%;
-    --foreground: 216 12% 96%;
-    --card: 220 16% 11%;
-    --card-foreground: 216 12% 96%;
-    --popover: 220 16% 11%;
-    --popover-foreground: 216 12% 96%;
-    --primary: 226 71% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 15% 16%;
-    --secondary-foreground: 216 12% 96%;
-    --muted: 220 15% 16%;
-    --muted-foreground: 215 8% 60%;
-    --accent: 220 15% 16%;
-    --accent-foreground: 216 12% 96%;
-    --destructive: 348 76% 57%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 14% 19%;
-    --input: 220 14% 19%;
-    --ring: 226 71% 50%;
-
-    --surface-base: 220 16% 7%;
-    --surface-elevated: 222 18% 11%;
-    --surface-border: 221 17% 18%;
-    --text-primary: 220 14% 96%;
-    --text-secondary: 219 14% 64%;
+    /* Premium Vercel/Linear Dark Mode */
+    --background: 0 0% 0%; /* Pure black */
+    --foreground: 0 0% 95%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 83.1%;
+    
+    --surface-base: 0 0% 0%;
+    --surface-elevated: 0 0% 6%;
+    --surface-border: 0 0% 14.9%;
+    --text-primary: 0 0% 95%;
+    --text-secondary: 0 0% 63.9%;
   }
 
   .ocean {
-    --background: 224 45% 10%;
+    /* Deep Nord/Ocean Blue */
+    --background: 222 47% 11%;
     --foreground: 210 40% 98%;
-    --card: 224 45% 14%;
+    --card: 222 47% 14%;
     --card-foreground: 210 40% 98%;
-    --popover: 224 45% 14%;
+    --popover: 222 47% 14%;
     --popover-foreground: 210 40% 98%;
-    --primary: 201 96% 32%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 224 45% 18%;
+    --primary: 199 89% 48%; /* Bright cyan/blue accent */
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 224 45% 18%;
+    --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 224 45% 18%;
+    --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 350 89% 60%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 224 45% 22%;
-    --input: 224 45% 22%;
-    --ring: 201 96% 32%;
-    
-    --surface-base: 224 45% 9%;
-    --surface-elevated: 224 45% 12%;
-    --surface-border: 224 45% 20%;
+    --border: 217.2 32.6% 22%;
+    --input: 217.2 32.6% 22%;
+    --ring: 199 89% 48%;
+
+    --surface-base: 222 47% 10%;
+    --surface-elevated: 222 47% 13%;
+    --surface-border: 217.2 32.6% 20%;
     --text-primary: 210 40% 98%;
-    --text-secondary: 215 20.2% 70%;
+    --text-secondary: 215 20.2% 65.1%;
   }
 
   .forest {
-    --background: 147 38% 8%;
-    --foreground: 147 30% 95%;
-    --card: 147 38% 12%;
-    --card-foreground: 147 30% 95%;
-    --popover: 147 38% 12%;
-    --popover-foreground: 147 30% 95%;
-    --primary: 152 57% 35%;
-    --primary-foreground: 147 30% 95%;
-    --secondary: 147 38% 16%;
-    --secondary-foreground: 147 30% 95%;
-    --muted: 147 38% 16%;
-    --muted-foreground: 147 15% 65%;
-    --accent: 147 38% 16%;
-    --accent-foreground: 147 30% 95%;
-    --destructive: 0 62% 40%;
-    --destructive-foreground: 147 30% 95%;
-    --border: 147 38% 22%;
-    --input: 147 38% 22%;
-    --ring: 152 57% 35%;
+    /* Rich Evergreen / Raycast */
+    --background: 160 12% 8%;
+    --foreground: 150 15% 95%;
+    --card: 160 12% 11%;
+    --card-foreground: 150 15% 95%;
+    --popover: 160 12% 11%;
+    --popover-foreground: 150 15% 95%;
+    --primary: 150 60% 45%;
+    --primary-foreground: 160 12% 8%;
+    --secondary: 160 12% 15%;
+    --secondary-foreground: 150 15% 95%;
+    --muted: 160 12% 15%;
+    --muted-foreground: 150 10% 60%;
+    --accent: 160 12% 15%;
+    --accent-foreground: 150 15% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 150 15% 95%;
+    --border: 160 12% 20%;
+    --input: 160 12% 20%;
+    --ring: 150 60% 45%;
 
-    --surface-base: 147 38% 7%;
-    --surface-elevated: 147 38% 10%;
-    --surface-border: 147 38% 20%;
-    --text-primary: 147 30% 95%;
-    --text-secondary: 147 15% 70%;
+    --surface-base: 160 12% 7%;
+    --surface-elevated: 160 12% 10%;
+    --surface-border: 160 12% 18%;
+    --text-primary: 150 15% 95%;
+    --text-secondary: 150 10% 60%;
   }
 
   .sunset {
-    --background: 17 48% 10%;
-    --foreground: 33 50% 95%;
-    --card: 17 48% 14%;
-    --card-foreground: 33 50% 95%;
-    --popover: 17 48% 14%;
-    --popover-foreground: 33 50% 95%;
-    --primary: 22 90% 55%;
-    --primary-foreground: 33 50% 95%;
-    --secondary: 17 48% 20%;
-    --secondary-foreground: 33 50% 95%;
-    --muted: 17 48% 20%;
-    --muted-foreground: 33 20% 65%;
-    --accent: 17 48% 20%;
-    --accent-foreground: 33 50% 95%;
-    --destructive: 348 83% 47%;
-    --destructive-foreground: 33 50% 95%;
-    --border: 17 48% 26%;
-    --input: 17 48% 26%;
-    --ring: 22 90% 55%;
+    /* Catppuccin Mocha / Warm Mauve Dark */
+    --background: 240 21% 12%;
+    --foreground: 270 10% 95%;
+    --card: 240 21% 15%;
+    --card-foreground: 270 10% 95%;
+    --popover: 240 21% 15%;
+    --popover-foreground: 270 10% 95%;
+    --primary: 346 87% 65%; /* Pink/Red accent */
+    --primary-foreground: 240 21% 12%;
+    --secondary: 240 21% 20%;
+    --secondary-foreground: 270 10% 95%;
+    --muted: 240 21% 20%;
+    --muted-foreground: 270 10% 70%;
+    --accent: 240 21% 20%;
+    --accent-foreground: 270 10% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 270 10% 95%;
+    --border: 240 21% 25%;
+    --input: 240 21% 25%;
+    --ring: 346 87% 65%;
 
-    --surface-base: 17 48% 9%;
-    --surface-elevated: 17 48% 12%;
-    --surface-border: 17 48% 22%;
-    --text-primary: 33 50% 95%;
-    --text-secondary: 33 20% 70%;
+    --surface-base: 240 21% 10%;
+    --surface-elevated: 240 21% 14%;
+    --surface-border: 240 21% 22%;
+    --text-primary: 270 10% 95%;
+    --text-secondary: 270 10% 70%;
   }
 }
 
