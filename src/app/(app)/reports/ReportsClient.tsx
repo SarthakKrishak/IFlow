@@ -12,7 +12,7 @@ import {
   Legend
 } from "recharts";
 import { PriorityChip, Avatar } from "@/components/shared";
-import type { Ticket, User } from "@/lib/prisma-client";
+import type { Ticket, User } from "@prisma/client";
 import { FileText, CheckSquare, Clock, Timer, ChevronDown, ChevronLeft, ChevronRight, MessageSquare, LayoutTemplate } from "lucide-react";
 
 interface ReportsClientProps {

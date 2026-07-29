@@ -2,7 +2,7 @@ import crypto from 'crypto';
 
 // The encryption key should be exactly 32 bytes (256 bits).
 // We use a fallback key for development if not provided, but in production this MUST be set.
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'fallback_development_key_32_bytes_!';
+const ENCRYPTION_KEY = (typeof process !== 'undefined' && process.env ? process.env.ENCRYPTION_KEY : undefined) || 'fallback_development_key_32_bytes_!';
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const SALT_LENGTH = 64;

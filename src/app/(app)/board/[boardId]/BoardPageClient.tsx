@@ -6,7 +6,7 @@ import { BoardCanvas } from "@/components/board/BoardCanvas";
 import { TicketPanel, type TicketFull } from "@/components/board/TicketPanel";
 import { useState, useEffect } from "react";
 import { pingPresence } from "@/server/actions/ping";
-import type { Board, Column, Ticket, User, Label } from "@/lib/prisma-client";
+import type { Board, Column, Ticket, User, Label } from "@prisma/client";
 
 type TicketWithRelations = Ticket & {
   assignee: Pick<User, "id" | "displayName" | "avatarColor"> | null;

@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["bcryptjs"],
   experimental: {
     serverActions: {
       allowedOrigins: ["localhost:3000", "iflow-imag.vercel.app"],

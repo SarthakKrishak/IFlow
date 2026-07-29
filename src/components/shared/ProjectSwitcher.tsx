@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, Folder, Plus } from "lucide-react";
-import type { Project } from "@/lib/prisma-client";
+import type { Project } from "@prisma/client";
 import { setProjectCookie } from "@/app/(app)/actions";
 import { useRouter } from "next/navigation";
 import { createProject } from "@/server/actions/project.actions";

@@ -1,4 +1,4 @@
-import type { Department, Priority } from "@/lib/prisma-client";
+import type { Department, Priority } from "@prisma/client";
 
 interface DepartmentTagProps {
   department: Department;

@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity";
 import { addCommentSchema } from "@/lib/validators";
-import type { Comment } from "@/lib/prisma-client";
+import type { Comment } from "@prisma/client";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 

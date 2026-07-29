@@ -8,7 +8,7 @@ import { signOut } from "next-auth/react";
 import { ThemeToggle } from "./ThemeToggle";
 import { setOffline } from "@/server/actions/ping";
 import { setProjectCookie } from "@/app/(app)/actions";
-import type { Project } from "@/lib/prisma-client";
+import type { Project } from "@prisma/client";
 
 interface TopNavProps {
   displayName: string;

@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import type { Board, Column, Ticket, User, Label } from "@/lib/prisma-client";
+import type { Board, Column, Ticket, User, Label } from "@prisma/client";
 import { ColumnContainer } from "./ColumnContainer";
 import { TicketCard } from "./TicketCard";
 import { moveTicket } from "@/server/actions/ticket.actions";
