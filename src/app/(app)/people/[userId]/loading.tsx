@@ -1,5 +1,5 @@
-import { ProfileLoading } from "@/components/people/ProfileLoading";
+import { IFlowLoader } from "@/components/shared";
 
 export default function Loading() {
-  return <ProfileLoading />;
+  return <IFlowLoader />;
 }
