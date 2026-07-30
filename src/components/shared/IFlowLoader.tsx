@@ -2,7 +2,7 @@ import React from "react";
 
 export function IFlowLoader() {
   return (
-    <div className="flex-1 w-full h-full min-h-[50vh] flex flex-col items-center justify-center bg-transparent">
+    <div className="flex-1 w-full min-h-[75vh] flex flex-col items-center justify-center bg-transparent">
       <div className="flex flex-col items-center gap-8">
         <div className="relative flex items-center justify-center">
           {/* Ambient Pulse Glow */}
@@ -28,18 +28,17 @@ export function IFlowLoader() {
               strokeDasharray="4 8"
             />
             
-            {/* Inner bold infinity flow path */}
             <path
-              d="M25 50 C25 25 45 30 50 50 C55 70 75 75 75 50 C75 25 55 30 50 50 C45 70 25 75 25 50 Z"
+              d="M 35 25 V 40 L 65 50 L 35 60 V 75"
               stroke="currentColor"
-              strokeWidth="5"
+              strokeWidth="20"
               strokeLinecap="round"
               strokeLinejoin="round"
               className="text-primary origin-center"
               style={{
-                strokeDasharray: 210,
+                strokeDasharray: 110,
                 strokeDashoffset: 0,
-                animation: "drawIFlow 2.5s ease-in-out infinite alternate"
+                animation: "drawIFlow 2s ease-in-out infinite alternate"
               }}
             />
             
@@ -56,7 +55,7 @@ export function IFlowLoader() {
           {/* Inline keyframes specifically for this component */}
           <style>{`
             @keyframes drawIFlow {
-              0% { stroke-dashoffset: 210; }
+              0% { stroke-dashoffset: 110; }
               40% { stroke-dashoffset: 0; }
               100% { stroke-dashoffset: 0; }
             }
