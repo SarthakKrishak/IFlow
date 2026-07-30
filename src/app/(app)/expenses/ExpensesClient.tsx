@@ -110,16 +110,6 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-          <Users className="text-primary" size={20} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Price Tracker</h1>
-          <p className="text-sm text-text-secondary">Track team expenses and shared splits</p>
-        </div>
-      </div>
-
       {canEdit && (
         <div className="bg-surface-elevated rounded-3xl p-6 border border-surface-border shadow-sm">
           <h2 className="text-lg font-semibold text-text-primary mb-4">Add New Expense</h2>
