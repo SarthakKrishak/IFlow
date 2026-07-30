@@ -273,7 +273,7 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
           >
             <ChevronsLeft size={20} />
           </button>
-          <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mr-2 select-none">V2.0</span>
+          <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mr-2 select-none">V2.1</span>
         </div>
       )}
     </nav>
