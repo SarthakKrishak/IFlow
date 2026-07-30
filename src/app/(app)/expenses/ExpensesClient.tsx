@@ -197,7 +197,7 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
                           : "border-surface-border bg-surface-base text-text-secondary hover:border-text-secondary/30"
                       }`}
                     >
-                      <Avatar displayName={member.displayName} avatarColor={member.avatarColor} size="xs" />
+                      <Avatar displayName={member.displayName} avatarColor={member.avatarColor} size="sm" />
                       <span className="font-medium">{member.displayName}</span>
                     </button>
                   );
@@ -234,7 +234,7 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
                 {teamMembers.map((m) => (
                   <th key={m.id} className="px-5 py-3 font-medium text-text-secondary uppercase tracking-wider text-xs">
                     <div className="flex items-center gap-1.5">
-                      <Avatar displayName={m.displayName} avatarColor={m.avatarColor} size="xs" />
+                      <Avatar displayName={m.displayName} avatarColor={m.avatarColor} size="sm" />
                       {m.displayName}
                     </div>
                   </th>
