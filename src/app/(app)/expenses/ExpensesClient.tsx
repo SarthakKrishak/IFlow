@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createExpense, deleteExpense } from "@/server/actions/expense.actions";
 import type { Expense, ExpenseSplit, User } from "@prisma/client";
-import { Loader2, Plus, Trash2, Users } from "lucide-react";
+import { Loader2, Plus, Trash2, Users, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/shared";
 
@@ -22,8 +22,10 @@ interface ExpensesClientProps {
 
 export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserRole }: ExpensesClientProps) {
   const router = useRouter();
+  const [localExpenses, setLocalExpenses] = useState<ExpenseWithSplits[]>(expenses);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isFormExpanded, setIsFormExpanded] = useState(false);
 
   // Form state
   const [name, setName] = useState("");
@@ -74,6 +76,8 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
       setAmount("");
       setDate(new Date().toISOString().split("T")[0]);
       setInvolvedUserIds(new Set());
+      setLocalExpenses([result.data, ...localExpenses]);
+      setIsFormExpanded(false);
       router.refresh();
     } else {
       toast.error(result.error);
@@ -87,6 +91,7 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
     const result = await deleteExpense({ expenseId });
     if (result.success) {
       toast.success("Expense deleted");
+      setLocalExpenses(localExpenses.filter(e => e.id !== expenseId));
       router.refresh();
     } else {
       toast.error(result.error);
@@ -100,7 +105,7 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
     totals[m.id] = 0;
   });
 
-  expenses.forEach((expense) => {
+  localExpenses.forEach((expense) => {
     expense.splits.forEach((split) => {
       if (totals[split.userId] !== undefined) {
         totals[split.userId] += split.amountOwed;
@@ -111,9 +116,21 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
       {canEdit && (
-        <div className="bg-surface-elevated rounded-3xl p-6 border border-surface-border shadow-sm">
-          <h2 className="text-lg font-semibold text-text-primary mb-4">Add New Expense</h2>
-          <form onSubmit={handleAddExpense} className="space-y-5">
+        <div className="bg-surface-elevated rounded-3xl border border-surface-border shadow-sm overflow-hidden transition-all duration-300">
+          <button 
+            onClick={() => setIsFormExpanded(!isFormExpanded)}
+            className="w-full flex items-center justify-between p-6 hover:bg-surface-base/50 transition-colors"
+          >
+            <h2 className="text-lg font-semibold text-text-primary">Add New Expense</h2>
+            <div className="flex items-center gap-2 text-primary font-medium text-sm">
+              {!isFormExpanded && <><Plus size={16} /> Add Expense</>}
+              {isFormExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
+          </button>
+          
+          {isFormExpanded && (
+            <div className="p-6 pt-0 border-t border-surface-border">
+              <form onSubmit={handleAddExpense} className="space-y-5 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-1.5 md:col-span-2">
                 <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Expense Name</label>
@@ -205,7 +222,9 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
                 Add Expense
               </button>
             </div>
-          </form>
+              </form>
+            </div>
+          )}
         </div>
       )}
 
@@ -233,14 +252,14 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-border">
-              {expenses.length === 0 ? (
+              {localExpenses.length === 0 ? (
                 <tr>
                   <td colSpan={teamMembers.length + 4} className="px-5 py-8 text-center text-text-secondary">
                     No expenses logged yet.
                   </td>
                 </tr>
               ) : (
-                expenses.map((expense) => (
+                localExpenses.map((expense) => (
                   <tr key={expense.id} className="hover:bg-surface-base/50 transition-colors">
                     <td className="px-5 py-3">
                       <p className="font-medium text-text-primary">{expense.name}</p>
@@ -276,7 +295,7 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
               )}
             </tbody>
             {/* Footer with totals */}
-            {expenses.length > 0 && (
+            {localExpenses.length > 0 && (
               <tfoot className="bg-surface-base border-t-2 border-surface-border">
                 <tr>
                   <td colSpan={3} className="px-5 py-4 text-right font-semibold text-text-primary uppercase tracking-wider text-xs">
