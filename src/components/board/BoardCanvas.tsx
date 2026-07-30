@@ -42,6 +42,7 @@ interface BoardCanvasProps {
 export function BoardCanvas({ board, columns: initialColumns, currentUserId }: BoardCanvasProps) {
   const [columns, setColumns] = useState(initialColumns);
   const [activeTicket, setActiveTicket] = useState<TicketWithRelations | null>(null);
+  const [savingTickets, setSavingTickets] = useState<Set<string>>(new Set());
   const { setOpenTicketId } = useUIStore();
 
   useEffect(() => {
@@ -155,13 +156,16 @@ export function BoardCanvas({ board, columns: initialColumns, currentUserId }: B
     if (!finalColId || finalOrder === undefined || finalOrder === -1) return;
 
     // Fire and forget server persistence to keep UI immediately responsive
+    setSavingTickets(prev => { const n = new Set(prev); n.add(active.id as string); return n; });
     moveTicket({
       ticketId: active.id as string,
       toColumnId: finalColId,
       toOrder: finalOrder,
     }).then((result) => {
+      setSavingTickets(prev => { const n = new Set(prev); n.delete(active.id as string); return n; });
       if (!result.success) {
         toast.error("Failed to move ticket on server");
+        // Could technically revert optimistic UI here, but a refresh handles it if they reload
       }
     });
   }, []);
@@ -184,6 +188,7 @@ export function BoardCanvas({ board, columns: initialColumns, currentUserId }: B
               column={column}
               board={board}
               currentUserId={currentUserId}
+              savingTickets={savingTickets}
             />
           ))}
       </div>

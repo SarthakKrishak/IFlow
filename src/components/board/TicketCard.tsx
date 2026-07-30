@@ -4,7 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Ticket, User, Label } from "@prisma/client";
 import { PriorityChip, Avatar, RelativeTime } from "@/components/shared";
-import { MessageSquare, Calendar, Tag, MoreVertical } from "lucide-react";
+import { MessageSquare, Calendar, Tag, MoreVertical, Loader2 } from "lucide-react";
 import { useUIStore } from "@/stores/ui.store";
 import { motion } from "framer-motion";
 
@@ -17,6 +17,7 @@ type TicketWithRelations = Ticket & {
 interface TicketCardProps {
   ticket: TicketWithRelations;
   isDragging?: boolean;
+  isSaving?: boolean;
 }
 
 function getDueDateStyle(dueDate: Date | null): { color: string; text: string } | null {
@@ -31,7 +32,7 @@ function getDueDateStyle(dueDate: Date | null): { color: string; text: string } 
   return { color: "hsl(var(--muted-foreground))", text: due.toLocaleDateString() };
 }
 
-export function TicketCard({ ticket, isDragging = false }: TicketCardProps) {
+export function TicketCard({ ticket, isDragging = false, isSaving = false }: TicketCardProps) {
   const { setOpenTicketId } = useUIStore();
   const {
     attributes,
@@ -101,9 +102,9 @@ export function TicketCard({ ticket, isDragging = false }: TicketCardProps) {
         }
       }}
     >
-      {/* Menu Icon */}
+      {/* Menu Icon or Loader */}
       <div className="absolute top-3 right-2 text-muted-foreground/60 hover:text-white transition-colors p-1 rounded-md z-10">
-        <MoreVertical size={16} />
+        {isSaving ? <Loader2 size={16} className="animate-spin text-[#5B5FEF]" /> : <MoreVertical size={16} />}
       </div>
       {/* Labels */}
       {ticket.labels.length > 0 && (

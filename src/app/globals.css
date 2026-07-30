@@ -222,6 +222,18 @@
     max-width: 300px;
     flex-shrink: 0;
     scroll-snap-align: center;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Hide scrollbar for columns */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 

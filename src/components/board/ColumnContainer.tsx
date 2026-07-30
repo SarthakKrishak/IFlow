@@ -23,9 +23,10 @@ interface ColumnContainerProps {
   column: ColumnWithTickets;
   board: Board;
   currentUserId: string;
+  savingTickets: Set<string>;
 }
 
-export function ColumnContainer({ column, board, currentUserId }: ColumnContainerProps) {
+export function ColumnContainer({ column, board, currentUserId, savingTickets }: ColumnContainerProps) {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const ticketIds = column.tickets.map((t) => t.id);
@@ -67,13 +68,13 @@ export function ColumnContainer({ column, board, currentUserId }: ColumnContaine
       {/* Tickets */}
       <div
         ref={setNodeRef}
-        className={`flex flex-col gap-2 min-h-[80px] rounded-3xl p-2 transition-colors ${
+        className={`flex-1 overflow-y-auto no-scrollbar flex flex-col gap-2 min-h-[80px] rounded-3xl p-2 transition-colors ${
           isOver ? "bg-[#5B5FEF]/5 border border-dashed border-[#5B5FEF]/30" : "bg-surface-elevated/50"
         }`}
       >
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {column.tickets.map((ticket) => (
-            <TicketCard key={ticket.id} ticket={ticket} />
+            <TicketCard key={ticket.id} ticket={ticket} isSaving={savingTickets.has(ticket.id)} />
           ))}
         </SortableContext>
 
