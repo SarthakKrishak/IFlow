@@ -263,16 +263,18 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
         )}
       </div>
 
-      {/* Bottom Collapse Button */}
+      {/* Bottom Imaginum Link */}
       {!collapsed && (
         <div className="p-4 mt-auto flex items-center justify-between border-t border-surface-border">
-          <button 
-            onClick={() => setCollapsed(true)}
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors p-2 rounded-lg hover:bg-surface-elevated"
-            title="Collapse Sidebar"
+          <a 
+            href="https://imaginumorg.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center transition-transform hover:scale-105 rounded-lg p-1"
+            title="Visit Imaginum"
           >
-            <ChevronsLeft size={20} />
-          </button>
+            <img src="/imaginum_logo.png" alt="Imaginum" className="h-7 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity" />
+          </a>
           <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mr-2 select-none">V2.1</span>
         </div>
       )}
