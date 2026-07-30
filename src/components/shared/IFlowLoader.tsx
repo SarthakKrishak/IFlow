@@ -11,53 +11,33 @@ export function IFlowLoader() {
           {/* Animated SVG Container */}
           <svg
             width="64"
-            height="64"
-            viewBox="0 0 100 100"
-            className="relative z-10"
+            height="132"
+            viewBox="0 0 178 370"
+            className="relative z-10 overflow-visible"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            {/* Outer rotating subtle dashed ring */}
-            <circle
-              cx="50"
-              cy="50"
-              r="44"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              className="text-primary/30 origin-center animate-[spin_10s_linear_infinite]"
-              strokeDasharray="4 8"
-            />
-            
             <path
-              d="M 35 25 V 40 L 65 50 L 35 60 V 75"
+              d="M 28 6 H 150 Q 172 6 172 28 V 76 Q 172 88 162 94 L 112 120 Q 95 128 86 138 Q 80 145 86 152 Q 95 162 112 170 L 162 196 Q 172 202 172 214 V 342 Q 172 364 150 364 H 28 Q 6 364 6 342 V 292 Q 6 280 16 274 L 66 248 Q 84 239 93 229 Q 99 222 93 214 Q 84 205 66 196 L 16 170 Q 6 164 6 152 V 28 Q 6 6 28 6 Z"
               stroke="currentColor"
-              strokeWidth="20"
-              strokeLinecap="round"
+              strokeWidth="4"
               strokeLinejoin="round"
-              className="text-primary origin-center"
+              className="text-primary"
               style={{
-                strokeDasharray: 110,
-                strokeDashoffset: 0,
-                animation: "drawIFlow 2s ease-in-out infinite alternate"
+                strokeDasharray: 2500,
+                strokeDashoffset: 2500,
+                animation: "drawIFlow 3s ease-in-out infinite"
               }}
-            />
-            
-            {/* Orbiting dot */}
-            <circle
-              cx="50"
-              cy="6"
-              r="4"
-              fill="currentColor"
-              className="text-primary origin-center animate-[spin_2s_linear_infinite]"
             />
           </svg>
           
           {/* Inline keyframes specifically for this component */}
           <style>{`
             @keyframes drawIFlow {
-              0% { stroke-dashoffset: 110; }
-              40% { stroke-dashoffset: 0; }
-              100% { stroke-dashoffset: 0; }
+              0% { stroke-dashoffset: 2500; fill: transparent; }
+              40% { stroke-dashoffset: 0; fill: transparent; }
+              80% { stroke-dashoffset: 0; fill: currentColor; }
+              100% { stroke-dashoffset: 0; fill: currentColor; }
             }
           `}</style>
         </div>
