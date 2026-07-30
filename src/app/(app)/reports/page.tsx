@@ -54,6 +54,8 @@ export default async function ReportsPage({
     completedInRange,
     overdueTickets,
     completedTickets,
+    activeTickets,
+    expenses
   ] = await Promise.all([
     prisma.ticket.count({
       where: { ...baseFilter, createdAt: { gte: startDate } },
@@ -73,7 +75,6 @@ export default async function ReportsPage({
       orderBy: { dueDate: "asc" },
       take: 50,
     }),
-    // Tickets with completion time and due dates for productivity stats
     prisma.ticket.findMany({
       where: {
         ...baseFilter,
@@ -81,6 +82,21 @@ export default async function ReportsPage({
         assigneeId: { not: null }
       },
       select: { createdAt: true, completedAt: true, dueDate: true, assigneeId: true },
+    }),
+    // Active tickets for Workload Distribution
+    prisma.ticket.findMany({
+      where: {
+        ...baseFilter,
+        completedAt: null,
+        assigneeId: { not: null }
+      },
+      select: { assigneeId: true }
+    }),
+    // Expenses for Budget Burn Rate
+    prisma.expense.findMany({
+      where: { date: { gte: startDate } },
+      select: { amount: true, date: true },
+      orderBy: { date: "asc" }
     })
   ]);
 
@@ -95,36 +111,56 @@ export default async function ReportsPage({
     avgCycleTime = avgDays.toFixed(1) + "d";
   }
 
-  // Generate chart data: for each interval, for each user, what is their productivity score?
-  // Productivity Score = (On Time / Total) * 100
-  // If total is 0, score is null or 0. Let's do % of completed tasks.
-  const chartData = [];
-  
+  // Generate chart data: Team Velocity (Bar Chart)
+  const velocityData = [];
   for (let i = 0; i < intervals; i++) {
     const intStart = new Date(startDate.getTime() + (i * intervalMs));
     const intEnd = new Date(startDate.getTime() + ((i + 1) * intervalMs));
     const label = `${intervalLabel} ${i + 1}`;
     
     const intervalData: any = { name: label };
-    
     users.forEach(u => {
       const userTickets = completedTickets.filter(t => 
-        t.assigneeId === u.id && 
-        t.completedAt! >= intStart && 
-        t.completedAt! < intEnd
+        t.assigneeId === u.id && t.completedAt! >= intStart && t.completedAt! < intEnd
       );
-      
       intervalData[u.displayName] = userTickets.length;
     });
+    velocityData.push(intervalData);
+  }
+
+  // Generate chart data: Workload Distribution (Pie Chart)
+  const workloadData = users.map(u => ({
+    name: u.displayName,
+    value: activeTickets.filter(t => t.assigneeId === u.id).length,
+    fill: u.avatarColor
+  })).filter(d => d.value > 0);
+
+  // Generate chart data: Budget Burn Rate (Area Chart)
+  const budgetData = [];
+  let cumulativeBudget = 0;
+  for (let i = 0; i < intervals; i++) {
+    const intStart = new Date(startDate.getTime() + (i * intervalMs));
+    const intEnd = new Date(startDate.getTime() + ((i + 1) * intervalMs));
+    const label = `${intervalLabel} ${i + 1}`;
     
-    chartData.push(intervalData);
+    // Find expenses in this interval
+    const intervalExpenses = expenses.filter(e => e.date >= intStart && e.date < intEnd);
+    const intervalSpend = intervalExpenses.reduce((sum, e) => sum + e.amount, 0);
+    cumulativeBudget += intervalSpend;
+    
+    budgetData.push({
+      name: label,
+      spend: cumulativeBudget
+    });
   }
 
   return (
     <ReportsClient
       stats={{ createdCount, completedInRange, overdueCount: overdueTickets.length, avgCycleTime }}
       overdueTickets={overdueTickets}
-      chartData={chartData}
+      velocityData={velocityData}
+      workloadData={workloadData}
+      budgetData={budgetData}
       users={users}
       currentRange={range}
     />

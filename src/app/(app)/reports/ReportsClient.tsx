@@ -2,8 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -25,7 +30,9 @@ interface ReportsClientProps {
   overdueTickets: (Ticket & {
     assignee: Pick<User, "id" | "displayName" | "avatarColor"> | null;
   })[];
-  chartData: any[];
+  velocityData: any[];
+  workloadData: any[];
+  budgetData: any[];
   users: Pick<User, "id" | "displayName" | "avatarColor">[];
   currentRange: string;
 }
@@ -33,7 +40,9 @@ interface ReportsClientProps {
 export function ReportsClient({
   stats,
   overdueTickets,
-  chartData,
+  velocityData,
+  workloadData,
+  budgetData,
   users,
   currentRange,
 }: ReportsClientProps) {
@@ -138,85 +147,169 @@ export function ReportsClient({
         ))}
       </div>
 
-      {/* Productivity chart */}
+      {/* --- CHARTS GRID --- */}
+      
+      {/* 1. Team Velocity (Full Width Stacked Bar) */}
       <div className="rounded-3xl p-6 mb-6 bg-surface-elevated border border-surface-border shadow-sm">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-[15px] font-bold text-foreground tracking-tight">Completed Tickets per User</h2>
+          <div>
+            <h2 className="text-lg font-bold text-foreground tracking-tight mb-1">Team Velocity</h2>
+            <p className="text-sm text-muted-foreground">Tickets completed per interval</p>
+          </div>
           <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-surface-border bg-surface-base text-foreground text-[12px] font-bold hover:border-primary/50 transition-colors">
             {currentRange === "week" ? "Last 7 Days" : "Last 4 Weeks"}
             <ChevronDown size={14} className="text-muted-foreground ml-1" />
           </button>
         </div>
         
-        {/* Custom Legend */}
-        <div className="flex items-center flex-wrap gap-6 mb-8 px-4">
-          {users.map((u) => (
-            <div key={u.id} className="flex items-center gap-2">
-              <div 
-                className="w-2 h-2 rounded-full ring-2 ring-offset-2 ring-offset-surface-elevated"
-                style={{ backgroundColor: u.avatarColor, "--tw-ring-color": u.avatarColor } as React.CSSProperties}
-              />
-              <span 
-                className="text-[13px] font-bold"
-                style={{ color: u.avatarColor }}
-              >
-                {u.displayName}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {chartData.length === 0 ? (
+        {velocityData.length === 0 ? (
           <div className="flex items-center justify-center h-64 text-muted-foreground text-sm font-medium">
             No productivity data available
           </div>
         ) : (
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 30, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2d3748" vertical={false} opacity={0.4} />
+              <BarChart data={velocityData} margin={{ top: 10, right: 30, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--surface-border))" vertical={false} opacity={0.4} />
                 <XAxis 
                   dataKey="name" 
-                  tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 600 }} 
-                  axisLine={{ stroke: "#2d3748" }} 
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11, fontWeight: 600 }} 
+                  axisLine={{ stroke: "hsl(var(--surface-border))" }} 
                   tickLine={false} 
                   tickMargin={16} 
                 />
                 <YAxis 
                   allowDecimals={false} 
-                  domain={[0, 'auto']} 
-                  tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 600 }} 
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11, fontWeight: 600 }} 
                   axisLine={false} 
                   tickLine={false} 
                   tickMargin={16} 
                 />
                 <Tooltip
+                  cursor={{ fill: 'hsl(var(--surface-base))', opacity: 0.4 }}
                   contentStyle={{ 
-                    background: "#1e293b", 
-                    border: "1px solid #334155", 
+                    background: "hsl(var(--surface-elevated))", 
+                    border: "1px solid hsl(var(--surface-border))", 
                     borderRadius: "12px", 
-                    color: "#f8fafc", 
+                    color: "hsl(var(--foreground))", 
                     boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
                     fontSize: "13px",
                     fontWeight: 600
                   }}
-                  itemStyle={{ fontWeight: 600 }}
                 />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: "20px", fontSize: "12px", fontWeight: 600 }} />
                 {users.map((u) => (
-                  <Line 
+                  <Bar 
                     key={u.id} 
-                    type="monotone" 
                     dataKey={u.displayName} 
-                    stroke={u.avatarColor} 
-                    strokeWidth={3} 
-                    dot={{ r: 4, strokeWidth: 2, fill: "#0f172a", stroke: u.avatarColor }} 
-                    activeDot={{ r: 6, strokeWidth: 0, fill: u.avatarColor }} 
+                    stackId="a" 
+                    fill={u.avatarColor}
+                    radius={[0, 0, 0, 0]} 
                   />
                 ))}
-              </LineChart>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         )}
+      </div>
+
+      {/* 2. Side-by-Side Charts (Workload & Budget) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        
+        {/* Workload Distribution (Pie Chart) */}
+        <div className="rounded-3xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex flex-col">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-foreground tracking-tight mb-1">Workload Distribution</h2>
+            <p className="text-sm text-muted-foreground">Active tickets currently assigned</p>
+          </div>
+          <div className="h-[280px] w-full flex-grow flex items-center justify-center">
+            {workloadData.length === 0 ? (
+              <div className="text-muted-foreground text-sm font-medium">No active assigned tickets</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={workloadData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {workloadData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ 
+                      background: "hsl(var(--surface-elevated))", 
+                      border: "1px solid hsl(var(--surface-border))", 
+                      borderRadius: "12px", 
+                      color: "hsl(var(--foreground))",
+                      fontWeight: 600
+                    }}
+                    itemStyle={{ fontWeight: 600, color: "hsl(var(--foreground))" }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", fontWeight: 600 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Budget Burn Rate (Area Chart) */}
+        <div className="rounded-3xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex flex-col">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-foreground tracking-tight mb-1">Budget Burn Rate</h2>
+            <p className="text-sm text-muted-foreground">Cumulative expenses over time</p>
+          </div>
+          <div className="h-[280px] w-full flex-grow">
+            {budgetData.length === 0 || budgetData[budgetData.length - 1].spend === 0 ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm font-medium">
+                No expenses logged in this period
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={budgetData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--surface-border))" vertical={false} opacity={0.4} />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11, fontWeight: 600 }} 
+                    axisLine={{ stroke: "hsl(var(--surface-border))" }} 
+                    tickLine={false} 
+                    tickMargin={12} 
+                  />
+                  <YAxis 
+                    tickFormatter={(val) => `₹${val}`}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11, fontWeight: 600 }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickMargin={12} 
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [`₹${value.toLocaleString()}`, "Total Spent"]}
+                    contentStyle={{ 
+                      background: "hsl(var(--surface-elevated))", 
+                      border: "1px solid hsl(var(--surface-border))", 
+                      borderRadius: "12px", 
+                      color: "hsl(var(--foreground))",
+                      fontWeight: 600
+                    }}
+                  />
+                  <Area type="monotone" dataKey="spend" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorSpend)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Overdue tickets */}
