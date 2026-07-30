@@ -270,10 +270,10 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
             href="https://imaginumorg.vercel.app/"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center transition-transform hover:scale-105 rounded-lg p-1"
+            className="flex items-center transition-transform hover:scale-105 p-1"
             title="Visit Imaginum"
           >
-            <img src="/imaginum_logo.png" alt="Imaginum" className="h-7 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity" />
+            <img src="/imaginum_logo.png" alt="Imaginum" className="h-7 w-7 rounded-full object-cover opacity-80 hover:opacity-100 transition-opacity" />
           </a>
           <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mr-2 select-none">V2.1</span>
         </div>
