@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createExpense, deleteExpense } from "@/server/actions/expense.actions";
+import { createExpense, deleteExpense, toggleSplitPaid } from "@/server/actions/expense.actions";
 import type { Expense, ExpenseSplit, User } from "@prisma/client";
-import { Loader2, Plus, Trash2, Users, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Plus, Trash2, Users, ChevronDown, ChevronUp, CheckSquare, Square, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/shared";
 
@@ -36,6 +36,10 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
 
   const canEdit = currentUserRole === "ADMIN" || currentUserRole === "MANAGER";
   const teamMembers = allUsers.filter((u) => u.role !== "ADMIN");
+  // Set default payer to first team member if current user is admin
+  if (payerId === currentUserId && currentUserRole === "ADMIN" && teamMembers.length > 0) {
+    setPayerId(teamMembers[0].id);
+  }
 
   const handleToggleInvolved = (userId: string) => {
     setInvolvedUserIds((prev) => {
@@ -99,7 +103,29 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
     setIsDeleting(null);
   };
 
+  const handleTogglePaid = async (splitId: string, currentStatus: boolean) => {
+    // Optimistic update
+    setLocalExpenses(prev => prev.map(expense => {
+      const splitIndex = expense.splits.findIndex(s => s.id === splitId);
+      if (splitIndex !== -1) {
+        const newSplits = [...expense.splits];
+        newSplits[splitIndex] = { ...newSplits[splitIndex], isPaid: !currentStatus };
+        return { ...expense, splits: newSplits };
+      }
+      return expense;
+    }));
+
+    const result = await toggleSplitPaid({ splitId, isPaid: !currentStatus });
+    if (!result.success) {
+      toast.error(result.error);
+      // Revert if failed
+      setLocalExpenses(localExpenses);
+    }
+  };
+
   // Calculate totals
+  const totalProjectSpend = localExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+
   const totals: Record<string, number> = {};
   teamMembers.forEach((m) => {
     totals[m.id] = 0;
@@ -107,7 +133,7 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
 
   localExpenses.forEach((expense) => {
     expense.splits.forEach((split) => {
-      if (totals[split.userId] !== undefined) {
+      if (totals[split.userId] !== undefined && !split.isPaid) {
         totals[split.userId] += split.amountOwed;
       }
     });
@@ -115,6 +141,19 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
+      {/* Total Spend Header */}
+      <div className="bg-surface-elevated rounded-3xl p-6 border border-surface-border shadow-sm flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-500">
+            <IndianRupee size={28} strokeWidth={2} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-text-secondary mb-0.5">Total Project Spend</p>
+            <h2 className="text-3xl font-bold text-text-primary tracking-tight">₹{totalProjectSpend.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+          </div>
+        </div>
+      </div>
+
       {canEdit && (
         <div className="bg-surface-elevated rounded-3xl border border-surface-border shadow-sm overflow-hidden transition-all duration-300">
           <button 
@@ -171,7 +210,7 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
                 onChange={(e) => setPayerId(e.target.value)}
                 className="w-full md:w-1/4 px-3 py-2 rounded-xl bg-surface-base border border-surface-border text-sm outline-none focus:border-primary transition-colors"
               >
-                {allUsers.map((u) => (
+                {teamMembers.map((u) => (
                   <option key={u.id} value={u.id} style={{ background: "hsl(var(--surface-base))" }}>
                     {u.displayName}
                   </option>
@@ -272,7 +311,19 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
                       return (
                         <td key={m.id} className="px-5 py-3">
                           {split ? (
-                            <span className="font-mono text-text-primary font-medium">₹{split.amountOwed.toFixed(2)}</span>
+                            <div className="flex items-center gap-2 group/split">
+                              <button
+                                onClick={() => handleTogglePaid(split.id, split.isPaid)}
+                                disabled={!canEdit}
+                                className={`flex-shrink-0 ${canEdit ? 'cursor-pointer' : 'cursor-default opacity-70'} ${split.isPaid ? 'text-emerald-500' : 'text-surface-border hover:text-text-secondary transition-colors'}`}
+                                aria-label={split.isPaid ? "Mark as unpaid" : "Mark as paid"}
+                              >
+                                {split.isPaid ? <CheckSquare size={16} /> : <Square size={16} />}
+                              </button>
+                              <span className={`font-mono font-medium transition-all ${split.isPaid ? 'text-text-secondary/50 line-through' : 'text-text-primary'}`}>
+                                ₹{split.amountOwed.toFixed(2)}
+                              </span>
+                            </div>
                           ) : (
                             <span className="text-text-secondary/50">-</span>
                           )}

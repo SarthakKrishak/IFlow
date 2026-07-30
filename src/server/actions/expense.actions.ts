@@ -95,3 +95,26 @@ export async function deleteExpense(input: { expenseId: string }): Promise<Resul
     return { success: false, error: "Failed to delete expense" };
   }
 }
+
+export async function toggleSplitPaid(input: { splitId: string; isPaid: boolean }): Promise<Result<void>> {
+  try {
+    const session = await getSession();
+    
+    // Only Admin or Manager can mark splits as paid
+    if (session.user.role !== Role.ADMIN && session.user.role !== Role.MANAGER) {
+      return { success: false, error: "Only admins or managers can update payment status" };
+    }
+
+    if (!input.splitId) return { success: false, error: "Split ID required" };
+
+    await prisma.expenseSplit.update({
+      where: { id: input.splitId },
+      data: { isPaid: input.isPaid }
+    });
+
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error("toggleSplitPaid error:", error);
+    return { success: false, error: "Failed to update payment status" };
+  }
+}

@@ -226,6 +226,7 @@ model ExpenseSplit {
   userId      String
   user        User     @relation("UserExpenseSplit", fields: [userId], references: [id])
   amountOwed  Float
+  isPaid      Boolean  @default(false)
 
   @@unique([expenseId, userId])
   @@index([expenseId])
