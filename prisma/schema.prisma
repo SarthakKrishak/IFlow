@@ -65,6 +65,8 @@ model User {
   createdEnvironments  Environment[] @relation("EnvironmentCreator")
   accessibleEnvironments Environment[] @relation("EnvironmentAccess")
   writableEnvironments   Environment[] @relation("EnvironmentWriteAccess")
+  paidExpenses           Expense[]     @relation("ExpensePayer")
+  expenseSplits          ExpenseSplit[] @relation("UserExpenseSplit")
 
   @@index([department])
 }
@@ -201,4 +203,31 @@ model EnvironmentVariable {
 
   @@unique([environmentId, key])
   @@index([environmentId])
+}
+
+model Expense {
+  id          String         @id @default(cuid())
+  name        String
+  amount      Float
+  date        DateTime
+  payerId     String
+  payer       User           @relation("ExpensePayer", fields: [payerId], references: [id])
+  createdAt   DateTime       @default(now())
+
+  splits      ExpenseSplit[]
+
+  @@index([payerId])
+}
+
+model ExpenseSplit {
+  id          String   @id @default(cuid())
+  expenseId   String
+  expense     Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation("UserExpenseSplit", fields: [userId], references: [id])
+  amountOwed  Float
+
+  @@unique([expenseId, userId])
+  @@index([expenseId])
+  @@index([userId])
 }
