@@ -76,7 +76,7 @@ export function TicketCard({ ticket, isDragging = false, isSaving = false }: Tic
           setOpenTicketId(ticket.id);
         }
       }}
-      className="cursor-pointer rounded-2xl p-3.5 transition-all select-none relative group overflow-hidden shadow-sm flex flex-col gap-2"
+      className="shrink-0 cursor-pointer rounded-2xl p-3.5 transition-all select-none relative group overflow-hidden shadow-sm flex flex-col gap-2"
       style={{
         ...style,
         background: "hsl(var(--surface-elevated))",
