@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createExpense, deleteExpense, toggleSplitPaid } from "@/server/actions/expense.actions";
 import type { Expense, ExpenseSplit, User } from "@prisma/client";
-import { Loader2, Plus, Trash2, Users, ChevronDown, ChevronUp, CheckSquare, Square, IndianRupee } from "lucide-react";
+import { Loader2, Plus, Trash2, Users, ChevronDown, ChevronUp, CheckSquare, Square, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/shared";
 
@@ -142,14 +142,18 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
       {/* Total Spend Header */}
-      <div className="bg-surface-elevated rounded-3xl p-6 border border-surface-border shadow-sm flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-500">
-            <IndianRupee size={28} strokeWidth={2} />
+      <div className="bg-gradient-to-br from-surface-elevated to-surface-base rounded-3xl p-8 border border-surface-border shadow-sm flex items-center justify-between relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none transition-transform group-hover:scale-110 duration-700"></div>
+        
+        <div className="flex items-center gap-5 relative z-10">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary shadow-inner">
+            <Wallet size={32} strokeWidth={1.5} />
           </div>
           <div>
-            <p className="text-sm font-medium text-text-secondary mb-0.5">Total Project Spend</p>
-            <h2 className="text-3xl font-bold text-text-primary tracking-tight">₹{totalProjectSpend.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+            <p className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1">Total Project Spend</p>
+            <h2 className="text-4xl font-extrabold text-text-primary tracking-tight">
+              ₹{totalProjectSpend.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h2>
           </div>
         </div>
       </div>
@@ -347,14 +351,18 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
             </tbody>
             {/* Footer with totals */}
             {localExpenses.length > 0 && (
-              <tfoot className="bg-surface-base border-t-2 border-surface-border">
+              <tfoot className="bg-surface-base/80 border-t-2 border-surface-border backdrop-blur-sm">
                 <tr>
-                  <td colSpan={3} className="px-5 py-4 text-right font-semibold text-text-primary uppercase tracking-wider text-xs">
+                  <td colSpan={3} className="px-5 py-5 text-right font-bold text-text-secondary uppercase tracking-wider text-xs">
                     Total Amount Owed:
                   </td>
                   {teamMembers.map((m) => (
-                    <td key={m.id} className="px-5 py-4 font-mono font-bold text-primary">
-                      ₹{totals[m.id].toFixed(2)}
+                    <td key={m.id} className="px-5 py-5">
+                      <div className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                        <span className="font-bold text-base text-primary tracking-tight">
+                          ₹{totals[m.id].toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </td>
                   ))}
                   {canEdit && <td></td>}
