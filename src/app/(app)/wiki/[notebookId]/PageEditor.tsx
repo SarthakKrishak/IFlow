@@ -6,7 +6,7 @@ import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import Placeholder from "@tiptap/extension-placeholder";
 import * as Y from "yjs";
-import SupabaseProvider from "y-supabase";
+import { SupabaseProvider } from "@/lib/y-supabase-custom";
 import { useEffect, useState } from "react";
 
 import { Trash2 } from "lucide-react";

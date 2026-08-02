@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import * as Y from "yjs";
-import SupabaseProvider from "y-supabase";
+import { SupabaseProvider } from "@/lib/y-supabase-custom";
 import { createClient } from "@supabase/supabase-js";
 import { updateNotebookContent } from "@/server/actions/wiki.actions";
 import Toolbar from "./Toolbar";
@@ -78,10 +78,6 @@ export default function WikiEditor({
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const provider = new SupabaseProvider(doc, supabase, {
       channel: `wiki-notebook-${notebookId}`,
-      id: notebookId,
-      tableName: "realtime_doc_store",
-      columnName: "doc",
-      resyncInterval: 0,
     });
 
     setSetup({ doc, provider });
