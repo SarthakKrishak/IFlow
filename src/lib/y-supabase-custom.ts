@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { awarenessProtocol } from 'y-protocols/awareness';
+import * as awarenessProtocol from 'y-protocols/awareness';
 import { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
 
 export class SupabaseProvider {
