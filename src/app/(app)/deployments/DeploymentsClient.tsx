@@ -127,17 +127,7 @@ export function DeploymentsClient() {
               <span className="text-[13px] text-muted-foreground font-medium">Commit Message</span>
               <span className="text-[14px] font-semibold text-foreground max-w-[250px] truncate text-right">{health?.frontend?.commitMessage || '—'}</span>
             </div>
-            <div className="flex justify-between items-center py-3">
-              <span className="text-[13px] text-muted-foreground font-medium">Live URL</span>
-              {health?.frontend?.url ? (
-                <a href={health.frontend.url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-[#5B5FEF] hover:underline flex items-center gap-1">
-                  {health.frontend.url.replace('https://', '')}
-                  <ExternalLink size={14} />
-                </a>
-              ) : (
-                <span className="text-[14px] font-semibold text-foreground">—</span>
-              )}
-            </div>
+
           </div>
           
           <div className="mt-8 flex gap-3">
@@ -187,17 +177,7 @@ export function DeploymentsClient() {
               <span className="text-[13px] text-muted-foreground font-medium">Commit Message</span>
               <span className="text-[14px] font-semibold text-foreground max-w-[250px] truncate text-right">{health?.backend?.commitMessage || '—'}</span>
             </div>
-            <div className="flex justify-between items-center py-3">
-              <span className="text-[13px] text-muted-foreground font-medium">Live URL</span>
-              {health?.backend?.url ? (
-                <a href={health.backend.url} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-purple-500 hover:underline flex items-center gap-1">
-                  {health.backend.url.replace('https://', '')}
-                  <ExternalLink size={14} />
-                </a>
-              ) : (
-                <span className="text-[14px] font-semibold text-foreground">—</span>
-              )}
-            </div>
+
           </div>
           
           <div className="mt-8 flex gap-3">

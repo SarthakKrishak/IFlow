@@ -129,11 +129,6 @@ export function DeploymentIndicator() {
                     <span className={`text-[10px] font-bold uppercase ${getStatusColor(health?.frontend?.status).replace('bg-', 'text-')}`}>
                       {getStatusText(health?.frontend?.status)}
                     </span>
-                    {health?.frontend?.url && (
-                      <a href={health.frontend.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                        <ExternalLink size={12} />
-                      </a>
-                    )}
                   </div>
                 </div>
               </div>
@@ -158,11 +153,6 @@ export function DeploymentIndicator() {
                     <span className={`text-[10px] font-bold uppercase ${getStatusColor(health?.backend?.status).replace('bg-', 'text-')}`}>
                       {getStatusText(health?.backend?.status)}
                     </span>
-                    {health?.backend?.url && (
-                      <a href={health.backend.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                        <ExternalLink size={12} />
-                      </a>
-                    )}
                   </div>
                 </div>
               </div>

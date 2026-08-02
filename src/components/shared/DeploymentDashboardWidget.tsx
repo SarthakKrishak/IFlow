@@ -91,11 +91,6 @@ export function DeploymentDashboardWidget() {
             <p className="text-[12px] font-medium text-foreground line-clamp-1 mb-1">{health?.frontend?.commitMessage}</p>
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-muted-foreground">by {health?.frontend?.authorName}</span>
-              {health?.frontend?.url && (
-                <a href={health.frontend.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                  <ExternalLink size={12} />
-                </a>
-              )}
             </div>
           </div>
         </div>
@@ -125,11 +120,6 @@ export function DeploymentDashboardWidget() {
             <p className="text-[12px] font-medium text-foreground line-clamp-1 mb-1">{health?.backend?.commitMessage}</p>
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-muted-foreground">by {health?.backend?.authorName}</span>
-              {health?.backend?.url && (
-                <a href={health.backend.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                  <ExternalLink size={12} />
-                </a>
-              )}
             </div>
           </div>
         </div>
