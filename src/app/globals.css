@@ -31,6 +31,7 @@
     --surface-border: 240 5.9% 90%;
     --text-primary: 240 10% 3.9%;
     --text-secondary: 240 3.8% 46.1%;
+    --editor-text: #000000;
   }
 
   .dark {
@@ -60,6 +61,7 @@
     --surface-border: 0 0% 14.9%;
     --text-primary: 0 0% 95%;
     --text-secondary: 0 0% 63.9%;
+    --editor-text: #ffffff;
   }
 
   .ocean {
@@ -89,6 +91,7 @@
     --surface-border: 217.2 32.6% 20%;
     --text-primary: 210 40% 98%;
     --text-secondary: 215 20.2% 65.1%;
+    --editor-text: #ffffff;
   }
 
   .forest {
@@ -118,6 +121,7 @@
     --surface-border: 160 12% 18%;
     --text-primary: 150 15% 95%;
     --text-secondary: 150 10% 60%;
+    --editor-text: #ffffff;
   }
 
   .sunset {
@@ -147,6 +151,7 @@
     --surface-border: 240 21% 22%;
     --text-primary: 270 10% 95%;
     --text-secondary: 270 10% 70%;
+    --editor-text: #ffffff;
   }
 }
 
@@ -192,22 +197,28 @@
 @layer base {
   /* Override Tailwind Typography colors to use our CSS variables across all themes */
   .prose {
-    --tw-prose-body: hsl(var(--foreground));
-    --tw-prose-headings: hsl(var(--foreground));
+    --tw-prose-body: var(--editor-text);
+    --tw-prose-headings: var(--editor-text);
     --tw-prose-lead: hsl(var(--muted-foreground));
     --tw-prose-links: hsl(var(--primary));
-    --tw-prose-bold: hsl(var(--foreground));
-    --tw-prose-counters: hsl(var(--foreground));
-    --tw-prose-bullets: hsl(var(--foreground));
+    --tw-prose-bold: var(--editor-text);
+    --tw-prose-counters: var(--editor-text);
+    --tw-prose-bullets: var(--editor-text);
     --tw-prose-hr: hsl(var(--border));
     --tw-prose-quotes: hsl(var(--muted-foreground));
     --tw-prose-quote-borders: hsl(var(--border));
     --tw-prose-captions: hsl(var(--muted-foreground));
-    --tw-prose-code: hsl(var(--foreground));
-    --tw-prose-pre-code: hsl(var(--foreground));
+    --tw-prose-code: var(--editor-text);
+    --tw-prose-pre-code: var(--editor-text);
     --tw-prose-pre-bg: hsl(var(--surface-base));
     --tw-prose-th-borders: hsl(var(--border));
     --tw-prose-td-borders: hsl(var(--border));
+    
+    color: var(--editor-text) !important;
+  }
+  
+  .prose * {
+    color: inherit;
   }
 }
 
