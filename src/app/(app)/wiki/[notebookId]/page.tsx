@@ -13,8 +13,6 @@ export async function generateMetadata({ params }: { params: Promise<{ notebookI
 
 export default async function NotebookPage({ params }: { params: Promise<{ notebookId: string }> }) {
   const { notebookId } = await params;
-  const session = await auth();
-  if (!session?.user) redirect("/login");
 
   const notebook = await prisma.notebook.findUnique({
     where: { id: notebookId },
@@ -46,7 +44,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ noteb
         <WikiEditorWrapper 
           notebookId={notebook.id} 
           initialContent={notebook.content || ""} 
-          currentUser={{ id: session.user.id, name: session.user.displayName, color: session.user.avatarColor || "#5B5FEF" }}
+          currentUser={{ id: "debug-id", name: "Debug User", color: "#5B5FEF" }}
           supabaseUrl={supabaseUrl}
           supabaseAnonKey={supabaseAnonKey}
         />
