@@ -1,26 +1,67 @@
 import { ChevronLeft, ChevronRight, Plus, Search, Calendar as CalendarIcon, CheckSquare, Clock, MoreHorizontal } from "lucide-react";
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 
 export const metadata = {
   title: "Calendar — IFlow",
   description: "Manage your team's schedule and deadlines.",
 };
 
-// Mock data for the beautiful UI preview
-const mockEvents = [
-  { id: 1, title: "Sprint Planning", date: 12, color: "bg-blue-500/10 text-blue-400 border border-blue-500/20", time: "10:00 AM", duration: "1h" },
-  { id: 2, title: "Design Review", date: 12, color: "bg-purple-500/10 text-purple-400 border border-purple-500/20", time: "2:00 PM", duration: "1.5h" },
-  { id: 3, title: "Client Demo", date: 15, color: "bg-green-500/10 text-green-400 border border-green-500/20", time: "11:30 AM", duration: "45m" },
-  { id: 4, title: "Bug Bash", date: 18, color: "bg-red-500/10 text-red-400 border border-red-500/20", time: "All Day", duration: "" },
-  { id: 5, title: "Q3 Roadmap Update", date: 22, color: "bg-amber-500/10 text-amber-400 border border-amber-500/20", time: "3:00 PM", duration: "2h" },
-  { id: 6, title: "Team Lunch", date: 25, color: "bg-zinc-500/10 text-zinc-300 border border-zinc-500/20", time: "12:30 PM", duration: "1h" },
-  { id: 7, title: "Marketing Sync", date: 8, color: "bg-green-500/10 text-green-400 border border-green-500/20", time: "9:00 AM", duration: "30m" },
-  { id: 8, title: "Release v1.2", date: 28, color: "bg-blue-500/10 text-blue-400 border border-blue-500/20", time: "8:00 AM", duration: "1h" },
-];
+const departmentColors: Record<string, string> = {
+  ENGINEERING: "bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20",
+  DESIGN: "bg-purple-500/10 text-purple-500 dark:text-purple-400 border border-purple-500/20",
+  MARKETING: "bg-green-500/10 text-green-500 dark:text-green-400 border border-green-500/20",
+  PRODUCT: "bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20",
+  SALES: "bg-red-500/10 text-red-500 dark:text-red-400 border border-red-500/20",
+  HR: "bg-pink-500/10 text-pink-500 dark:text-pink-400 border border-pink-500/20",
+  LEGAL: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300 border border-zinc-500/20",
+};
 
-export default function CalendarPage() {
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ month?: string, year?: string }> }) {
+  const params = await searchParams;
+  const today = new Date();
+  
+  const month = params.month ? parseInt(params.month) : today.getMonth() + 1;
+  const year = params.year ? parseInt(params.year) : today.getFullYear();
+  
+  const currentMonthDate = new Date(year, month - 1, 1);
+  const nextMonthDate = new Date(year, month, 1);
+  const prevMonthDate = new Date(year, month - 2, 1);
+  
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const daysInMonth = 31;
-  const firstDayOfMonth = 3; // Wednesday (mocked for August 2026)
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstDayOfMonth = currentMonthDate.getDay();
+  
+  const monthName = currentMonthDate.toLocaleString('default', { month: 'long' });
+  const shortMonthName = currentMonthDate.toLocaleString('default', { month: 'short' });
+  
+  // Fetch tickets for this month
+  const tickets = await prisma.ticket.findMany({
+    where: {
+      dueDate: {
+        gte: new Date(year, month - 1, 1),
+        lt: new Date(year, month, 1),
+      }
+    },
+    select: {
+      id: true,
+      title: true,
+      dueDate: true,
+      department: true,
+    }
+  });
+
+  const calendarEvents = tickets.map(ticket => {
+    const date = ticket.dueDate!;
+    return {
+      id: ticket.id,
+      title: ticket.title,
+      date: date.getDate(),
+      color: departmentColors[ticket.department] || departmentColors.LEGAL,
+      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      duration: ""
+    }
+  });
   
   return (
     <div className="flex flex-col lg:flex-row h-full w-full bg-surface-base overflow-hidden text-sm animate-fade-in">
@@ -33,10 +74,10 @@ export default function CalendarPage() {
         
         <div className="mb-10">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-text-primary font-semibold text-base">August 2026</h3>
+            <h3 className="text-text-primary font-semibold text-base">{monthName} {year}</h3>
             <div className="flex gap-1">
-              <button className="p-1.5 hover:bg-surface-elevated rounded-lg text-muted-foreground hover:text-text-primary transition-colors"><ChevronLeft size={16} /></button>
-              <button className="p-1.5 hover:bg-surface-elevated rounded-lg text-muted-foreground hover:text-text-primary transition-colors"><ChevronRight size={16} /></button>
+              <Link href={`/calendar?month=${prevMonthDate.getMonth() + 1}&year=${prevMonthDate.getFullYear()}`} className="p-1.5 hover:bg-surface-elevated rounded-lg text-muted-foreground hover:text-text-primary transition-colors"><ChevronLeft size={16} /></Link>
+              <Link href={`/calendar?month=${nextMonthDate.getMonth() + 1}&year=${nextMonthDate.getFullYear()}`} className="p-1.5 hover:bg-surface-elevated rounded-lg text-muted-foreground hover:text-text-primary transition-colors"><ChevronRight size={16} /></Link>
             </div>
           </div>
           {/* Mini Calendar */}
@@ -49,7 +90,7 @@ export default function CalendarPage() {
             {Array.from({length: 35}).map((_, i) => {
               const date = i - firstDayOfMonth + 1;
               const isCurrentMonth = date > 0 && date <= daysInMonth;
-              const isToday = date === 12;
+              const isToday = date === today.getDate() && month === today.getMonth() + 1 && year === today.getFullYear();
               return (
                 <div key={i} className={`p-1.5 rounded-full flex items-center justify-center w-8 h-8 mx-auto ${
                   isToday 
@@ -58,7 +99,7 @@ export default function CalendarPage() {
                       ? 'text-text-primary hover:bg-surface-elevated cursor-pointer transition-colors' 
                       : 'text-muted-foreground/40'
                 }`}>
-                  {isCurrentMonth ? date : (date <= 0 ? 31 + date : date - daysInMonth)}
+                  {isCurrentMonth ? date : (date <= 0 ? new Date(year, month - 1, 0).getDate() + date : date - daysInMonth)}
                 </div>
               );
             })}
@@ -90,36 +131,26 @@ export default function CalendarPage() {
                 </div>
                 <span className="text-text-secondary group-hover:text-text-primary transition-colors">Marketing</span>
               </label>
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div className="w-4 h-4 rounded border border-amber-500/50 bg-amber-500/20 flex items-center justify-center transition-colors group-hover:border-amber-500">
-                  <CheckSquare size={12} className="text-amber-500" />
-                </div>
-                <span className="text-text-secondary group-hover:text-text-primary transition-colors">Personal</span>
-              </label>
             </div>
           </div>
           
           <div>
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Upcoming Schedule</h4>
             <div className="space-y-4">
-              <div className="flex gap-3 items-start p-3 rounded-xl hover:bg-surface-elevated transition-colors border border-transparent hover:border-surface-border cursor-pointer -mx-3">
-                <div className="w-2.5 h-2.5 mt-1.5 rounded-full bg-blue-500 shrink-0 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                <div>
-                  <div className="text-text-primary font-medium">Sprint Planning</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-                    <Clock size={12}/> Today, 10:00 AM (1h)
+              {calendarEvents.slice(0, 3).map(event => (
+                <div key={event.id} className="flex gap-3 items-start p-3 rounded-xl hover:bg-surface-elevated transition-colors border border-transparent hover:border-surface-border cursor-pointer -mx-3">
+                  <div className={`w-2.5 h-2.5 mt-1.5 rounded-full shrink-0 shadow-sm ${event.color.split(' ')[0].replace('/10', '')}`} />
+                  <div>
+                    <div className="text-text-primary font-medium">{event.title}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                      <Clock size={12}/> {event.date} {shortMonthName}, {event.time}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex gap-3 items-start p-3 rounded-xl hover:bg-surface-elevated transition-colors border border-transparent hover:border-surface-border cursor-pointer -mx-3">
-                <div className="w-2.5 h-2.5 mt-1.5 rounded-full bg-purple-500 shrink-0 shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
-                <div>
-                  <div className="text-text-primary font-medium">Design Review</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-                    <Clock size={12}/> Today, 2:00 PM (1.5h)
-                  </div>
-                </div>
-              </div>
+              ))}
+              {calendarEvents.length === 0 && (
+                <div className="text-sm text-muted-foreground py-2">No upcoming tickets this month.</div>
+              )}
             </div>
           </div>
         </div>
@@ -132,14 +163,14 @@ export default function CalendarPage() {
           <div className="flex items-center justify-between w-full md:w-auto gap-4 md:gap-6">
             <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight flex items-center gap-2 shrink-0">
               <CalendarIcon size={24} className="text-[#5B5FEF]" />
-              <span className="hidden sm:inline">August 2026</span>
-              <span className="sm:hidden">Aug '26</span>
+              <span className="hidden sm:inline">{monthName} {year}</span>
+              <span className="sm:hidden">{shortMonthName} '{year.toString().slice(2)}</span>
             </h1>
             <div className="flex items-center gap-1 bg-surface-elevated p-1 rounded-lg border border-surface-border shadow-sm shrink-0">
-              <button className="px-2 md:px-3 py-1.5 text-text-secondary hover:text-text-primary font-medium rounded-md hover:bg-surface-base transition-colors text-xs md:text-sm">Today</button>
+              <Link href={`/calendar`} className="px-2 md:px-3 py-1.5 text-text-secondary hover:text-text-primary font-medium rounded-md hover:bg-surface-base transition-colors text-xs md:text-sm">Today</Link>
               <div className="w-px h-4 bg-surface-border mx-1" />
-              <button className="p-1.5 text-text-secondary hover:text-text-primary rounded-md hover:bg-surface-base transition-colors"><ChevronLeft className="w-4 h-4 md:w-5 md:h-5" /></button>
-              <button className="p-1.5 text-text-secondary hover:text-text-primary rounded-md hover:bg-surface-base transition-colors"><ChevronRight className="w-4 h-4 md:w-5 md:h-5" /></button>
+              <Link href={`/calendar?month=${prevMonthDate.getMonth() + 1}&year=${prevMonthDate.getFullYear()}`} className="p-1.5 text-text-secondary hover:text-text-primary rounded-md hover:bg-surface-base transition-colors"><ChevronLeft className="w-4 h-4 md:w-5 md:h-5" /></Link>
+              <Link href={`/calendar?month=${nextMonthDate.getMonth() + 1}&year=${nextMonthDate.getFullYear()}`} className="p-1.5 text-text-secondary hover:text-text-primary rounded-md hover:bg-surface-base transition-colors"><ChevronRight className="w-4 h-4 md:w-5 md:h-5" /></Link>
             </div>
           </div>
           <div className="flex items-center gap-4 w-full md:w-auto">
@@ -181,8 +212,8 @@ export default function CalendarPage() {
             {Array.from({ length: 35 }).map((_, i) => {
               const date = i - firstDayOfMonth + 1;
               const isCurrentMonth = date > 0 && date <= daysInMonth;
-              const isToday = date === 12;
-              const cellEvents = mockEvents.filter(e => e.date === date && isCurrentMonth);
+              const isToday = date === today.getDate() && month === today.getMonth() + 1 && year === today.getFullYear();
+              const cellEvents = calendarEvents.filter(e => e.date === date && isCurrentMonth);
               
               return (
                 <div key={i} className={`bg-surface-base p-1 md:p-2.5 flex flex-col hover:bg-surface-elevated/50 transition-colors group relative overflow-hidden ${!isCurrentMonth ? 'bg-surface-base/50 text-muted-foreground/30' : 'text-text-secondary'}`}>
@@ -194,7 +225,7 @@ export default function CalendarPage() {
                           ? 'group-hover:text-text-primary'
                           : ''
                     }`}>
-                      {isCurrentMonth ? date : (date <= 0 ? 31 + date : date - daysInMonth)}
+                      {isCurrentMonth ? date : (date <= 0 ? new Date(year, month - 1, 0).getDate() + date : date - daysInMonth)}
                     </span>
                     {isCurrentMonth && (
                       <button className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-text-primary transition-all p-0.5 md:p-1 hover:bg-surface-border rounded-md hidden md:block">
@@ -204,53 +235,35 @@ export default function CalendarPage() {
                   </div>
                   
                   <div className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-0 md:pr-1 custom-scrollbar">
-                    {cellEvents.map(event => (
-                      <div 
+                    {cellEvents.slice(0, 3).map(event => (
+                      <Link 
+                        href={`/board/all?ticket=${event.id}`}
                         key={event.id} 
-                        className={`px-1.5 py-1 md:px-2 md:py-1.5 roundedmd md:rounded-lg text-[9px] md:text-xs font-medium cursor-pointer hover:shadow-md transition-all flex flex-col gap-0.5 relative overflow-hidden group/event ${event.color}`}
+                        className={`block px-1.5 py-1 md:px-2 md:py-1.5 roundedmd md:rounded-lg text-[9px] md:text-xs font-medium cursor-pointer hover:shadow-md transition-all flex flex-col gap-0.5 relative overflow-hidden group/event ${event.color}`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="truncate pr-0 md:pr-2 font-semibold">{event.title}</span>
                         </div>
                         <div className="text-[8px] md:text-[10.5px] opacity-80 font-medium flex items-center gap-1 hidden md:flex">
                           {event.time} 
-                          {event.duration && <span className="opacity-60">· {event.duration}</span>}
                         </div>
                         
                         {/* Hover Actions */}
                         <div className="absolute right-1 top-1.5 opacity-0 group-hover/event:opacity-100 transition-opacity bg-inherit pl-1 hidden md:block">
                           <MoreHorizontal size={14} className="opacity-70 hover:opacity-100" />
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                   
-                  {/* Subtle indicator for more events if they overflowed (mocked for visual) */}
-                  {date === 12 && (
+                  {cellEvents.length > 3 && (
                     <div className="mt-0.5 md:mt-1 text-[8px] md:text-[10px] text-muted-foreground font-medium text-center hover:text-text-primary cursor-pointer transition-colors">
-                      +2 more
+                      +{cellEvents.length - 3} more
                     </div>
                   )}
                 </div>
               );
             })}
-
-            {/* Coming Soon Overlay */}
-            <div className="absolute inset-0 bg-surface-base/40 backdrop-blur-[2px] flex items-center justify-center z-10 opacity-0 hover:opacity-100 transition-opacity duration-300">
-              <div className="bg-surface-elevated border border-surface-border shadow-2xl rounded-2xl p-4 md:p-6 text-center max-w-[280px] md:max-w-sm flex flex-col items-center transform scale-95 hover:scale-100 transition-transform duration-300 m-4">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#5B5FEF]/10 flex items-center justify-center mb-3 md:mb-4 ring-4 ring-[#5B5FEF]/5">
-                  <CalendarIcon className="text-[#5B5FEF] w-5 h-5 md:w-6 md:h-6" />
-                </div>
-                <h3 className="text-lg md:text-xl font-bold text-text-primary mb-2">Interactive Calendar</h3>
-                <p className="text-xs md:text-sm text-text-secondary mb-4 md:mb-5">
-                  The fully functional calendar view is coming in the next update. You'll be able to drag-and-drop events, sync with Google Calendar, and schedule team meetings.
-                </p>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#5B5FEF]/10 border border-[#5B5FEF]/20 text-[10px] md:text-xs font-semibold text-[#5B5FEF]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#5B5FEF] animate-pulse" />
-                  In Active Development
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
