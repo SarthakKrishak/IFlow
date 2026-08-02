@@ -41,10 +41,55 @@ export class SupabaseProvider {
       }
     });
 
+    // Handle Sync Protocol: Step 1 (Incoming Request for Missing Data)
+    this.channel.on('broadcast', { event: 'sync-step-1' }, ({ payload }) => {
+      if (payload && payload.stateVector) {
+        try {
+          const stateVector = new Uint8Array(payload.stateVector);
+          const update = Y.encodeStateAsUpdate(this.doc, stateVector);
+          this.channel.send({
+            type: 'broadcast',
+            event: 'sync-step-2',
+            payload: { update: Array.from(update) }
+          }).catch(() => {});
+        } catch (e) {
+          console.error("Yjs sync-step-1 error", e);
+        }
+      }
+    });
+
+    // Handle Sync Protocol: Step 2 (Incoming Missing Data)
+    this.channel.on('broadcast', { event: 'sync-step-2' }, ({ payload }) => {
+      if (payload && payload.update) {
+        try {
+          Y.applyUpdate(this.doc, new Uint8Array(payload.update), 'remote');
+        } catch (e) {
+          console.error("Yjs sync-step-2 error", e);
+        }
+      }
+    });
+
     // Subscribe to the channel
     this.channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
         this.emit('status', [{ status: 'connected' }]);
+        
+        // Initiate Sync Protocol
+        const stateVector = Y.encodeStateVector(this.doc);
+        this.channel.send({
+          type: 'broadcast',
+          event: 'sync-step-1',
+          payload: { stateVector: Array.from(stateVector) }
+        }).catch(() => {});
+        
+        // Broadcast our current awareness
+        const localAwareness = awarenessProtocol.encodeAwarenessUpdate(this.awareness, [this.awareness.clientID]);
+        this.channel.send({
+          type: 'broadcast',
+          event: 'awareness',
+          payload: { update: Array.from(localAwareness) }
+        }).catch(() => {});
+        
       } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
         this.emit('status', [{ status: 'disconnected', error: err }]);
       }
