@@ -1,4 +1,5 @@
 "use server";
+import { unstable_noStore as noStore } from "next/cache";
 
 export type DeploymentStatus = 'READY' | 'BUILDING' | 'ERROR' | 'QUEUED' | 'CANCELED';
 
@@ -39,6 +40,7 @@ const MOCK_DATA: DeploymentHealth = {
 };
 
 export async function getDeploymentStatuses(): Promise<DeploymentHealth> {
+  noStore();
   const vercelToken = process.env.VERCEL_TOKEN;
   const railwayToken = process.env.RAILWAY_TOKEN;
 
