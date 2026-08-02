@@ -57,7 +57,7 @@ export default function PageEditor({
     content: initialHtml, // Only used if no Yjs history exists
     editorProps: {
       attributes: {
-        class: "prose prose-sm sm:prose lg:prose-lg xl:prose-xl dark:prose-invert focus:outline-none max-w-none w-full min-h-[800px]",
+        class: "prose prose-sm sm:prose lg:prose-lg xl:prose-xl focus:outline-none max-w-none w-full min-h-[800px]",
       },
     },
     onUpdate: ({ editor }) => {
