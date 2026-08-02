@@ -27,7 +27,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ noteb
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
   const session = await auth();
-  const userName = session?.user?.name || "Anonymous";
+  const userName = session?.user?.displayName || session?.user?.username || "Anonymous";
   const userId = session?.user?.id || "anon";
   
   // Generate a distinct cursor color based on username
