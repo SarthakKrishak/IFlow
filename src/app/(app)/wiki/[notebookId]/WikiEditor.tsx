@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
-import Placeholder from "@tiptap/extension-placeholder";
+import { useEffect, useState, useRef, useCallback } from "react";
 import * as Y from "yjs";
 import SupabaseProvider from "y-supabase";
 import { createClient } from "@supabase/supabase-js";
 import { updateNotebookContent } from "@/server/actions/wiki.actions";
 import Toolbar from "./Toolbar";
+import PageEditor from "./PageEditor";
+import { Plus } from "lucide-react";
+import { type Editor } from "@tiptap/react";
 
 interface WikiEditorProps {
   notebookId: string;
@@ -29,8 +27,35 @@ export default function WikiEditor({
 }: WikiEditorProps) {
   const [status, setStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  
   const [setup, setSetup] = useState<{ doc: Y.Doc; provider: SupabaseProvider } | null>(null);
+  const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
+  
+  // pageCount state will be synchronized via Y.js
+  const [pageCount, setPageCount] = useState(1);
+  const [initialHtmlArray, setInitialHtmlArray] = useState<string[]>([]);
+  const latestHtmlRef = useRef<string[]>([]);
+
+  // Parse initial content
+  useEffect(() => {
+    try {
+      if (initialContent.trim().startsWith("[")) {
+        const parsed = JSON.parse(initialContent);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setInitialHtmlArray(parsed);
+          latestHtmlRef.current = parsed;
+          return;
+        }
+      }
+    } catch (e) {
+      // Not JSON, fallback
+    }
+    
+    // Fallback if not an array (e.g. legacy single page)
+    const fallback = [initialContent || ""];
+    setInitialHtmlArray(fallback);
+    latestHtmlRef.current = fallback;
+  }, [initialContent]);
 
   useEffect(() => {
     if (!supabaseUrl || !supabaseAnonKey || typeof window === "undefined") return;
@@ -47,47 +72,30 @@ export default function WikiEditor({
 
     setSetup({ doc, provider });
 
+    // Sync page count
+    const metadata = doc.getMap("metadata");
+    const syncPageCount = () => {
+      const count = metadata.get("pageCount") as number;
+      if (count && count > 0) {
+        setPageCount(count);
+      } else {
+        // Initialize if not set
+        const initCount = Math.max(1, latestHtmlRef.current.length);
+        metadata.set("pageCount", initCount);
+        setPageCount(initCount);
+      }
+    };
+
+    metadata.observe(syncPageCount);
+    // Call once initially
+    syncPageCount();
+
     return () => {
+      metadata.unobserve(syncPageCount);
       provider.destroy();
       doc.destroy();
     };
   }, [notebookId, supabaseUrl, supabaseAnonKey]);
-
-  const editor = useEditor({
-    extensions: [
-      (StarterKit as any).configure({
-        history: false,
-      }),
-      Placeholder.configure({
-        placeholder: "Start writing...",
-      }),
-      ...(setup ? [
-        Collaboration.configure({
-          document: setup.doc,
-        }),
-        CollaborationCursor.configure({
-          provider: setup.provider,
-          user: {
-            name: currentUser.name,
-            color: currentUser.color,
-          },
-        }),
-      ] : []),
-    ],
-    content: initialContent, // Only used if no Yjs history exists
-    editorProps: {
-      attributes: {
-        class: "prose prose-sm sm:prose lg:prose-lg xl:prose-xl focus:outline-none max-w-none w-full min-h-[500px]",
-      },
-    },
-    onUpdate: ({ editor }) => {
-      // Debounce saving the HTML to our Postgres DB
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(() => {
-        updateNotebookContent(notebookId, editor.getHTML());
-      }, 2000);
-    },
-  });
 
   useEffect(() => {
     if (!setup) return;
@@ -103,27 +111,72 @@ export default function WikiEditor({
     };
   }, [setup]);
 
+  const handleUpdate = useCallback((index: number, html: string) => {
+    // Update local ref array
+    const newHtmlArray = [...latestHtmlRef.current];
+    newHtmlArray[index] = html;
+    latestHtmlRef.current = newHtmlArray;
+
+    // Debounce saving the full JSON array to our Postgres DB
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      updateNotebookContent(notebookId, JSON.stringify(latestHtmlRef.current));
+    }, 2000);
+  }, [notebookId]);
+
+  const handleAddPage = () => {
+    if (!setup || pageCount >= 5) return;
+    const metadata = setup.doc.getMap("metadata");
+    metadata.set("pageCount", pageCount + 1);
+  };
+
   if (!supabaseUrl || !supabaseAnonKey) {
     return <div className="p-8 text-red-500">Missing Supabase credentials in environment.</div>;
   }
 
   return (
-    <div className="h-full flex flex-col relative bg-[#f3f4f6] dark:bg-[#1f2023]">
+    <div className="h-full flex flex-col relative bg-surface-base">
       <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8 custom-scrollbar">
-        {editor && <Toolbar editor={editor} />}
+        {activeEditor && <Toolbar editor={activeEditor} />}
         
-        <div className="max-w-4xl mx-auto pb-32">
-          {editor ? (
-            <div className="bg-white dark:bg-[#2b2c31] shadow-md rounded-xl p-8 sm:p-12 md:p-16 min-h-[800px] border border-black/5 dark:border-white/5 transition-all">
-              <EditorContent editor={editor} />
-            </div>
+        <div className="flex flex-col pb-32 items-center">
+          {setup ? (
+            Array.from({ length: pageCount }).map((_, i) => (
+              <PageEditor
+                key={`page-${i}`}
+                pageIndex={i}
+                doc={setup.doc}
+                provider={setup.provider}
+                currentUser={currentUser}
+                initialHtml={initialHtmlArray[i] || ""}
+                onUpdate={handleUpdate}
+                onFocus={setActiveEditor}
+              />
+            ))
           ) : (
-            <div className="bg-white dark:bg-[#2b2c31] shadow-md rounded-xl p-8 sm:p-12 md:p-16 min-h-[800px] border border-black/5 dark:border-white/5 animate-pulse flex flex-col gap-4">
-              <div className="h-10 bg-surface-elevated rounded w-1/3"></div>
-              <div className="h-4 bg-surface-elevated rounded w-full"></div>
-              <div className="h-4 bg-surface-elevated rounded w-5/6"></div>
-              <div className="h-4 bg-surface-elevated rounded w-4/6"></div>
+            // Loading skeleton
+            <div className="bg-surface-elevated shadow-md rounded-xl p-8 sm:p-12 md:p-16 min-h-[800px] border border-surface-border animate-pulse flex flex-col gap-4 w-full max-w-4xl mx-auto">
+              <div className="h-10 bg-surface-base rounded w-1/3"></div>
+              <div className="h-4 bg-surface-base rounded w-full"></div>
+              <div className="h-4 bg-surface-base rounded w-5/6"></div>
+              <div className="h-4 bg-surface-base rounded w-4/6"></div>
             </div>
+          )}
+
+          {/* Add Page Button */}
+          {setup && (
+            <button
+              onClick={handleAddPage}
+              disabled={pageCount >= 5}
+              className={`mt-4 flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-dashed border-surface-border font-medium transition-all w-full max-w-4xl ${
+                pageCount >= 5 
+                  ? "text-muted-foreground opacity-50 cursor-not-allowed" 
+                  : "text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 bg-surface-elevated"
+              }`}
+            >
+              <Plus size={18} />
+              {pageCount >= 5 ? "Maximum of 5 pages reached" : "Add Page"}
+            </button>
           )}
         </div>
       </div>
