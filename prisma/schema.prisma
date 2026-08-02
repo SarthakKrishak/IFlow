@@ -238,6 +238,7 @@ model ExpenseSplit {
 model Notebook {
   id          String   @id @default(cuid())
   title       String
+  content     String?  @db.Text
   projectId   String
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdById String
@@ -245,19 +246,5 @@ model Notebook {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  pages       Page[]
-
   @@index([projectId])
-}
-
-model Page {
-  id          String   @id @default(cuid())
-  title       String
-  content     String?  @db.Text
-  notebookId  String
-  notebook    Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([notebookId])
 }

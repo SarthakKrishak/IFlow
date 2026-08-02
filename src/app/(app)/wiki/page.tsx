@@ -19,7 +19,6 @@ export default async function WikiPage() {
   const notebooks = await prisma.notebook.findMany({
     where: { projectId },
     include: {
-      _count: { select: { pages: true } },
       createdBy: { select: { displayName: true } },
     },
     orderBy: { updatedAt: "desc" },

@@ -9,10 +9,10 @@ import Placeholder from "@tiptap/extension-placeholder";
 import * as Y from "yjs";
 import SupabaseProvider from "y-supabase";
 import { createClient } from "@supabase/supabase-js";
-import { updatePageContent } from "@/server/actions/wiki.actions";
+import { updateNotebookContent } from "@/server/actions/wiki.actions";
 
 interface WikiEditorProps {
-  pageId: string;
+  notebookId: string;
   initialContent: string;
   currentUser: { id: string; name: string; color: string };
   supabaseUrl: string;
@@ -20,7 +20,7 @@ interface WikiEditorProps {
 }
 
 export default function WikiEditor({
-  pageId,
+  notebookId,
   initialContent,
   currentUser,
   supabaseUrl,
@@ -36,8 +36,8 @@ export default function WikiEditor({
     const doc = new Y.Doc();
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const provider = new SupabaseProvider(doc, supabase, {
-      channel: `wiki-page-${pageId}`,
-      id: pageId,
+      channel: `wiki-notebook-${notebookId}`,
+      id: notebookId,
       tableName: "realtime_doc_store", // y-supabase expects this, but it can just be dummy for broadcast
       columnName: "doc",
       resyncInterval: 0,
@@ -48,9 +48,9 @@ export default function WikiEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
+      (StarterKit as any).configure({
         history: false,
-      } as any),
+      }),
       Placeholder.configure({
         placeholder: "Start writing...",
       }),
@@ -77,7 +77,7 @@ export default function WikiEditor({
       // Debounce saving the HTML to our Postgres DB
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
-        updatePageContent(pageId, editor.getHTML());
+        updateNotebookContent(notebookId, editor.getHTML());
       }, 2000);
     },
   });

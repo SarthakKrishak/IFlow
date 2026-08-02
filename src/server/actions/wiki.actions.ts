@@ -14,6 +14,7 @@ export async function createNotebook(projectId: string, title: string) {
       data: {
         title,
         projectId,
+        content: `<h1>${title}</h1><p></p>`,
         createdById: session.user.id,
       },
     });
@@ -43,61 +44,21 @@ export async function deleteNotebook(notebookId: string) {
   }
 }
 
-export async function createPage(notebookId: string, title: string) {
+export async function updateNotebookContent(notebookId: string, content: string) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const page = await prisma.page.create({
-      data: {
-        title,
-        notebookId,
-        content: `<h1>${title}</h1><p></p>`,
-      },
-    });
-
-    return { success: true, page };
-  } catch (error: any) {
-    console.error("Error creating page:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-export async function updatePageContent(pageId: string, content: string) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    await prisma.page.update({
-      where: { id: pageId },
+    await prisma.notebook.update({
+      where: { id: notebookId },
       data: { content },
     });
 
     return { success: true };
   } catch (error: any) {
-    console.error("Error updating page content:", error);
-    return { success: false, error: error.message };
-  }
-}
-
-export async function deletePage(pageId: string) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: "Unauthorized" };
-    }
-
-    await prisma.page.delete({
-      where: { id: pageId },
-    });
-
-    return { success: true };
-  } catch (error: any) {
-    console.error("Error deleting page:", error);
+    console.error("Error updating notebook content:", error);
     return { success: false, error: error.message };
   }
 }
