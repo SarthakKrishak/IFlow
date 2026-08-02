@@ -137,6 +137,10 @@ export function TopNav({ displayName, avatarColor, isAdmin, projects, activeProj
     title = "Environments";
     subtitle = "Manage secure environment variables and secrets";
     icon = <Server size={22} className="text-primary" />;
+  } else if (pathname?.includes("/deployments")) {
+    title = "Deployments";
+    subtitle = "Live infrastructure status and logs";
+    icon = <Server size={22} className="text-primary" />;
   } else if (pathname?.includes("/expenses")) {
     title = "Price Tracker";
     subtitle = "Track team expenses and shared splits";

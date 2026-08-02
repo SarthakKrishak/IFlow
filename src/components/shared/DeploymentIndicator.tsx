@@ -83,11 +83,14 @@ export function DeploymentIndicator() {
     <div className="relative" ref={popoverRef}>
       <button 
         onClick={() => setOpen(!open)}
-        className="relative w-9 h-9 flex items-center justify-center rounded-xl border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground transition-colors"
+        className="relative px-3 h-9 flex items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground transition-colors group"
       >
-        <Server size={16} strokeWidth={2} />
+        <Server size={14} strokeWidth={2} className={isBuilding ? "animate-pulse" : "group-hover:scale-110 transition-transform"} />
+        <span className="text-[12px] font-bold">
+           {isBuilding ? "Building" : overallColor === 'bg-red-500' ? "Failing" : "Healthy"}
+        </span>
         {health && (
-          <span className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-surface-base ${overallColor} ${isBuilding ? 'animate-pulse' : ''}`} />
+          <span className={`w-2 h-2 rounded-full ${overallColor} ${isBuilding ? 'animate-pulse' : ''}`} />
         )}
       </button>
 
