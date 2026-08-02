@@ -29,22 +29,28 @@ export default function WikiEditor({
   const [status, setStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // We must memoize the provider and doc setup to avoid recreating them on re-renders
-  const [setup] = useState(() => {
-    if (!supabaseUrl || !supabaseAnonKey) return null;
+  const [setup, setSetup] = useState<{ doc: Y.Doc; provider: SupabaseProvider } | null>(null);
+
+  useEffect(() => {
+    if (!supabaseUrl || !supabaseAnonKey || typeof window === "undefined") return;
     
     const doc = new Y.Doc();
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const provider = new SupabaseProvider(doc, supabase, {
       channel: `wiki-notebook-${notebookId}`,
       id: notebookId,
-      tableName: "realtime_doc_store", // y-supabase expects this, but it can just be dummy for broadcast
+      tableName: "realtime_doc_store",
       columnName: "doc",
       resyncInterval: 0,
     });
 
-    return { doc, provider };
-  });
+    setSetup({ doc, provider });
+
+    return () => {
+      provider.destroy();
+      doc.destroy();
+    };
+  }, [notebookId, supabaseUrl, supabaseAnonKey]);
 
   const editor = useEditor({
     extensions: [
@@ -91,15 +97,12 @@ export default function WikiEditor({
 
     setup.provider.on("status", handleStatus);
     
-    // Cleanup
     return () => {
       setup.provider.off("status", handleStatus);
-      setup.provider.destroy();
-      setup.doc.destroy();
     };
   }, [setup]);
 
-  if (!setup) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     return <div className="p-8 text-red-500">Missing Supabase credentials in environment.</div>;
   }
 
