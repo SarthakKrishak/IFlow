@@ -3,6 +3,7 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["bcryptjs"],
+  transpilePackages: ["y-supabase", "@supabase/realtime-js"],
   experimental: {
     serverActions: {
       allowedOrigins: ["localhost:3000", "iflow-imag.vercel.app"],

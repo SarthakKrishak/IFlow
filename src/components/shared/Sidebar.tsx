@@ -22,7 +22,8 @@ import {
   Calendar,
   Trash2,
   Server,
-  Banknote
+  Banknote,
+  BookOpen
 } from "lucide-react";
 import { useState } from "react";
 import type { Board, Project, User } from "@prisma/client";
@@ -41,6 +42,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Overview", href: "/overview", icon: Home },
   { label: "My Tasks", href: "/my-tasks", icon: SlidersHorizontal, badge: 12 },
+  { label: "Wiki", href: "/wiki", icon: BookOpen },
   { label: "Calendar", href: "/calendar", icon: Calendar },
   { label: "People", href: "/people", icon: Users },
   { label: "Reports", href: "/reports", icon: BarChart2 },

@@ -67,6 +67,7 @@ model User {
   writableEnvironments   Environment[] @relation("EnvironmentWriteAccess")
   paidExpenses           Expense[]     @relation("ExpensePayer")
   expenseSplits          ExpenseSplit[] @relation("UserExpenseSplit")
+  createdNotebooks       Notebook[]    @relation("NotebookCreator")
 
   @@index([department])
 }
@@ -81,6 +82,7 @@ model Project {
 
   boards      Board[]
   environments Environment[]
+  notebooks    Notebook[]
 }
 
 model Board {
@@ -231,4 +233,31 @@ model ExpenseSplit {
   @@unique([expenseId, userId])
   @@index([expenseId])
   @@index([userId])
+}
+
+model Notebook {
+  id          String   @id @default(cuid())
+  title       String
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation("NotebookCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pages       Page[]
+
+  @@index([projectId])
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  title       String
+  content     String?  @db.Text
+  notebookId  String
+  notebook    Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([notebookId])
 }
