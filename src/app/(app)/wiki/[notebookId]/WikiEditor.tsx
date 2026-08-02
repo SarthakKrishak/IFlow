@@ -31,10 +31,10 @@ export default function WikiEditor({
   const [setup, setSetup] = useState<{ doc: Y.Doc; provider: SupabaseProvider } | null>(null);
   const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
   
-  // pageCount state will be synchronized via Y.js
-  const [pageCount, setPageCount] = useState(1);
-  const [initialHtmlArray, setInitialHtmlArray] = useState<string[]>([]);
-  const latestHtmlRef = useRef<string[]>([]);
+  // We use pageIds to robustly map pages and handle deletions without shifting indexes
+  const [pageIds, setPageIds] = useState<string[]>([]);
+  const [initialHtmlArray, setInitialHtmlArray] = useState<Record<string, string>>({});
+  const latestHtmlRef = useRef<Record<string, string>>({});
 
   // Parse initial content
   useEffect(() => {
@@ -42,17 +42,31 @@ export default function WikiEditor({
       if (initialContent.trim().startsWith("[")) {
         const parsed = JSON.parse(initialContent);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          // Map array to initial page IDs based on legacy parsing
+          const initialIds = parsed.map((_, i) => `page-${i}`);
+          const htmlMap: Record<string, string> = {};
+          parsed.forEach((html, i) => htmlMap[`page-${i}`] = html);
+          
+          setInitialHtmlArray(htmlMap);
+          latestHtmlRef.current = htmlMap;
+          return;
+        } else if (typeof parsed === "object") {
+          // Already in the new format (Record<string, string>)
           setInitialHtmlArray(parsed);
           latestHtmlRef.current = parsed;
           return;
         }
+      } else if (initialContent.trim().startsWith("{")) {
+        const parsed = JSON.parse(initialContent);
+        setInitialHtmlArray(parsed);
+        latestHtmlRef.current = parsed;
+        return;
       }
     } catch (e) {
-      // Not JSON, fallback
+      // Fallback
     }
     
-    // Fallback if not an array (e.g. legacy single page)
-    const fallback = [initialContent || ""];
+    const fallback = { "page-0": initialContent || "" };
     setInitialHtmlArray(fallback);
     latestHtmlRef.current = fallback;
   }, [initialContent]);
@@ -72,26 +86,25 @@ export default function WikiEditor({
 
     setSetup({ doc, provider });
 
-    // Sync page count
+    // Sync page ids
     const metadata = doc.getMap("metadata");
-    const syncPageCount = () => {
-      const count = metadata.get("pageCount") as number;
-      if (count && count > 0) {
-        setPageCount(count);
-      } else {
-        // Initialize if not set
-        const initCount = Math.max(1, latestHtmlRef.current.length);
-        metadata.set("pageCount", initCount);
-        setPageCount(initCount);
+    const syncPageIds = () => {
+      let ids = metadata.get("pageIds") as string[];
+      if (!ids || ids.length === 0) {
+        // Migration from pageCount or initial setup
+        const count = (metadata.get("pageCount") as number) || Math.max(1, Object.keys(latestHtmlRef.current).length);
+        ids = Array.from({ length: count }).map((_, i) => `page-${i}`);
+        metadata.set("pageIds", ids);
       }
+      setPageIds([...ids]);
     };
 
-    metadata.observe(syncPageCount);
+    metadata.observe(syncPageIds);
     // Call once initially
-    syncPageCount();
+    syncPageIds();
 
     return () => {
-      metadata.unobserve(syncPageCount);
+      metadata.unobserve(syncPageIds);
       provider.destroy();
       doc.destroy();
     };
@@ -111,13 +124,12 @@ export default function WikiEditor({
     };
   }, [setup]);
 
-  const handleUpdate = useCallback((index: number, html: string) => {
-    // Update local ref array
-    const newHtmlArray = [...latestHtmlRef.current];
-    newHtmlArray[index] = html;
-    latestHtmlRef.current = newHtmlArray;
+  const handleUpdate = useCallback((pageId: string, html: string) => {
+    latestHtmlRef.current = {
+      ...latestHtmlRef.current,
+      [pageId]: html
+    };
 
-    // Debounce saving the full JSON array to our Postgres DB
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       updateNotebookContent(notebookId, JSON.stringify(latestHtmlRef.current));
@@ -125,9 +137,24 @@ export default function WikiEditor({
   }, [notebookId]);
 
   const handleAddPage = () => {
-    if (!setup || pageCount >= 5) return;
+    if (!setup || pageIds.length >= 5) return;
     const metadata = setup.doc.getMap("metadata");
-    metadata.set("pageCount", pageCount + 1);
+    const newId = `page-${Date.now()}`;
+    metadata.set("pageIds", [...pageIds, newId]);
+  };
+
+  const handleDeletePage = (pageId: string) => {
+    if (!setup || pageIds.length <= 1) return;
+    const metadata = setup.doc.getMap("metadata");
+    const newPageIds = pageIds.filter(id => id !== pageId);
+    metadata.set("pageIds", newPageIds);
+    
+    // Also remove it from local HTML cache
+    const updatedHtml = { ...latestHtmlRef.current };
+    delete updatedHtml[pageId];
+    latestHtmlRef.current = updatedHtml;
+    
+    updateNotebookContent(notebookId, JSON.stringify(updatedHtml));
   };
 
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -141,16 +168,18 @@ export default function WikiEditor({
         
         <div className="flex flex-col pb-32 items-center">
           {setup ? (
-            Array.from({ length: pageCount }).map((_, i) => (
+            pageIds.map((pageId, i) => (
               <PageEditor
-                key={`page-${i}`}
-                pageIndex={i}
+                key={pageId}
+                pageId={pageId}
+                isFirst={i === 0}
                 doc={setup.doc}
                 provider={setup.provider}
                 currentUser={currentUser}
-                initialHtml={initialHtmlArray[i] || ""}
+                initialHtml={initialHtmlArray[pageId] || ""}
                 onUpdate={handleUpdate}
                 onFocus={setActiveEditor}
+                onDelete={handleDeletePage}
               />
             ))
           ) : (
@@ -163,19 +192,18 @@ export default function WikiEditor({
             </div>
           )}
 
-          {/* Add Page Button */}
           {setup && (
             <button
               onClick={handleAddPage}
-              disabled={pageCount >= 5}
+              disabled={pageIds.length >= 5}
               className={`mt-4 flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-dashed border-surface-border font-medium transition-all w-full max-w-4xl ${
-                pageCount >= 5 
+                pageIds.length >= 5 
                   ? "text-muted-foreground opacity-50 cursor-not-allowed" 
                   : "text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 bg-surface-elevated"
               }`}
             >
               <Plus size={18} />
-              {pageCount >= 5 ? "Maximum of 5 pages reached" : "Add Page"}
+              {pageIds.length >= 5 ? "Maximum of 5 pages reached" : "Add Page"}
             </button>
           )}
         </div>

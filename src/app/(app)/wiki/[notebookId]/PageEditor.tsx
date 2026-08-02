@@ -9,24 +9,30 @@ import * as Y from "yjs";
 import SupabaseProvider from "y-supabase";
 import { useEffect } from "react";
 
+import { Trash2 } from "lucide-react";
+
 interface PageEditorProps {
-  pageIndex: number;
+  pageId: string;
+  isFirst: boolean;
   doc: Y.Doc;
   provider: SupabaseProvider;
   currentUser: { name: string; color: string };
   initialHtml: string;
-  onUpdate: (index: number, html: string) => void;
+  onUpdate: (pageId: string, html: string) => void;
   onFocus: (editor: Editor) => void;
+  onDelete: (pageId: string) => void;
 }
 
 export default function PageEditor({
-  pageIndex,
+  pageId,
+  isFirst,
   doc,
   provider,
   currentUser,
   initialHtml,
   onUpdate,
   onFocus,
+  onDelete,
 }: PageEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -38,7 +44,7 @@ export default function PageEditor({
       }),
       Collaboration.configure({
         document: doc,
-        field: `page-${pageIndex}`,
+        field: pageId,
       }),
       CollaborationCursor.configure({
         provider: provider,
@@ -55,7 +61,7 @@ export default function PageEditor({
       },
     },
     onUpdate: ({ editor }) => {
-      onUpdate(pageIndex, editor.getHTML());
+      onUpdate(pageId, editor.getHTML());
     },
     onFocus: ({ editor }) => {
       onFocus(editor);
@@ -64,14 +70,36 @@ export default function PageEditor({
 
   // To set the initial active editor when the first page loads
   useEffect(() => {
-    if (editor && pageIndex === 0 && !editor.isFocused) {
+    if (editor && isFirst && !editor.isFocused) {
       // Just pass it up so toolbar has something by default
       onFocus(editor);
     }
-  }, [editor, pageIndex, onFocus]);
+  }, [editor, isFirst, onFocus]);
+
+  const handleDelete = () => {
+    if (!editor) return;
+    const text = editor.getText().trim();
+    if (text.length > 0) {
+      if (!confirm("This page has content. Are you sure you want to delete it?")) {
+        return;
+      }
+    }
+    onDelete(pageId);
+  };
 
   return (
-    <div className="bg-surface-elevated shadow-md rounded-xl p-8 sm:p-12 md:p-16 min-h-[800px] border border-surface-border transition-all mb-8 w-full max-w-4xl mx-auto flex-shrink-0">
+    <div className="bg-surface-elevated shadow-md rounded-xl p-8 sm:p-12 md:p-16 min-h-[800px] border border-surface-border transition-all mb-8 w-full max-w-4xl mx-auto flex-shrink-0 relative group">
+      
+      {!isFirst && (
+        <button 
+          onClick={handleDelete}
+          className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+          title="Delete Page"
+        >
+          <Trash2 size={18} />
+        </button>
+      )}
+
       {editor ? (
         <EditorContent editor={editor} />
       ) : (

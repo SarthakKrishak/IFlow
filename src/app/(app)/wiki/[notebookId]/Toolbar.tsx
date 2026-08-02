@@ -9,26 +9,6 @@ export default function Toolbar({ editor }: { editor: Editor }) {
   return (
     <div className="bg-surface-elevated border border-surface-border rounded-xl shadow-sm px-4 py-2 flex flex-wrap items-center gap-2 sticky top-4 z-40 mx-auto max-w-3xl justify-center mb-6 backdrop-blur-sm bg-surface-elevated/90">
       
-      {/* Undo / Redo */}
-      <div className="flex items-center gap-1 border-r border-surface-border pr-2 mr-1">
-        <button
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().undo()}
-          className="p-1.5 rounded-lg text-muted-foreground hover:bg-surface-base hover:text-foreground disabled:opacity-30 transition-colors"
-          title="Undo"
-        >
-          <Undo size={16} />
-        </button>
-        <button
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().redo()}
-          className="p-1.5 rounded-lg text-muted-foreground hover:bg-surface-base hover:text-foreground disabled:opacity-30 transition-colors"
-          title="Redo"
-        >
-          <Redo size={16} />
-        </button>
-      </div>
-
       {/* Headings */}
       <div className="flex items-center gap-1 border-r border-surface-border pr-2 mr-1">
         <button
