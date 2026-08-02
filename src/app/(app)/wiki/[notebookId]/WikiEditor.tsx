@@ -33,43 +33,28 @@ export default function WikiEditor({
   
   // We use pageIds to robustly map pages and handle deletions without shifting indexes
   const [pageIds, setPageIds] = useState<string[]>([]);
-  const [initialHtmlArray, setInitialHtmlArray] = useState<Record<string, string>>({});
-  const latestHtmlRef = useRef<Record<string, string>>({});
-
-  // Parse initial content
-  useEffect(() => {
+  const parseInitialContent = (content: string) => {
     try {
-      if (initialContent.trim().startsWith("[")) {
-        const parsed = JSON.parse(initialContent);
+      if (content.trim().startsWith("[")) {
+        const parsed = JSON.parse(content);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Map array to initial page IDs based on legacy parsing
-          const initialIds = parsed.map((_, i) => `page-${i}`);
           const htmlMap: Record<string, string> = {};
           parsed.forEach((html, i) => htmlMap[`page-${i}`] = html);
-          
-          setInitialHtmlArray(htmlMap);
-          latestHtmlRef.current = htmlMap;
-          return;
+          return htmlMap;
         } else if (typeof parsed === "object") {
-          // Already in the new format (Record<string, string>)
-          setInitialHtmlArray(parsed);
-          latestHtmlRef.current = parsed;
-          return;
+          return parsed;
         }
-      } else if (initialContent.trim().startsWith("{")) {
-        const parsed = JSON.parse(initialContent);
-        setInitialHtmlArray(parsed);
-        latestHtmlRef.current = parsed;
-        return;
+      } else if (content.trim().startsWith("{")) {
+        return JSON.parse(content);
       }
     } catch (e) {
       // Fallback
     }
-    
-    const fallback = { "page-0": initialContent || "" };
-    setInitialHtmlArray(fallback);
-    latestHtmlRef.current = fallback;
-  }, [initialContent]);
+    return { "page-0": content || "" };
+  };
+
+  const [initialHtmlArray, setInitialHtmlArray] = useState<Record<string, string>>(() => parseInitialContent(initialContent));
+  const latestHtmlRef = useRef<Record<string, string>>(initialHtmlArray);
 
   useEffect(() => {
     if (!supabaseUrl || !supabaseAnonKey || typeof window === "undefined") return;
