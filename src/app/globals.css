@@ -194,31 +194,27 @@
   }
 }
 
-@layer base {
+@layer components {
   /* Override Tailwind Typography colors to use our CSS variables across all themes */
   .prose {
-    --tw-prose-body: var(--editor-text);
-    --tw-prose-headings: var(--editor-text);
-    --tw-prose-lead: hsl(var(--muted-foreground));
-    --tw-prose-links: hsl(var(--primary));
-    --tw-prose-bold: var(--editor-text);
-    --tw-prose-counters: var(--editor-text);
-    --tw-prose-bullets: var(--editor-text);
-    --tw-prose-hr: hsl(var(--border));
-    --tw-prose-quotes: hsl(var(--muted-foreground));
-    --tw-prose-quote-borders: hsl(var(--border));
-    --tw-prose-captions: hsl(var(--muted-foreground));
-    --tw-prose-code: var(--editor-text);
-    --tw-prose-pre-code: var(--editor-text);
-    --tw-prose-pre-bg: hsl(var(--surface-base));
-    --tw-prose-th-borders: hsl(var(--border));
-    --tw-prose-td-borders: hsl(var(--border));
+    --tw-prose-body: var(--editor-text) !important;
+    --tw-prose-headings: var(--editor-text) !important;
+    --tw-prose-lead: var(--editor-text) !important;
+    --tw-prose-links: hsl(var(--primary)) !important;
+    --tw-prose-bold: var(--editor-text) !important;
+    --tw-prose-counters: var(--editor-text) !important;
+    --tw-prose-bullets: var(--editor-text) !important;
+    --tw-prose-hr: hsl(var(--border)) !important;
+    --tw-prose-quotes: var(--editor-text) !important;
+    --tw-prose-quote-borders: hsl(var(--border)) !important;
+    --tw-prose-captions: var(--editor-text) !important;
+    --tw-prose-code: var(--editor-text) !important;
+    --tw-prose-pre-code: var(--editor-text) !important;
+    --tw-prose-pre-bg: hsl(var(--surface-base)) !important;
+    --tw-prose-th-borders: hsl(var(--border)) !important;
+    --tw-prose-td-borders: hsl(var(--border)) !important;
     
     color: var(--editor-text) !important;
-  }
-  
-  .prose * {
-    color: inherit;
   }
 }
 
