@@ -6,7 +6,7 @@ import Link from "next/link";
 
 interface Board {
   id: string;
-  title: string;
+  name: string;
 }
 
 interface Ticket {
@@ -152,7 +152,7 @@ export default function CalendarClient({
                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors group-hover:border-opacity-100 ${isChecked ? '' : 'bg-transparent border-surface-border'}`} style={isChecked ? { backgroundColor: `${hexColor}33`, borderColor: `${hexColor}80` } : {}}>
                       {isChecked && <CheckSquare size={12} style={{ color: hexColor }} />}
                     </div>
-                    <span className={`transition-colors truncate max-w-[200px] ${isChecked ? 'text-text-primary' : 'text-text-secondary group-hover:text-text-primary'}`}>{board.title}</span>
+                    <span className={`transition-colors truncate max-w-[200px] ${isChecked ? 'text-text-primary' : 'text-text-secondary group-hover:text-text-primary'}`}>{board.name}</span>
                   </label>
                 );
               })}

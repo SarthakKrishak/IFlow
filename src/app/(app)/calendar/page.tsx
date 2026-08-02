@@ -25,7 +25,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const boards = await prisma.board.findMany({
     select: {
       id: true,
-      title: true,
+      name: true,
     }
   });
 
