@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import WikiEditor from "./WikiEditor";
+import WikiEditorWrapper from "./WikiEditorWrapper";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -43,7 +43,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ noteb
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <WikiEditor 
+        <WikiEditorWrapper 
           notebookId={notebook.id} 
           initialContent={notebook.content || ""} 
           currentUser={{ id: session.user.id, name: session.user.displayName, color: session.user.avatarColor || "#5B5FEF" }}
