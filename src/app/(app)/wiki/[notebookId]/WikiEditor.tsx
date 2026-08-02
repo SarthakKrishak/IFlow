@@ -91,9 +91,22 @@ export default function WikiEditor({
     const syncPageIds = () => {
       let ids = metadata.get("pageIds") as string[];
       if (!ids || ids.length === 0) {
-        // Migration from pageCount or initial setup
-        const count = (metadata.get("pageCount") as number) || Math.max(1, Object.keys(latestHtmlRef.current).length);
-        ids = Array.from({ length: count }).map((_, i) => `page-${i}`);
+        // Use exact keys stored in our Postgres DB JSON so deleted pages don't resurrect
+        const keys = Object.keys(latestHtmlRef.current);
+        const legacyCount = metadata.get("pageCount") as number;
+        
+        if (keys.length > 0) {
+          ids = keys.sort((a, b) => {
+            const numA = parseInt(a.replace("page-", "") || "0");
+            const numB = parseInt(b.replace("page-", "") || "0");
+            return numA - numB;
+          });
+        } else if (legacyCount && legacyCount > 0) {
+          ids = Array.from({ length: legacyCount }).map((_, i) => `page-${i}`);
+        } else {
+          ids = ["page-0"];
+        }
+        
         metadata.set("pageIds", ids);
       }
       setPageIds([...ids]);
