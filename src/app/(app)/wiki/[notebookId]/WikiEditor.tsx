@@ -10,6 +10,7 @@ import * as Y from "yjs";
 import SupabaseProvider from "y-supabase";
 import { createClient } from "@supabase/supabase-js";
 import { updateNotebookContent } from "@/server/actions/wiki.actions";
+import Toolbar from "./Toolbar";
 
 interface WikiEditorProps {
   notebookId: string;
@@ -107,15 +108,23 @@ export default function WikiEditor({
   }
 
   return (
-    <div className="h-full flex flex-col relative bg-surface-base">
-      <div className="flex-1 overflow-y-auto px-8 md:px-16 lg:px-32 py-12 custom-scrollbar">
+    <div className="h-full flex flex-col relative bg-[#f3f4f6] dark:bg-[#1f2023]">
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8 custom-scrollbar">
+        {editor && <Toolbar editor={editor} />}
+        
         <div className="max-w-4xl mx-auto pb-32">
-          {editor ? <EditorContent editor={editor} /> : <div className="animate-pulse flex flex-col gap-4">
-            <div className="h-10 bg-surface-elevated rounded w-1/3"></div>
-            <div className="h-4 bg-surface-elevated rounded w-full"></div>
-            <div className="h-4 bg-surface-elevated rounded w-5/6"></div>
-            <div className="h-4 bg-surface-elevated rounded w-4/6"></div>
-          </div>}
+          {editor ? (
+            <div className="bg-white dark:bg-[#2b2c31] shadow-md rounded-xl p-8 sm:p-12 md:p-16 min-h-[800px] border border-black/5 dark:border-white/5 transition-all">
+              <EditorContent editor={editor} />
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-[#2b2c31] shadow-md rounded-xl p-8 sm:p-12 md:p-16 min-h-[800px] border border-black/5 dark:border-white/5 animate-pulse flex flex-col gap-4">
+              <div className="h-10 bg-surface-elevated rounded w-1/3"></div>
+              <div className="h-4 bg-surface-elevated rounded w-full"></div>
+              <div className="h-4 bg-surface-elevated rounded w-5/6"></div>
+              <div className="h-4 bg-surface-elevated rounded w-4/6"></div>
+            </div>
+          )}
         </div>
       </div>
       

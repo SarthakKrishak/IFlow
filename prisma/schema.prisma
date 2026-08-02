@@ -248,3 +248,9 @@ model Notebook {
 
   @@index([projectId])
 }
+
+
+model realtime_doc_store {
+  id   String @id
+  doc  String @db.Text
+}

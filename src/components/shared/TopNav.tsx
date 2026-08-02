@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Calendar, ChevronDown, Upload, KeyRound, LogOut, Settings, User as UserIcon, Loader2, Folder, LayoutDashboard, Users, CheckSquare, Server } from "lucide-react";
+import { Bell, Calendar, ChevronDown, Upload, KeyRound, LogOut, Settings, User as UserIcon, Loader2, Folder, LayoutDashboard, Users, CheckSquare, Server, Book } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
@@ -144,6 +144,10 @@ export function TopNav({ displayName, avatarColor, isAdmin, projects, activeProj
     title = "Profile";
     subtitle = "Manage your account settings";
     icon = <UserIcon size={22} className="text-primary" />;
+  } else if (pathname?.includes("/wiki")) {
+    title = "Wiki";
+    subtitle = "Collaborative knowledge base for your team";
+    icon = <Book size={22} className="text-primary" />;
   }
 
   return (

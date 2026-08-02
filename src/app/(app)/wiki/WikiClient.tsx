@@ -82,8 +82,8 @@ export default function WikiClient({
     <div className="flex-1 p-8 overflow-y-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Wiki</h1>
-          <p className="text-muted-foreground">Collaborative knowledge base for your team</p>
+          <h2 className="text-xl font-bold tracking-tight mb-1">Your Notebooks</h2>
+          <p className="text-muted-foreground text-sm">Select a notebook to start collaborating</p>
         </div>
         <button
           onClick={() => setIsCreating(true)}
