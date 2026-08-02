@@ -46,7 +46,13 @@ export async function getDeploymentStatuses(): Promise<DeploymentHealth> {
 
   // If no tokens configured, return beautiful mock data so the UI works
   if (!vercelToken && !railwayToken) {
-    return MOCK_DATA;
+    return {
+      ...MOCK_DATA,
+      frontend: {
+        ...MOCK_DATA.frontend!,
+        commitMessage: `DEBUG INFO: Vercel Token is ${vercelToken ? 'SET' : 'MISSING'}. Railway Token is ${railwayToken ? 'SET' : 'MISSING'}. Node Env: ${process.env.NODE_ENV}`
+      }
+    };
   }
 
   let frontend: DeploymentServiceInfo | null = null;
