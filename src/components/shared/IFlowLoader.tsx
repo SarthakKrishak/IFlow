@@ -47,11 +47,7 @@ export function IFlowLoader() {
           <h3 className="text-sm font-bold tracking-[0.4em] uppercase text-text-primary ml-2 animate-pulse">
             IFlow
           </h3>
-          <div className="flex gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary/80 animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-1.5 h-1.5 rounded-full bg-primary/80 animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-1.5 h-1.5 rounded-full bg-primary/80 animate-bounce" style={{ animationDelay: '300ms' }} />
-          </div>
+
         </div>
       </div>
     </div>
