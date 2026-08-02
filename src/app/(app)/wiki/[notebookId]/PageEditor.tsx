@@ -7,7 +7,7 @@ import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import Placeholder from "@tiptap/extension-placeholder";
 import * as Y from "yjs";
 import SupabaseProvider from "y-supabase";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { Trash2 } from "lucide-react";
 
@@ -34,6 +34,8 @@ export default function PageEditor({
   onFocus,
   onDelete,
 }: PageEditorProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   const editor = useEditor({
     extensions: [
       (StarterKit as any).configure({
@@ -80,10 +82,14 @@ export default function PageEditor({
     if (!editor) return;
     const text = editor.getText().trim();
     if (text.length > 0) {
-      if (!confirm("This page has content. Are you sure you want to delete it?")) {
-        return;
-      }
+      setShowDeleteDialog(true);
+    } else {
+      onDelete(pageId);
     }
+  };
+
+  const confirmDelete = () => {
+    setShowDeleteDialog(false);
     onDelete(pageId);
   };
 
@@ -108,6 +114,31 @@ export default function PageEditor({
           <div className="h-4 bg-surface-base rounded w-full"></div>
           <div className="h-4 bg-surface-base rounded w-5/6"></div>
           <div className="h-4 bg-surface-base rounded w-4/6"></div>
+        </div>
+      )}
+
+      {showDeleteDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-surface-elevated border border-surface-border rounded-xl shadow-xl w-full max-w-sm p-6 animate-in fade-in zoom-in duration-200">
+            <h3 className="text-lg font-semibold text-text-primary mb-2">Delete Page?</h3>
+            <p className="text-text-secondary text-sm mb-6">
+              This page has content. Are you sure you want to delete it? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowDeleteDialog(false)}
+                className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
