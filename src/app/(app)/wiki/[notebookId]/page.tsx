@@ -26,6 +26,15 @@ export default async function NotebookPage({ params }: { params: Promise<{ noteb
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
+  const session = await auth();
+  const userName = session?.user?.name || "Anonymous";
+  const userId = session?.user?.id || "anon";
+  
+  // Generate a distinct cursor color based on username
+  const colors = ["#5B5FEF", "#EC6A52", "#1EAE7C", "#D1495B", "#C79A3D", "#D9713C", "#7C3AED", "#059669"];
+  const colorIndex = userName.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+  const userColor = colors[colorIndex];
+
   return (
     <div className="flex-1 flex flex-col h-full bg-surface-base overflow-hidden relative">
       {/* Top Nav */}
@@ -44,7 +53,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ noteb
         <WikiEditorWrapper 
           notebookId={notebook.id} 
           initialContent={notebook.content || ""} 
-          currentUser={{ id: "debug-id", name: "Debug User", color: "#5B5FEF" }}
+          currentUser={{ id: userId, name: userName, color: userColor }}
           supabaseUrl={supabaseUrl}
           supabaseAnonKey={supabaseAnonKey}
         />
