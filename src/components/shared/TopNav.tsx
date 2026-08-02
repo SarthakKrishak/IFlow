@@ -9,6 +9,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { setOffline } from "@/server/actions/ping";
 import { setProjectCookie } from "@/app/(app)/actions";
 import type { Project } from "@prisma/client";
+import { DeploymentIndicator } from "./DeploymentIndicator";
 
 interface TopNavProps {
   displayName: string;
@@ -181,6 +182,8 @@ export function TopNav({ displayName, avatarColor, isAdmin, projects, activeProj
           <div className="flex items-center rounded-xl border border-surface-border bg-surface-elevated px-1 py-0.5">
              <ThemeToggle />
           </div>
+
+          <DeploymentIndicator />
 
           {/* Notification Bell */}
           <button className="relative w-9 h-9 flex items-center justify-center rounded-xl border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground transition-colors">

@@ -25,6 +25,7 @@ import {
 } from "recharts";
 import Link from "next/link";
 import { Avatar } from "@/components/shared/Avatar";
+import { DeploymentDashboardWidget } from "@/components/shared/DeploymentDashboardWidget";
 
 interface OverviewProps {
   stats: {
@@ -304,7 +305,10 @@ export function OverviewDashboard({
       </div>
 
       {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4 sm:gap-6">
+        
+        {/* System Health / Deployments */}
+        <DeploymentDashboardWidget />
         
         {/* Recent Activity */}
         <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 shadow-sm flex flex-col">

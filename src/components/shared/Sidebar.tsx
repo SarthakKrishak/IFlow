@@ -49,6 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Project Expenses", href: "/expenses", icon: Banknote },
   { label: "GitHub Tracker", href: "/github", icon: Github },
   { label: "Environments", href: "/environments", icon: Server },
+  { label: "Deployments", href: "/deployments", icon: Server },
   { label: "Admin", href: "/admin", icon: Settings, adminOnly: true },
 ];
 
