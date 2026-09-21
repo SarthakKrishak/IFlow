@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { revalidateProjectsCache, revalidateBoardsCache } from "@/lib/cached";
 
 export async function deleteProject(projectId: string) {
   const session = await auth();
@@ -20,6 +21,8 @@ export async function deleteProject(projectId: string) {
       prisma.ticket.deleteMany({ where: { boardId: { in: boards.map((b) => b.id) } } }),
       prisma.project.delete({ where: { id: projectId } }),
     ]);
+    revalidateProjectsCache();
+    revalidateBoardsCache();
     return { success: true };
   } catch (error: any) {
     console.error("deleteProject error:", error);

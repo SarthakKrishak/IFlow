@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getActiveProject } from "@/lib/project";
 import { getExtraAssigneesMap } from "@/lib/assignees";
+import { getHeavyCachedUsers, getHeavyCachedLabels } from "@/lib/cached";
 
 // Deduplicate auth() calls within a single render tree (layout + page both call auth)
 export const getCachedSession = cache(auth);
@@ -10,19 +11,14 @@ export const getCachedSession = cache(auth);
 // Deduplicate getActiveProject() calls within a single render tree
 export const getCachedActiveProject = cache(getActiveProject);
 
-// Deduplicate user list fetches (layout sidebar + board page both need users)
-export const getCachedUsers = cache(async () => {
-  return prisma.user.findMany({
-    where: { isActive: true },
-    select: { id: true, username: true, displayName: true, avatarColor: true, role: true, lastSeenAt: true, isActive: true, createdAt: true },
-    orderBy: { displayName: "asc" },
-  });
-});
+// Deduplicate user list fetches (layout sidebar + board page both need users).
+// Backed by a 60s cross-request cache (invalidated on every user mutation),
+// so repeat navigations skip the DB round-trip entirely.
+export const getCachedUsers = cache(getHeavyCachedUsers);
 
-// Deduplicate label fetches (board page metadata + page function both may need labels)
-export const getCachedLabels = cache(async () => {
-  return prisma.label.findMany({ orderBy: { name: "asc" } });
-});
+// Deduplicate label fetches (board page metadata + page function both may need labels).
+// Backed by a 120s cross-request cache, invalidated on label create.
+export const getCachedLabels = cache(getHeavyCachedLabels);
 
 // Deduplicate board fetch between generateMetadata and page() for /board/[boardId]
 export const getCachedBoard = cache(async (boardId: string) => {

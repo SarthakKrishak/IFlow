@@ -9,7 +9,15 @@ const nextConfig: NextConfig = {
       allowedOrigins: ["localhost:3000", "iflow-imag.vercel.app"],
     },
     optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "recharts"],
+    // Keep dynamic pages in the client router cache for 30s: back/forward
+    // and repeat navigations render instantly without refetching.
+    // Mutations already call router.refresh(), which bypasses this cache.
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
   },
+  poweredByHeader: false,
   // Skip type checking during build (types are checked separately)
   typescript: {
     ignoreBuildErrors: false,

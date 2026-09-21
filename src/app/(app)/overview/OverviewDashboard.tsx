@@ -2,16 +2,17 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Folder, 
-  CheckCircle2, 
-  Clock, 
+import {
+  Folder,
+  CheckCircle2,
+  Clock,
   Calendar,
   MessageSquare,
   CheckCircle,
   Tag,
   ArrowRightLeft,
-  Loader2
+  Loader2,
+  Trophy
 } from "lucide-react";
 import {
   LineChart,
@@ -43,6 +44,7 @@ interface OverviewProps {
   };
   projects: any[];
   activityLogs: any[];
+  topActive: { id: string; displayName: string; avatarColor: string; count: number }[];
   chartTickets: any[];
   upcomingDeadlines: any[];
   teamStats: {
@@ -61,6 +63,7 @@ export function OverviewDashboard({
   stats,
   projects,
   activityLogs,
+  topActive = [],
   chartTickets,
   upcomingDeadlines,
   teamStats,
@@ -165,8 +168,42 @@ export function OverviewDashboard({
     <div id="dashboard-content" className="px-4 sm:px-6 lg:px-8 pt-4 pb-20 max-w-[1500px] mx-auto space-y-6 animate-fade-in">
       
       {/* Header & Filters */}
-      <div className="flex items-center justify-end">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
+        {/* Top-3 most active (same row height as the dropdown — no layout shift) */}
+        {topActive.length > 0 ? (
+          <div className="hidden md:flex items-center rounded-xl border border-surface-border bg-surface-elevated pl-3 pr-1 py-1 overflow-hidden">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-2 whitespace-nowrap">
+              Most active
+            </span>
+            {topActive.map((u, i) => {
+              const trophyColor =
+                i === 0 ? "text-amber-400" : i === 1 ? "text-slate-300" : "text-amber-600";
+              return (
+                <div key={u.id} className="flex items-center">
+                  {i > 0 && <span className="w-px h-6 bg-surface-border mx-2" aria-hidden="true" />}
+                  <div className="flex items-center gap-1.5 px-1.5 py-1" title={`${u.displayName} — ${u.count} actions`}>
+                    <Trophy size={14} className={trophyColor} strokeWidth={2.5} />
+                    <span
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                      style={{ background: u.avatarColor }}
+                    >
+                      {u.displayName.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="text-[12.5px] font-semibold text-foreground whitespace-nowrap max-w-[110px] truncate">
+                      {u.displayName}
+                    </span>
+                    <span className="text-[11px] font-bold text-muted-foreground font-mono">
+                      {u.count}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div />
+        )}
+        <div className="flex items-center gap-3 ml-auto">
           <select 
             value={projectId || ""}
             onChange={(e) => updateProject(e.target.value)}

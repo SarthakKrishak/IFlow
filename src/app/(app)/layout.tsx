@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { TopNav } from "@/components/shared/TopNav";
 import { getCachedSession, getCachedActiveProject, getCachedUsers } from "@/lib/queries";
+import { getHeavyCachedProjects, getHeavyCachedBoards } from "@/lib/cached";
 
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { TopLoader } from "@/components/shared/TopLoader";
@@ -10,7 +11,12 @@ import { TopLoader } from "@/components/shared/TopLoader";
 
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await getCachedSession();
+  // Session (JWT verify) and active project (cookie read) are independent —
+  // run together instead of waterfalling.
+  const [session, activeProject] = await Promise.all([
+    getCachedSession(),
+    getCachedActiveProject(),
+  ]);
 
   if (!session?.user) {
     redirect("/login");
@@ -20,8 +26,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/change-password");
   }
 
-  const activeProject = await getCachedActiveProject();
-
   if (!activeProject) {
     return (
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
@@ -30,15 +34,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const [projects, boards, users] = await Promise.all([
-    prisma.project.findMany({ orderBy: { name: "asc" } }),
-    prisma.board.findMany({
-      where: { projectId: activeProject.id },
-      select: { id: true, name: true, slug: true },
-      orderBy: { createdAt: "asc" },
-    }),
+  // Reference data comes from the cross-request cache (memory-fast);
+  // only the personal task count hits the DB per render.
+  const [projects, allBoards, users] = await Promise.all([
+    getHeavyCachedProjects(),
+    getHeavyCachedBoards(),
     getCachedUsers(),
   ]);
+  const boards = allBoards
+    .filter((b) => b.projectId === activeProject.id)
+    .map(({ id, name, slug }) => ({ id, name, slug }));
 
   // Matches my-tasks page semantics: primary OR multi-assignee, and any
   // non-done column (case-insensitive), so the badge never undercounts.

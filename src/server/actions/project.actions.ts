@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { Role } from "@prisma/client";
 import type { Project } from "@prisma/client";
+import { revalidateProjectsCache, revalidateBoardsCache } from "@/lib/cached";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -67,6 +68,8 @@ export async function createProject(data: { name: string; description?: string }
     });
 
     revalidatePath("/");
+    revalidateProjectsCache();
+    revalidateBoardsCache();
     return { success: true, data: project };
   } catch (error) {
     console.error("createProject error:", error);
@@ -93,6 +96,7 @@ export async function updateGithubRepo(projectId: string, githubRepo: string | n
       data: { githubRepo },
     });
     revalidatePath("/github");
+    revalidateProjectsCache();
     return { success: true, data: project };
   } catch (error: any) {
     console.error("Failed to update github repo:", error);

@@ -41,6 +41,7 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
     columnRows,
     statusGroups,
     activityLogs,
+    topActiveRaw,
     chartTickets,
     upcomingDeadlines,
     allUsers,
@@ -75,6 +76,17 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
       },
       orderBy: { createdAt: "desc" },
       take: 20
+    }),
+    // Top-3 most active users in range (single grouped query, not full rows)
+    prisma.activityLog.groupBy({
+      by: ["userId"],
+      where: {
+        createdAt: { gte: rangeStart },
+        ticket: { board: boardWhere },
+      },
+      _count: { id: true },
+      orderBy: { _count: { id: "desc" } },
+      take: 3,
     }),
     prisma.ticket.findMany({
       where: {
@@ -129,7 +141,20 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
     .reduce((sum, g) => sum + g._count.id, 0);
 
   const boardProject = new Map(boardRows.map(b => [b.id, b.projectId]));
-  const columnName = new Map(columnRows.map(c => [c.id, c.name]));
+  // Resolve the top-3 active user ids to display info (skip the admin account)
+  const topActive = topActiveRaw
+    .map((r) => {
+      const u = allUsers.find((x) => x.id === r.userId);
+      if (!u || u.role === "ADMIN") return null;
+      return {
+        id: u.id,
+        displayName: u.displayName,
+        avatarColor: u.avatarColor,
+        count: r._count.id,
+      };
+    })
+    .filter((x): x is { id: string; displayName: string; avatarColor: string; count: number } => x !== null)
+    .slice(0, 3);  const columnName = new Map(columnRows.map(c => [c.id, c.name]));
   const boardsPerProject = new Map<string, number>();
   boardRows.forEach(b => boardsPerProject.set(b.projectId, (boardsPerProject.get(b.projectId) ?? 0) + 1));
 
@@ -280,6 +305,7 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
         stats={topStats}
         projects={projectsFormatted}
         activityLogs={activityLogs}
+        topActive={topActive}
         chartTickets={chartTickets}
         upcomingDeadlines={upcomingDeadlines}
         teamStats={teamStats}

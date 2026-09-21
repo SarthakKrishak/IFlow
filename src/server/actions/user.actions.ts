@@ -12,6 +12,7 @@ import type { User } from "@prisma/client";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { revalidateUsersCache } from "@/lib/cached";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -60,6 +61,7 @@ export async function createUser(input: {
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _, ...safeUser } = user;
+    revalidateUsersCache();
     return { success: true, data: safeUser };
   } catch (error) {
     if (error instanceof Error && error.message === "Admin only") {
@@ -91,6 +93,7 @@ export async function deactivateUser(input: {
       data: { isActive: false },
     });
 
+    revalidateUsersCache();
     return { success: true, data: undefined };
   } catch (error) {
     if (error instanceof Error && error.message === "Admin only") {
@@ -172,6 +175,7 @@ export async function updateUserRole(input: {
       data: { role: newRole },
     });
 
+    revalidateUsersCache();
     return { success: true, data: undefined };
   } catch (error) {
     if (error instanceof Error && error.message === "Admin only") {

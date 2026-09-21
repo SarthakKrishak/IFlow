@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { revalidateLabelsCache } from "@/lib/cached";
 import { z } from "zod";
 import type { Label } from "@prisma/client";
 
@@ -51,6 +52,7 @@ export async function createLabel(input: {
 
     try {
       const label = await prisma.label.create({ data: { name, color } });
+      revalidateLabelsCache();
       return { success: true, data: label };
     } catch (error: any) {
       // Concurrent create with the same name → return the winner instead of failing

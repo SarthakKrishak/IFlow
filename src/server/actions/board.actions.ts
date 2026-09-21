@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { revalidateBoardsCache } from "@/lib/cached";
 import {
   createBoardSchema,
   createColumnSchema,
@@ -76,6 +77,7 @@ export async function createBoard(input: {
       },
     });
 
+    revalidateBoardsCache();
     return { success: true, data: board };
   } catch (error) {
     console.error("createBoard error:", error);
@@ -181,6 +183,7 @@ export async function deleteBoard(boardId: string): Promise<Result<void>> {
       prisma.board.delete({ where: { id: boardId } }),
     ]);
 
+    revalidateBoardsCache();
     return { success: true, data: undefined };
   } catch (error) {
     console.error("deleteBoard error:", error);
