@@ -9,6 +9,7 @@ import { PanelSkeleton } from "@/components/shared/Skeletons";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { pingPresence } from "@/server/actions/ping";
+import { getBoardFingerprint } from "@/server/actions/board.actions";
 import type { Board, Column, Ticket, User, Label } from "@prisma/client";
 
 // Ticket panel (tiptap-free but form-heavy) loads on first open, not with the board
@@ -64,6 +65,40 @@ export function BoardPageClient({
     }, 30_000); // Ping every 30 seconds (presence only, no full page re-render)
     return () => clearInterval(interval);
   }, []);
+
+  // Live updates: poll a tiny fingerprint every 10s; when a teammate creates,
+  // moves, edits, assigns, comments or deletes, refresh so everyone sees it.
+  // Skipped while the tab is hidden or a ticket panel is open (the panel has
+  // its own fresh fetch, and we never yank the board under an open ticket).
+  const fingerprintRef = useRef<string | null>(null);
+  useEffect(() => {
+    fingerprintRef.current = null;
+    let stopped = false;
+    const check = async () => {
+      if (stopped || document.hidden) return;
+      if (useUIStore.getState().openTicketId) return;
+      try {
+        const res = await getBoardFingerprint(board.id);
+        if (stopped || !res.success) return;
+        if (fingerprintRef.current === null) {
+          fingerprintRef.current = res.data;
+          return;
+        }
+        if (fingerprintRef.current !== res.data) {
+          fingerprintRef.current = res.data;
+          router.refresh();
+        }
+      } catch {
+        // Poll failures are silent — next tick retries
+      }
+    };
+    check();
+    const interval = setInterval(check, 10_000);
+    return () => {
+      stopped = true;
+      clearInterval(interval);
+    };
+  }, [board.id, router]);
 
   // A ticket id left open on another board must never leak into this one.
   useEffect(() => {

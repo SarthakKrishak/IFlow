@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, CheckCheck, AtSign, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useUIStore } from "@/stores/ui.store";
+import { toast } from "sonner";
 import {
   getNotifications,
   markNotificationRead,
@@ -31,6 +32,31 @@ export function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  // IDs already popped up this browser session — polls must not re-fire them
+  const poppedIds = useRef<Set<string> | null>(null);
+
+  const getPoppedIds = () => {
+    if (!poppedIds.current) {
+      try {
+        poppedIds.current = new Set(
+          JSON.parse(sessionStorage.getItem("iflow-popped-notifs") || "[]")
+        );
+      } catch {
+        poppedIds.current = new Set();
+      }
+    }
+    return poppedIds.current;
+  };
+
+  const rememberPopped = (ids: string[]) => {
+    const set = getPoppedIds();
+    ids.forEach((id) => set.add(id));
+    try {
+      sessionStorage.setItem("iflow-popped-notifs", JSON.stringify([...set].slice(-50)));
+    } catch {
+      // storage unavailable — in-memory set still dedupes this session
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -38,8 +64,30 @@ export function NotificationBell() {
     if (result.success) {
       setItems(result.data.items);
       setUnreadCount(result.data.unreadCount);
+      popupUnreadMentions(result.data.items);
     }
     setLoading(false);
+  };
+
+  // Attention-grabbing popup for unread @mentions: fires on app open and
+  // whenever new mentions arrive while the app is open (max 3 per batch,
+  // each notification pops only once per browser session).
+  const popupUnreadMentions = (all: NotificationItem[]) => {
+    const seen = getPoppedIds();
+    const fresh = all
+      .filter((n) => !n.isRead && n.type === "MENTION" && !seen.has(n.id))
+      .slice(0, 3);
+    if (fresh.length === 0) return;
+    rememberPopped(fresh.map((n) => n.id));
+    fresh.forEach((item) => {
+      toast.message(item.title, {
+        description: item.body ?? undefined,
+        duration: 10000,
+        action: item.ticketId
+          ? { label: "View", onClick: () => handleItemClick(item) }
+          : undefined,
+      });
+    });
   };
 
   useEffect(() => {

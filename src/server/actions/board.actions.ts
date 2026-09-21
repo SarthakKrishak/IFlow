@@ -187,3 +187,45 @@ export async function deleteBoard(boardId: string): Promise<Result<void>> {
     return { success: false, error: "Failed to delete board" };
   }
 }
+
+/**
+ * Cheap board fingerprint for live updates: ticket count + latest change
+ * timestamp + column shape. Any create/move/edit/delete/assign/comment or
+ * column change alters it, so polling clients can detect teammate changes
+ * with a tiny query instead of refetching the whole board.
+ */
+export async function getBoardFingerprint(boardId: string): Promise<Result<string>> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+    const [ticketAgg, latestUpdate, latestActivity, columnAgg] = await Promise.all([
+      prisma.ticket.aggregate({ where: { boardId }, _count: { id: true } }),
+      prisma.ticket.findFirst({
+        where: { boardId },
+        select: { updatedAt: true },
+        orderBy: { updatedAt: "desc" },
+      }),
+      // Comments only bump lastActivityAt (via activity log), not updatedAt
+      prisma.ticket.findFirst({
+        where: { boardId },
+        select: { lastActivityAt: true },
+        orderBy: { lastActivityAt: "desc" },
+      }),
+      prisma.column.aggregate({ where: { boardId }, _count: { id: true }, _max: { order: true } }),
+    ]);
+
+    const fingerprint = [
+      ticketAgg._count.id,
+      latestUpdate?.updatedAt.toISOString() ?? "none",
+      latestActivity?.lastActivityAt.toISOString() ?? "none",
+      columnAgg._count.id,
+      columnAgg._max.order ?? -1,
+    ].join("|");
+
+    return { success: true, data: fingerprint };
+  } catch (error) {
+    console.error("getBoardFingerprint error:", error);
+    return { success: false, error: "Failed to check board updates" };
+  }
+}

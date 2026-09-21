@@ -69,10 +69,10 @@ export function MentionInput({
 
   const updateToken = (text: string, cursor: number) => {
     const before = text.slice(0, cursor);
-    const match = before.match(/@([a-z0-9_]{0,20})$/i);
+    const match = before.match(/(^|[\s(>"'])@([a-z0-9_]{0,20})$/i);
     if (match) {
-      setToken(match[1]);
-      setTokenStart(cursor - match[0].length);
+      setToken(match[2]);
+      setTokenStart(cursor - match[0].length + match[1].length);
       setOpen(true);
     } else {
       setOpen(false);
@@ -112,9 +112,9 @@ export function MentionInput({
           if (open && suggestions.length > 0) {
             if (e.key === "ArrowDown") { e.preventDefault(); setHighlight((h) => (h + 1) % suggestions.length); return; }
             if (e.key === "ArrowUp") { e.preventDefault(); setHighlight((h) => (h - 1 + suggestions.length) % suggestions.length); return; }
-            // Only hijack Enter/Tab once the user typed a filter — a bare "@"
-            // followed by Enter must still insert a newline.
-            if ((e.key === "Tab" || e.key === "Enter") && token.length > 0) {
+            // Enter/Tab always confirms the highlighted person while the
+            // menu is open (even on a bare "@"); Escape dismisses instead.
+            if (e.key === "Tab" || e.key === "Enter") {
               e.preventDefault();
               pick(suggestions[highlight] ?? suggestions[0]);
               return;
@@ -150,8 +150,8 @@ export function MentionInput({
               ref={i === highlight ? highlightRef : undefined}
               onMouseDown={(e) => { e.preventDefault(); pick(m); }}
               onMouseEnter={() => setHighlight(i)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
-                i === highlight ? "bg-primary/10" : ""
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors border-l-2 ${
+                i === highlight ? "bg-primary/15 border-primary" : "border-transparent"
               }`}
               role="option"
               aria-selected={i === highlight}
@@ -173,7 +173,7 @@ export function MentionInput({
 
       <p className="text-[10.5px] text-muted-foreground/70 mt-1.5 px-0.5">
         Type <span className="font-mono font-bold text-primary">@</span> to tag a teammate — they get a notification.{" "}
-        <span className="font-mono">Ctrl+Enter</span> to send.
+        <span className="font-mono">Enter</span> selects, <span className="font-mono">Esc</span> closes, <span className="font-mono">Ctrl+Enter</span> sends.
       </p>
     </div>
   );

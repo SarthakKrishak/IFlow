@@ -51,34 +51,45 @@ export function encryptValue(text: string): string {
  */
 export function decryptValue(encryptedText: string): string {
   if (!encryptedText) return '';
-  const ENCRYPTION_KEY = requireKey();
-  
+
+  const parts = encryptedText.split(':');
+  if (parts.length !== 4) {
+    // Return as-is if it doesn't look like our encrypted format (e.g. legacy cleartext)
+    return encryptedText;
+  }
+
+  const primaryKey = requireKey();
   try {
-    const parts = encryptedText.split(':');
-    if (parts.length !== 4) {
-      // Return as-is if it doesn't look like our encrypted format (e.g. legacy cleartext)
-      return encryptedText;
+    return decryptWithKey(parts, primaryKey);
+  } catch (primaryError) {
+    // Legacy rows were encrypted with the dev fallback key before a real
+    // ENCRYPTION_KEY was configured (e.g. saved locally, read on Vercel).
+    // Retry once with it so those values recover instead of placeholders.
+    if (primaryKey !== FALLBACK_KEY) {
+      try {
+        return decryptWithKey(parts, FALLBACK_KEY);
+      } catch {
+        // fall through to the placeholder below
+      }
     }
-
-    const [saltHex, ivHex, authTagHex, encryptedHex] = parts;
-    const salt = Buffer.from(saltHex, 'hex');
-    const iv = Buffer.from(ivHex, 'hex');
-    const authTag = Buffer.from(authTagHex, 'hex');
-    
-    // We expect encryptedHex to be hex, so we don't need to Buffer.from it, createDecipheriv's update can take hex input
-    // wait, actually we can just pass the hex string to update
-
-    const key = crypto.pbkdf2Sync(ENCRYPTION_KEY, salt, 100000, 32, 'sha512');
-    
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
-    
-    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    
-    return decrypted;
-  } catch (error) {
-    console.error('Decryption failed:', error);
+    console.error('Decryption failed:', primaryError);
     return '*** DECRYPTION_FAILED ***';
   }
+}
+
+function decryptWithKey(parts: string[], keyMaterial: string): string {
+  const [saltHex, ivHex, authTagHex, encryptedHex] = parts;
+  const salt = Buffer.from(saltHex, 'hex');
+  const iv = Buffer.from(ivHex, 'hex');
+  const authTag = Buffer.from(authTagHex, 'hex');
+
+  const key = crypto.pbkdf2Sync(keyMaterial, salt, 100000, 32, 'sha512');
+
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAuthTag(authTag);
+
+  let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
 }

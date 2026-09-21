@@ -45,11 +45,14 @@ export function ColumnContainer({ column, board, currentUserId, savingTickets }:
   const ticketIds = column.tickets.map((t) => t.id);
   const ticketCount = column.tickets.length;
   const overWipLimit = column.wipLimit !== null && column.wipLimit !== undefined && ticketCount > column.wipLimit;
+  const isDoneColumn = /done|complet/i.test(column.name);
 
   return (
     <div className="board-column flex flex-col gap-2">
-      {/* Column header — Jira style */}
-      <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-surface-elevated border border-surface-border">
+      {/* Column header — Jira style (Done columns get a green accent) */}
+      <div className={`flex items-center justify-between px-2 py-1.5 rounded-xl bg-surface-elevated border transition-colors ${
+        isDoneColumn ? "border-emerald-500/40" : "border-surface-border"
+      }`} style={isDoneColumn ? { boxShadow: "inset 0 0 0 1px rgba(16,185,129,.15)" } : undefined}>
         <div className="flex items-center gap-2 min-w-0">
           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${columnDot(column.name)}`} />
           <h3 className="text-[11.5px] font-bold text-foreground uppercase tracking-wider truncate">
@@ -79,13 +82,15 @@ export function ColumnContainer({ column, board, currentUserId, savingTickets }:
         </button>
       </div>
 
-      {/* Tickets lane */}
+      {/* Tickets lane (Done lane gets a green tint) */}
       <div
         ref={setNodeRef}
         className={`flex-1 overflow-y-auto no-scrollbar flex flex-col gap-2 min-h-[120px] rounded-2xl p-2 transition-colors border ${
           isOver
             ? "bg-primary/[0.06] border-dashed border-primary/40"
-            : "bg-surface-base/70 border-transparent"
+            : isDoneColumn
+              ? "bg-emerald-500/[0.05] border-emerald-500/25"
+              : "bg-surface-base/70 border-transparent"
         }`}
       >
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
