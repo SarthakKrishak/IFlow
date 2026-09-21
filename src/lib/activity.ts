@@ -22,19 +22,19 @@ export async function logActivity(
 ): Promise<void> {
   const { ticketId, userId, action, fromValue, toValue } = params;
 
-  await Promise.all([
-    tx.activityLog.create({
-      data: {
-        ticketId,
-        userId,
-        action,
-        fromValue,
-        toValue,
-      },
-    }),
-    tx.ticket.update({
-      where: { id: ticketId },
-      data: { lastActivityAt: new Date() },
-    }),
-  ]);
+  // Sequential awaits: Prisma interactive transactions do not support
+  // concurrent queries on the same transaction client.
+  await tx.activityLog.create({
+    data: {
+      ticketId,
+      userId,
+      action,
+      fromValue,
+      toValue,
+    },
+  });
+  await tx.ticket.update({
+    where: { id: ticketId },
+    data: { lastActivityAt: new Date() },
+  });
 }

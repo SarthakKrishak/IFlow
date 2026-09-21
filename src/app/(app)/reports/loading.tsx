@@ -1,5 +1,5 @@
-import { IFlowLoader } from "@/components/shared";
+import { ChartSkeleton } from "@/components/shared/Skeletons";
 
 export default function Loading() {
-  return <IFlowLoader />;
+  return <ChartSkeleton />;
 }

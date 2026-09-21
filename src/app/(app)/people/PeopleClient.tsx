@@ -7,6 +7,7 @@ import { Plus, UserX, ShieldCheck, Loader2, Search, Filter, LayoutGrid, List as 
 import { deactivateUser } from "@/server/actions/user.actions";
 import { updateUserBoards } from "@/server/actions/user.boards";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { CreateUserModal } from "./CreateUserModal";
 
 interface Board {
@@ -83,10 +84,18 @@ export function PeopleClient({ initialUsers, isAdmin, currentUserId, boards }: P
     e.stopPropagation();
     if (!confirm(`Deactivate ${name}? They won't be able to log in.`)) return;
     setActionLoading(userId);
-    const result = await deactivateUser({ userId });
-    if (result.success) {
-      setUsers((prev) => prev.filter(u => u.id !== userId));
-      router.refresh();
+    try {
+      const result = await deactivateUser({ userId });
+      if (result.success) {
+        toast.success(`${name} deactivated`);
+        setUsers((prev) => prev.filter(u => u.id !== userId));
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to deactivate user");
+      }
+    } catch (error) {
+      console.error("Deactivate failed:", error);
+      toast.error("Network error — couldn't deactivate user");
     }
     setActionLoading(null);
   };
@@ -109,17 +118,29 @@ export function PeopleClient({ initialUsers, isAdmin, currentUserId, boards }: P
   const saveBoardAccess = async () => {
     if (!managingAccessFor) return;
     setActionLoading('save-boards');
-    const result = await updateUserBoards({ userId: managingAccessFor.id, boardIds: Array.from(selectedBoards) });
-    if (result.success) {
-      setUsers(prev => prev.map(u => u.id === managingAccessFor.id ? { ...u, boardIds: Array.from(selectedBoards) } : u));
-      setManagingAccessFor(null);
-      router.refresh();
+    try {
+      const result = await updateUserBoards({ userId: managingAccessFor.id, boardIds: Array.from(selectedBoards) });
+      if (result.success) {
+        toast.success("Board access updated");
+        setUsers(prev => prev.map(u => u.id === managingAccessFor.id ? { ...u, boardIds: Array.from(selectedBoards) } : u));
+        setManagingAccessFor(null);
+        router.refresh();
+      } else {
+        toast.error(result.error || "Failed to update board access");
+      }
+    } catch (error) {
+      console.error("Board access update failed:", error);
+      toast.error("Network error — couldn't update board access");
     }
     setActionLoading(null);
   };
 
   const formatRelativeTime = (date: Date) => {
-    const diff = Date.now() - new Date(date).getTime();
+    const time = new Date(date).getTime();
+    if (Number.isNaN(time)) return "—";
+    const diff = Date.now() - time;
+    if (diff < 0) return "Just now";
+    if (diff < 60000) return "Just now";
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) {
       const h = Math.floor(diff / 3600000);

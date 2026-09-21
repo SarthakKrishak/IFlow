@@ -11,6 +11,7 @@ import {
 import type { User } from "@prisma/client";
 import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -139,13 +140,36 @@ export async function updateUserRole(input: {
   try {
     const session = await requireAdmin();
 
-    if (input.userId === session.user.id) {
+    const parsed = z
+      .object({ userId: z.string().cuid(), newRole: z.nativeEnum(Role) })
+      .safeParse(input);
+    if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };
+
+    const { userId, newRole } = parsed.data;
+
+    if (userId === session.user.id) {
       return { success: false, error: "You cannot change your own role" };
     }
 
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, isActive: true },
+    });
+    if (!target) return { success: false, error: "User not found" };
+
+    // Never demote/deactivate-path the last active admin
+    if (target.role === Role.ADMIN && newRole !== Role.ADMIN) {
+      const adminCount = await prisma.user.count({
+        where: { role: Role.ADMIN, isActive: true },
+      });
+      if (adminCount <= 1) {
+        return { success: false, error: "Cannot demote the last active admin" };
+      }
+    }
+
     await prisma.user.update({
-      where: { id: input.userId },
-      data: { role: input.newRole },
+      where: { id: userId },
+      data: { role: newRole },
     });
 
     return { success: true, data: undefined };

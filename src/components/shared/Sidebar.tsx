@@ -30,6 +30,7 @@ import type { Board, Project, User } from "@prisma/client";
 import { CreateBoardModal } from "../board/CreateBoardModal";
 import { ProjectSwitcher } from "./ProjectSwitcher";
 import { deleteBoard } from "@/server/actions/board.actions";
+import { toast } from "sonner";
 
 interface NavItem {
   label: string;
@@ -77,15 +78,21 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
     e.preventDefault();
     if (!confirm("Are you sure you want to delete this board? This action cannot be undone.")) return;
     setIsDeleting(boardId);
-    const res = await deleteBoard(boardId);
-    if (res.success) {
-      if (pathname === `/board/${boardId}`) {
-        router.push("/overview");
+    try {
+      const res = await deleteBoard(boardId);
+      if (res.success) {
+        toast.success("Board deleted");
+        if (pathname === `/board/${boardId}`) {
+          router.push("/overview");
+        } else {
+          router.refresh();
+        }
       } else {
-        router.refresh();
+        toast.error(res.error || "Failed to delete board");
       }
-    } else {
-      alert(res.error);
+    } catch (error) {
+      console.error("Delete board failed:", error);
+      toast.error("Network error — couldn't delete board");
     }
     setIsDeleting(null);
   };
@@ -318,11 +325,5 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
         {SidebarContent}
       </aside>
     </>
-  );
-}
-
-function FolderIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
   );
 }

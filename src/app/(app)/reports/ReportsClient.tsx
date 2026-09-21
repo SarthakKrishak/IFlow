@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -54,11 +55,29 @@ export function ReportsClient({
     router.push(url.pathname + url.search);
   };
 
-  const daysOverdue = (dueDate: Date | null) => {
+  const daysOverdue = (dueDate: Date | string | null) => {
     if (!dueDate) return 0;
     const diff = new Date().getTime() - new Date(dueDate).getTime();
     return Math.floor(diff / (1000 * 60 * 60 * 24));
   };
+
+  // RSC serializes Dates to strings — never call .getTime() on props directly.
+  // Paginate the (max 50) overdue rows instead of a fake static footer.
+  const sortedOverdue = useMemo(
+    () =>
+      [...overdueTickets].sort(
+        (a, b) => new Date(a.dueDate ?? 0).getTime() - new Date(b.dueDate ?? 0).getTime()
+      ),
+    [overdueTickets]
+  );
+  const OVERDUE_PER_PAGE = 10;
+  const [overduePage, setOverduePage] = useState(1);
+  const overdueTotalPages = Math.max(1, Math.ceil(sortedOverdue.length / OVERDUE_PER_PAGE));
+  const safeOverduePage = Math.min(overduePage, overdueTotalPages);
+  const pagedOverdue = sortedOverdue.slice(
+    (safeOverduePage - 1) * OVERDUE_PER_PAGE,
+    safeOverduePage * OVERDUE_PER_PAGE
+  );
 
   const statCards = [
     {
@@ -339,8 +358,7 @@ export function ReportsClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-border">
-                {overdueTickets
-                  .sort((a, b) => (a.dueDate?.getTime() ?? 0) - (b.dueDate?.getTime() ?? 0))
+                {pagedOverdue
                   .map((ticket, i) => (
                     <tr key={ticket.id} className="hover:bg-surface-base transition-colors group">
                       <td className="px-6 py-4">
@@ -381,19 +399,29 @@ export function ReportsClient({
         )}
         
         {/* Pagination Footer */}
-        {overdueTickets.length > 0 && (
+        {sortedOverdue.length > 0 && (
           <div className="px-6 py-4 border-t border-surface-border flex items-center justify-between bg-surface-elevated">
             <span className="text-[12px] font-medium text-muted-foreground">
-              Showing 1 to {overdueTickets.length} of {overdueTickets.length} results
+              Showing {(safeOverduePage - 1) * OVERDUE_PER_PAGE + 1} to {Math.min(safeOverduePage * OVERDUE_PER_PAGE, sortedOverdue.length)} of {sortedOverdue.length} results
             </span>
             <div className="flex items-center gap-1.5">
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border text-muted-foreground hover:bg-surface-base hover:text-foreground transition-colors">
+              <button
+                onClick={() => setOverduePage((p) => Math.max(1, p - 1))}
+                disabled={safeOverduePage === 1}
+                aria-label="Previous overdue page"
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border text-muted-foreground hover:bg-surface-base hover:text-foreground transition-colors disabled:opacity-40"
+              >
                 <ChevronLeft size={16} />
               </button>
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border bg-primary/10 text-primary font-bold transition-colors">
-                1
-              </button>
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border text-muted-foreground hover:bg-surface-base hover:text-foreground transition-colors disabled:opacity-50" disabled>
+              <span className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border bg-primary/10 text-primary text-[12px] font-bold transition-colors">
+                {safeOverduePage}
+              </span>
+              <button
+                onClick={() => setOverduePage((p) => Math.min(overdueTotalPages, p + 1))}
+                disabled={safeOverduePage === overdueTotalPages}
+                aria-label="Next overdue page"
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border text-muted-foreground hover:bg-surface-base hover:text-foreground transition-colors disabled:opacity-40"
+              >
                 <ChevronRight size={16} />
               </button>
             </div>

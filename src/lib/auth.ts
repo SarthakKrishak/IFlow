@@ -108,15 +108,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.avatarColor = (user as { avatarColor: string }).avatarColor;
         token.mustChangePassword = (user as { mustChangePassword: boolean }).mustChangePassword;
       }
-      // Refresh mustChangePassword from DB periodically
+      // Refresh mutable profile fields from DB periodically
       if (token.id && !user) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { mustChangePassword: true, isActive: true },
+            select: { mustChangePassword: true, isActive: true, role: true, department: true, avatarColor: true, displayName: true },
           });
           if (!dbUser?.isActive) return null as unknown as typeof token;
           token.mustChangePassword = dbUser?.mustChangePassword ?? false;
+          if (dbUser) {
+            token.role = dbUser.role;
+            token.department = dbUser.department;
+            token.avatarColor = dbUser.avatarColor;
+            token.displayName = dbUser.displayName;
+          }
         } catch {
           // Silently continue with cached token data on DB errors
         }

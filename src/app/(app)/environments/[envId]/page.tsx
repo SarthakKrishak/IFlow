@@ -14,10 +14,14 @@ export default async function EnvironmentDetailPage(props: { params: Promise<{ e
   const session = await getCachedSession();
   if (!session?.user) return null;
 
-  // Verify access for page load
+  // Verify access for page load (read OR write access both grant viewing)
   const env = await prisma.environment.findUnique({
     where: { id: params.envId },
-    include: { allowedUsers: { select: { id: true } }, project: { select: { name: true } } }
+    include: {
+      allowedUsers: { select: { id: true } },
+      writeUsers: { select: { id: true } },
+      project: { select: { name: true } },
+    }
   });
 
   if (!env) {
@@ -25,11 +29,15 @@ export default async function EnvironmentDetailPage(props: { params: Promise<{ e
   }
 
   const isAdmin = session.user.role === "ADMIN";
-  const hasAccess = isAdmin || env.allowedUsers.some(u => u.id === session.user!.id);
+  const hasAccess = isAdmin
+    || env.allowedUsers.some(u => u.id === session.user!.id)
+    || env.writeUsers.some(u => u.id === session.user!.id);
 
   if (!hasAccess) {
     redirect("/environments");
   }
+
+  const canWrite = isAdmin || env.writeUsers.some(u => u.id === session.user!.id);
 
   const variables = await getEnvironmentVariables(params.envId);
 
@@ -38,6 +46,7 @@ export default async function EnvironmentDetailPage(props: { params: Promise<{ e
       environment={env}
       variables={variables}
       isAdmin={isAdmin}
+      canWrite={canWrite}
     />
   );
 }

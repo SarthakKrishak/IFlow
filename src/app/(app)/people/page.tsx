@@ -64,6 +64,27 @@ export default async function PeoplePage() {
 
   const completedMap = new Map(completedThisMonth.map((r) => [r.assigneeId!, r._count.id]));
 
+  // Merge multi-assignee completions (fail-soft pre-migration: table may not exist).
+  // The primary assignee is also stored in the join table, so skip rows where
+  // the user is already counted as primary to avoid double-counting.
+  try {
+    const extraCompleted = await prisma.ticketAssignee.findMany({
+      where: {
+        ticket: {
+          board: { projectId: activeProject.id },
+          completedAt: { gte: startOfMonth },
+        },
+      },
+      select: { userId: true, ticket: { select: { assigneeId: true } } },
+    });
+    for (const row of extraCompleted) {
+      if (row.ticket.assigneeId === row.userId) continue;
+      completedMap.set(row.userId, (completedMap.get(row.userId) ?? 0) + 1);
+    }
+  } catch (error) {
+    console.error("people extra-assignee merge fallback (non-blocking):", error);
+  }
+
   const productivityMap = new Map<string, { total: number; onTime: number }>();
   for (const t of completedWithDueDates) {
     if (!t.assigneeId) continue;
@@ -75,6 +96,36 @@ export default async function PeoplePage() {
     if (t.completedAt! <= t.dueDate!) {
       stats.onTime += 1;
     }
+  }
+
+  // Merge multi-assignee on-time stats (fail-soft pre-migration, skip primaries)
+  try {
+    const extraWithDates = await prisma.ticketAssignee.findMany({
+      where: {
+        ticket: {
+          board: { projectId: activeProject.id },
+          completedAt: { not: null },
+          dueDate: { not: null },
+        },
+      },
+      select: {
+        userId: true,
+        ticket: { select: { completedAt: true, dueDate: true, assigneeId: true } },
+      },
+    });
+    for (const row of extraWithDates) {
+      if (row.ticket.assigneeId === row.userId) continue;
+      if (!productivityMap.has(row.userId)) {
+        productivityMap.set(row.userId, { total: 0, onTime: 0 });
+      }
+      const stats = productivityMap.get(row.userId)!;
+      stats.total += 1;
+      if (row.ticket.completedAt! <= row.ticket.dueDate!) {
+        stats.onTime += 1;
+      }
+    }
+  } catch (error) {
+    console.error("people extra-assignee productivity fallback (non-blocking):", error);
   }
 
   const initialUsers = users.map(user => ({

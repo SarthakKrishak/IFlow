@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createExpense, deleteExpense, toggleSplitPaid } from "@/server/actions/expense.actions";
 import type { Expense, ExpenseSplit, User } from "@prisma/client";
@@ -36,10 +36,13 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
 
   const canEdit = currentUserRole === "ADMIN" || currentUserRole === "MANAGER";
   const teamMembers = allUsers.filter((u) => u.role !== "ADMIN");
-  // Set default payer to first team member if current user is admin
-  if (payerId === currentUserId && currentUserRole === "ADMIN" && teamMembers.length > 0) {
-    setPayerId(teamMembers[0].id);
-  }
+  // Default the payer away from an admin account (admins don't take part in splits)
+  useEffect(() => {
+    if (currentUserRole === "ADMIN" && teamMembers.length > 0) {
+      setPayerId((prev) => (prev === currentUserId ? teamMembers[0].id : prev));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserRole, currentUserId]);
 
   const handleToggleInvolved = (userId: string) => {
     setInvolvedUserIds((prev) => {
@@ -104,22 +107,26 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
   };
 
   const handleTogglePaid = async (splitId: string, currentStatus: boolean) => {
-    // Optimistic update
-    setLocalExpenses(prev => prev.map(expense => {
-      const splitIndex = expense.splits.findIndex(s => s.id === splitId);
-      if (splitIndex !== -1) {
-        const newSplits = [...expense.splits];
-        newSplits[splitIndex] = { ...newSplits[splitIndex], isPaid: !currentStatus };
-        return { ...expense, splits: newSplits };
-      }
-      return expense;
-    }));
+    // Snapshot for a correct revert (functional updates avoid stale closures)
+    let snapshot: ExpenseWithSplits[] = [];
+    setLocalExpenses((prev) => {
+      snapshot = prev;
+      return prev.map(expense => {
+        const splitIndex = expense.splits.findIndex(s => s.id === splitId);
+        if (splitIndex !== -1) {
+          const newSplits = [...expense.splits];
+          newSplits[splitIndex] = { ...newSplits[splitIndex], isPaid: !currentStatus };
+          return { ...expense, splits: newSplits };
+        }
+        return expense;
+      });
+    });
 
     const result = await toggleSplitPaid({ splitId, isPaid: !currentStatus });
     if (!result.success) {
       toast.error(result.error);
       // Revert if failed
-      setLocalExpenses(localExpenses);
+      setLocalExpenses(snapshot);
     }
   };
 

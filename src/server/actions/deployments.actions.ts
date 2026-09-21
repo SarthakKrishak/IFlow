@@ -1,5 +1,6 @@
 "use server";
 import { unstable_noStore as noStore } from "next/cache";
+import { auth } from "@/lib/auth";
 
 export type DeploymentStatus = 'READY' | 'BUILDING' | 'ERROR' | 'QUEUED' | 'CANCELED';
 
@@ -41,18 +42,16 @@ const MOCK_DATA: DeploymentHealth = {
 
 export async function getDeploymentStatuses(): Promise<DeploymentHealth> {
   noStore();
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { configured: false, frontend: null, backend: null };
+  }
   const vercelToken = process.env.VERCEL_TOKEN;
   const railwayToken = process.env.RAILWAY_TOKEN;
 
-  // If no tokens configured, return beautiful mock data so the UI works
+  // If no tokens configured, return clearly-marked demo data so the UI works
   if (!vercelToken && !railwayToken) {
-    return {
-      ...MOCK_DATA,
-      frontend: {
-        ...MOCK_DATA.frontend!,
-        commitMessage: `DEBUG INFO: Vercel Token is ${vercelToken ? 'SET' : 'MISSING'}. Railway Token is ${railwayToken ? 'SET' : 'MISSING'}. Node Env: ${process.env.NODE_ENV}`
-      }
-    };
+    return MOCK_DATA;
   }
 
   let frontend: DeploymentServiceInfo | null = null;
@@ -147,8 +146,10 @@ export async function getDeploymentStatuses(): Promise<DeploymentHealth> {
 
   return {
     configured: true,
-    frontend: frontend || MOCK_DATA.frontend,
-    backend: backend || MOCK_DATA.backend
+    // Never masquerade mock data as live: a failed fetch surfaces as null
+    // and the UI renders "—" / UNKNOWN for that service.
+    frontend,
+    backend,
   };
 }
 
@@ -159,7 +160,7 @@ function mapVercelStatus(state: string): DeploymentStatus {
     case 'ERROR': return 'ERROR';
     case 'QUEUED': return 'QUEUED';
     case 'CANCELED': return 'CANCELED';
-    default: return 'READY';
+    default: return 'QUEUED';
   }
 }
 
@@ -171,6 +172,6 @@ function mapRailwayStatus(status: string): DeploymentStatus {
     case 'FAILED': return 'ERROR';
     case 'CRASHED': return 'ERROR';
     case 'QUEUED': return 'QUEUED';
-    default: return 'READY';
+    default: return 'QUEUED';
   }
 }

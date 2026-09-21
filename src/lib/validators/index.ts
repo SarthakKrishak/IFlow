@@ -14,7 +14,8 @@ export const displayNameSchema = z
 
 export const passwordSchema = z
   .string()
-  .min(8, "Password must be at least 8 characters");
+  .min(8, "Password must be at least 8 characters")
+  .max(72, "Password must be at most 72 characters");
 
 export const ticketTitleSchema = z
   .string()
@@ -97,11 +98,11 @@ export const deleteTicketSchema = z.object({
 // --- Board schemas ---
 
 export const createBoardSchema = z.object({
-  projectId: z.string().min(1, "Project is required"),
+  projectId: z.string().cuid("Invalid project"),
   name: z.string().min(1, "Name is required").max(50),
   department: z.enum(["DEV", "DESIGN", "MARKETING", "GENERAL"]),
-  description: z.string().optional(),
-  memberIds: z.array(z.string()).optional(),
+  description: z.string().max(500).optional(),
+  memberIds: z.array(z.string().cuid()).max(50).optional(),
 });
 
 export const createColumnSchema = z.object({

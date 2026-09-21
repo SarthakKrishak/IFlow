@@ -10,9 +10,16 @@ export async function deleteProject(projectId: string) {
   }
 
   try {
-    await prisma.project.delete({
-      where: { id: projectId }
+    // Ticket.board / Ticket.column have no DB-level cascade, so delete the
+    // project's tickets first (comments, activity, assignees cascade from Ticket).
+    const boards = await prisma.board.findMany({
+      where: { projectId },
+      select: { id: true },
     });
+    await prisma.$transaction([
+      prisma.ticket.deleteMany({ where: { boardId: { in: boards.map((b) => b.id) } } }),
+      prisma.project.delete({ where: { id: projectId } }),
+    ]);
     return { success: true };
   } catch (error: any) {
     console.error("deleteProject error:", error);

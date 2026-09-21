@@ -1,5 +1,5 @@
-import { IFlowLoader } from "@/components/shared";
+import { BoardSkeleton } from "@/components/shared/Skeletons";
 
 export default function Loading() {
-  return <IFlowLoader />;
+  return <BoardSkeleton />;
 }

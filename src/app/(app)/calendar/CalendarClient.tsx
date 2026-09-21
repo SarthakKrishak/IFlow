@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Plus, Search, Calendar as CalendarIcon, CheckSquare, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 
@@ -60,7 +60,22 @@ export default function CalendarClient({
     boards.forEach(b => initial[b.id] = true);
     return initial;
   });
-  const [showGoogleMeets, setShowGoogleMeets] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Keep the filter in sync if the board list changes (new board → visible)
+  useEffect(() => {
+    setCheckedBoards((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      boards.forEach((b) => {
+        if (!(b.id in next)) {
+          next[b.id] = true;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [boards]);
 
   const toggleBoard = (boardId: string) => {
     setCheckedBoards(prev => ({ ...prev, [boardId]: !prev[boardId] }));
@@ -78,9 +93,11 @@ export default function CalendarClient({
     boardColorMap[board.id] = BOARD_COLORS[index % BOARD_COLORS.length];
   });
   
-  // Map tickets to calendar events, filtering out unchecked boards
+  // Map tickets to calendar events, filtering out unchecked boards + search
+  const q = searchQuery.trim().toLowerCase();
   const calendarEvents = tickets
     .filter(t => t.dueDate && checkedBoards[t.boardId])
+    .filter(t => q === "" || t.title.toLowerCase().includes(q))
     .map(ticket => {
       const date = new Date(ticket.dueDate!);
       return {
@@ -92,14 +109,28 @@ export default function CalendarClient({
       }
     });
 
+  // Grid needs 5 or 6 rows depending on the month (e.g. 31-day month starting Sat)
+  const totalCells = Math.ceil((firstDayOfMonth + daysInMonth) / 7) * 7;
+  const gridRows = totalCells / 7;
+
   return (
     <div className="flex flex-col lg:flex-row h-full w-full bg-surface-base overflow-hidden text-sm animate-fade-in">
       {/* Sidebar */}
       <div className="hidden lg:flex flex-col w-[280px] border-r border-surface-border bg-surface-base p-6 overflow-y-auto">
-        <button className="w-full bg-[#5B5FEF] hover:bg-[#4B4FE0] text-white rounded-xl py-3 px-4 flex items-center justify-center gap-2 font-medium transition-colors mb-8 shadow-[0_0_20px_rgba(91,95,239,0.25)]">
-          <Plus size={18} />
-          New Event
-        </button>
+        {boards.length > 0 ? (
+          <Link
+            href={`/board/${boards[0].id}`}
+            className="w-full bg-[#5B5FEF] hover:bg-[#4B4FE0] text-white rounded-xl py-3 px-4 flex items-center justify-center gap-2 font-medium transition-colors mb-8 shadow-[0_0_20px_rgba(91,95,239,0.25)]"
+          >
+            <Plus size={18} />
+            New Event
+          </Link>
+        ) : (
+          <button disabled className="w-full bg-surface-elevated text-muted-foreground rounded-xl py-3 px-4 flex items-center justify-center gap-2 font-medium mb-8 opacity-60 cursor-not-allowed">
+            <Plus size={18} />
+            New Event
+          </button>
+        )}
         
         <div className="mb-10">
           <div className="flex items-center justify-between mb-5">
@@ -116,7 +147,7 @@ export default function CalendarClient({
             ))}
           </div>
           <div className="grid grid-cols-7 gap-1 text-center text-xs">
-            {Array.from({length: 35}).map((_, i) => {
+            {Array.from({length: totalCells}).map((_, i) => {
               const date = i - firstDayOfMonth + 1;
               const isCurrentMonth = date > 0 && date <= daysInMonth;
               const isToday = date === todayDate && month === todayMonth && year === todayYear;
@@ -148,21 +179,14 @@ export default function CalendarClient({
                 const hexColor = colorClass.includes('blue') ? '#3B82F6' : colorClass.includes('purple') ? '#A855F7' : colorClass.includes('green') ? '#22C55E' : colorClass.includes('amber') ? '#F59E0B' : colorClass.includes('pink') ? '#EC4899' : colorClass.includes('red') ? '#EF4444' : '#06B6D4';
                 
                 return (
-                  <label key={board.id} className="flex items-center gap-3 cursor-pointer group select-none" onClick={() => toggleBoard(board.id)}>
-                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors group-hover:border-opacity-100 ${isChecked ? '' : 'bg-transparent border-surface-border'}`} style={isChecked ? { backgroundColor: `${hexColor}33`, borderColor: `${hexColor}80` } : {}}>
-                      {isChecked && <CheckSquare size={12} style={{ color: hexColor }} />}
-                    </div>
-                    <span className={`transition-colors truncate max-w-[200px] ${isChecked ? 'text-text-primary' : 'text-text-secondary group-hover:text-text-primary'}`}>{board.name}</span>
-                  </label>
-                );
-              })}
-              
-              <label className="flex items-center gap-3 cursor-pointer group select-none" onClick={() => setShowGoogleMeets(!showGoogleMeets)}>
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors group-hover:border-[#5B5FEF] ${showGoogleMeets ? 'bg-[#5B5FEF]/20 border-[#5B5FEF]/50' : 'bg-transparent border-surface-border'}`}>
-                  {showGoogleMeets && <CheckSquare size={12} className="text-[#5B5FEF]" />}
-                </div>
-                <span className={`transition-colors ${showGoogleMeets ? 'text-text-primary' : 'text-text-secondary group-hover:text-text-primary'}`}>Google Meets</span>
-              </label>
+                <label key={board.id} className="flex items-center gap-3 cursor-pointer group select-none" onClick={() => toggleBoard(board.id)}>
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors group-hover:border-opacity-100 ${isChecked ? '' : 'bg-transparent border-surface-border'}`} style={isChecked ? { backgroundColor: `${hexColor}33`, borderColor: `${hexColor}80` } : {}}>
+                    {isChecked && <CheckSquare size={12} style={{ color: hexColor }} />}
+                  </div>
+                  <span className={`transition-colors truncate max-w-[200px] ${isChecked ? 'text-text-primary' : 'text-text-secondary group-hover:text-text-primary'}`}>{board.name}</span>
+                </label>
+              );
+            })}
             </div>
           </div>
         </div>
@@ -186,23 +210,15 @@ export default function CalendarClient({
             </div>
           </div>
           <div className="flex items-center gap-4 w-full md:w-auto">
-            <button className="relative overflow-hidden group bg-surface-elevated border border-surface-border hover:border-[#5B5FEF]/50 rounded-xl pr-4 pl-1.5 py-1.5 flex items-center gap-2.5 transition-all shadow-sm hover:shadow-md hidden md:flex h-[38px]">
-              <div className="bg-white w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-100 z-10">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-              </div>
-              <span className="text-sm font-semibold text-text-primary group-hover:text-[#5B5FEF] transition-colors z-10 whitespace-nowrap">Connect Google Calendar</span>
-            </button>
             <div className="relative w-full md:w-auto">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input 
-                type="text" 
-                placeholder="Search events..." 
-                className="w-full md:w-64 bg-surface-elevated border border-surface-border rounded-xl pl-9 pr-4 py-2 text-text-primary placeholder-muted-foreground focus:outline-none focus:border-[#5B5FEF] transition-colors shadow-sm text-sm" 
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search events..."
+                aria-label="Search events"
+                className="w-full md:w-64 bg-surface-elevated border border-surface-border rounded-xl pl-9 pr-4 py-2 text-text-primary placeholder-muted-foreground focus:outline-none focus:border-[#5B5FEF] transition-colors shadow-sm text-sm"
               />
             </div>
           </div>
@@ -210,7 +226,7 @@ export default function CalendarClient({
 
         {/* Calendar Grid */}
         <div className="flex-1 flex flex-col p-2 md:p-6 overflow-hidden bg-surface-base/50">
-          <div className="grid grid-cols-7 gap-[1px] bg-surface-border border border-surface-border rounded-xl md:rounded-2xl overflow-hidden flex-1 shadow-lg relative" style={{ gridTemplateRows: 'auto repeat(5, minmax(0, 1fr))' }}>
+          <div className="grid grid-cols-7 gap-[1px] bg-surface-border border border-surface-border rounded-xl md:rounded-2xl overflow-hidden flex-1 shadow-lg relative" style={{ gridTemplateRows: `auto repeat(${gridRows}, minmax(0, 1fr))` }}>
             
             {/* Days header */}
             {daysOfWeek.map((day) => (
@@ -221,35 +237,30 @@ export default function CalendarClient({
             ))}
             
             {/* Grid Cells */}
-            {Array.from({ length: 35 }).map((_, i) => {
+            {Array.from({ length: totalCells }).map((_, i) => {
               const date = i - firstDayOfMonth + 1;
               const isCurrentMonth = date > 0 && date <= daysInMonth;
               const isToday = date === todayDate && month === todayMonth && year === todayYear;
               const cellEvents = calendarEvents.filter(e => e.date === date && isCurrentMonth);
-              
+
               return (
                 <div key={i} className={`bg-surface-base p-1 md:p-2.5 flex flex-col hover:bg-surface-elevated/50 transition-colors group relative overflow-hidden ${!isCurrentMonth ? 'bg-surface-base/50 text-muted-foreground/30' : 'text-text-secondary'}`}>
                   <div className="flex justify-between items-start mb-1 md:mb-2">
                     <span className={`w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-full text-[10px] md:text-sm font-semibold transition-all ${
-                      isToday 
-                        ? 'bg-[#5B5FEF] text-white shadow-[0_0_12px_rgba(91,95,239,0.6)]' 
-                        : isCurrentMonth 
+                      isToday
+                        ? 'bg-[#5B5FEF] text-white shadow-[0_0_12px_rgba(91,95,239,0.6)]'
+                        : isCurrentMonth
                           ? 'group-hover:text-text-primary'
                           : ''
                     }`}>
                       {isCurrentMonth ? date : (date <= 0 ? new Date(year, month - 1, 0).getDate() + date : date - daysInMonth)}
                     </span>
-                    {isCurrentMonth && (
-                      <button className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-text-primary transition-all p-0.5 md:p-1 hover:bg-surface-border rounded-md hidden md:block">
-                        <Plus size={14} />
-                      </button>
-                    )}
                   </div>
                   
                   <div className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-0 md:pr-1 custom-scrollbar">
                     {cellEvents.slice(0, 4).map(event => (
-                      <Link 
-                        href={`/board/all?ticket=${event.id}`}
+                      <Link
+                        href={`/board/${event.boardId}?ticket=${event.id}`}
                         key={event.id} 
                         className={`block px-1.5 py-1 md:px-2 md:py-1.5 rounded-md md:rounded-lg text-[9px] md:text-xs font-medium cursor-pointer hover:shadow-md transition-all flex flex-col gap-0.5 relative overflow-hidden group/event ${event.color}`}
                       >

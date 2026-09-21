@@ -42,22 +42,29 @@ export default function WikiClient({
     
     setNotebooks((prev) => [optimisticNotebook, ...prev]);
 
-    const res = await createNotebook(projectId, newTitle);
-    
-    if (res.success && res.notebook) {
-      // Replace optimistic notebook with actual
-      setNotebooks((prev) => prev.map(nb => nb.id === tempId ? { ...res.notebook, createdBy: { displayName: "You" } } : nb));
-      toast.success("Notebook created");
-      setIsCreating(false);
-      setNewTitle("");
+    try {
+      const res = await createNotebook(projectId, newTitle);
+
+      if (res.success && res.notebook) {
+        // Replace optimistic notebook with actual
+        setNotebooks((prev) => prev.map(nb => nb.id === tempId ? { ...res.notebook, createdBy: { displayName: "You" } } : nb));
+        toast.success("Notebook created");
+        setIsCreating(false);
+        setNewTitle("");
+        setIsSubmitting(false);
+        router.refresh();
+        // Immediately navigate to the new notebook
+        router.push(`/wiki/${res.notebook.id}`);
+      } else {
+        setNotebooks((prev) => prev.filter(nb => nb.id !== tempId)); // revert
+        setIsSubmitting(false);
+        toast.error(res.error || "Failed to create notebook");
+      }
+    } catch (error) {
+      console.error("Create notebook failed:", error);
+      setNotebooks((prev) => prev.filter(nb => nb.id !== tempId));
       setIsSubmitting(false);
-      router.refresh();
-      // Immediately navigate to the new notebook
-      router.push(`/wiki/${res.notebook.id}`);
-    } else {
-      setNotebooks((prev) => prev.filter(nb => nb.id !== tempId)); // revert
-      setIsSubmitting(false);
-      toast.error(res.error || "Failed to create notebook");
+      toast.error("Network error — couldn't create notebook");
     }
   };
 
@@ -67,14 +74,20 @@ export default function WikiClient({
     
     const prev = [...notebooks];
     setNotebooks(notebooks.filter(nb => nb.id !== id));
-    
-    const res = await deleteNotebook(id);
-    if (res.success) {
-      toast.success("Notebook deleted");
-      router.refresh();
-    } else {
+
+    try {
+      const res = await deleteNotebook(id);
+      if (res.success) {
+        toast.success("Notebook deleted");
+        router.refresh();
+      } else {
+        setNotebooks(prev);
+        toast.error("Failed to delete notebook");
+      }
+    } catch (error) {
+      console.error("Delete notebook failed:", error);
       setNotebooks(prev);
-      toast.error("Failed to delete notebook");
+      toast.error("Network error — couldn't delete notebook");
     }
   };
 

@@ -22,9 +22,11 @@ import { TicketCard } from "./TicketCard";
 import { moveTicket } from "@/server/actions/ticket.actions";
 import { useUIStore } from "@/stores/ui.store";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 type TicketWithRelations = Ticket & {
   assignee: Pick<User, "id" | "displayName" | "avatarColor"> | null;
+  extraAssignees?: { user: Pick<User, "id" | "displayName" | "avatarColor"> }[];
   labels: Pick<Label, "id" | "name" | "color">[];
   _count: { comments: number };
 };
@@ -40,6 +42,7 @@ interface BoardCanvasProps {
 }
 
 export function BoardCanvas({ board, columns: initialColumns, currentUserId }: BoardCanvasProps) {
+  const router = useRouter();
   const [columns, setColumns] = useState(initialColumns);
   const [activeTicket, setActiveTicket] = useState<TicketWithRelations | null>(null);
   const [savingTickets, setSavingTickets] = useState<Set<string>>(new Set());
@@ -164,11 +167,12 @@ export function BoardCanvas({ board, columns: initialColumns, currentUserId }: B
     }).then((result) => {
       setSavingTickets(prev => { const n = new Set(prev); n.delete(active.id as string); return n; });
       if (!result.success) {
-        toast.error("Failed to move ticket on server");
-        // Could technically revert optimistic UI here, but a refresh handles it if they reload
+        toast.error(result.error || "Couldn't move that card — reloaded the board");
+        // Re-sync from the server so the board never diverges from reality
+        router.refresh();
       }
     });
-  }, []);
+  }, [router]);
 
   const allTicketIds = columns.flatMap((c) => c.tickets.map((t) => t.id));
 
@@ -180,7 +184,7 @@ export function BoardCanvas({ board, columns: initialColumns, currentUserId }: B
       onDragEnd={handleDragEnd}
     >
       <div className="board-canvas h-full p-6">
-        {columns
+        {[...columns]
           .sort((a, b) => a.order - b.order)
           .map((column) => (
             <ColumnContainer

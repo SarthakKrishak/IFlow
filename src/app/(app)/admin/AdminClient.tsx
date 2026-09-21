@@ -177,7 +177,7 @@ export function AdminClient({ users: initialUsers, currentUserId }: AdminClientP
           </thead>
           <tbody className="divide-y divide-surface-border bg-surface-elevated">
             {users.map((user) => (
-              <tr key={user.id} className="hover:bg-[#1F252E] transition-colors">
+              <tr key={user.id} className="hover:bg-surface-base transition-colors">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
                     <Avatar displayName={user.displayName} avatarColor={user.avatarColor} size="sm" />

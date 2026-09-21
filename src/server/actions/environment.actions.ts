@@ -69,10 +69,13 @@ export async function getEnvironments() {
   });
   
   return envs.map(env => {
-    const hasAccess = session.user!.role === "ADMIN" || env.allowedUsers.some(u => u.id === session.user!.id);
-    const hasWriteAccess = session.user!.role === "ADMIN" || env.writeUsers.some(u => u.id === session.user!.id);
-    return { 
-      ...env, 
+    const isAdmin = session.user!.role === "ADMIN";
+    const canRead = env.allowedUsers.some(u => u.id === session.user!.id);
+    const hasWriteAccess = isAdmin || env.writeUsers.some(u => u.id === session.user!.id);
+    // Write access implies viewing (you can't edit what you can't open)
+    const hasAccess = isAdmin || canRead || hasWriteAccess;
+    return {
+      ...env,
       createdAt: env.createdAt.toISOString(),
       hasAccess,
       hasWriteAccess
@@ -82,21 +85,33 @@ export async function getEnvironments() {
 
 export async function createEnvironment(data: { name: string, projectId: string, allowedUserIds: string[], writeUserIds?: string[] }) {
   const user = await verifyAdmin();
-  
+
+  const name = data.name?.trim();
+  if (!name) throw new Error("Environment name is required");
+
+  // Validate user ids so a stale id can't wipe or break the ACL
+  const allIds = Array.from(new Set([...(data.allowedUserIds || []), ...(data.writeUserIds || [])]));
+  if (allIds.length > 0) {
+    const existing = await prisma.user.findMany({ where: { id: { in: allIds } }, select: { id: true } });
+    const valid = new Set(existing.map(u => u.id));
+    const invalid = allIds.filter(id => !valid.has(id));
+    if (invalid.length > 0) throw new Error("One or more selected users no longer exist");
+  }
+
   const env = await prisma.environment.create({
     data: {
-      name: data.name,
+      name,
       projectId: data.projectId,
       createdById: user.id,
       allowedUsers: {
-        connect: data.allowedUserIds.map(id => ({ id }))
+        connect: (data.allowedUserIds || []).map(id => ({ id }))
       },
       writeUsers: {
         connect: (data.writeUserIds || []).map(id => ({ id }))
       }
     }
   });
-  
+
   revalidatePath("/environments");
   return env;
 }
@@ -116,9 +131,20 @@ export async function getEnvironmentVariables(environmentId: string) {
   }));
 }
 
+const DECRYPTION_PLACEHOLDER = "*** DECRYPTION_FAILED ***";
+
+function guardStorableValue(key: string, value: string) {
+  if (!key?.trim()) throw new Error("Variable key is required");
+  // Never persist the decrypt-failure placeholder back over a real secret
+  if (value.includes(DECRYPTION_PLACEHOLDER)) {
+    throw new Error(`Cannot save "${key.trim()}": its current value failed to decrypt. Ask an admin to rotate it.`);
+  }
+}
+
 export async function saveEnvironmentVariable(environmentId: string, key: string, value: string) {
   await verifyWriteAccess(environmentId);
-  
+  guardStorableValue(key, value);
+
   const encryptedValue = encryptValue(value);
   
   const variable = await prisma.environmentVariable.upsert({
@@ -153,6 +179,11 @@ export async function deleteEnvironment(id: string) {
 
 export async function updateEnvironmentAccess(id: string, allowedUserIds: string[], writeUserIds: string[] = []) {
   await verifyAdmin();
+  const allIds = Array.from(new Set([...(allowedUserIds || []), ...(writeUserIds || [])]));
+  if (allIds.length > 0) {
+    const existing = await prisma.user.findMany({ where: { id: { in: allIds } }, select: { id: true } });
+    if (existing.length !== allIds.length) throw new Error("One or more selected users no longer exist");
+  }
   await prisma.environment.update({
     where: { id },
     data: {
@@ -171,6 +202,8 @@ export async function updateEnvironmentAccess(id: string, allowedUserIds: string
 
 export async function saveMultipleEnvironmentVariables(environmentId: string, variables: { key: string, value: string }[]) {
   await verifyWriteAccess(environmentId);
+  // Validate everything up-front so a mid-loop failure can't leave a half-import
+  for (const { key, value } of variables) guardStorableValue(key, value);
   const results = [];
   for (const { key, value } of variables) {
     const encryptedValue = encryptValue(value);

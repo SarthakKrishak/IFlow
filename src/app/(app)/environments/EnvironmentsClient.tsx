@@ -56,9 +56,13 @@ export function EnvironmentsClient({
       });
       return;
     }
-    
+
     setLoadingEnvId(env.id);
     router.push(`/environments/${env.id}`);
+    // Safety: never leave the spinner stuck if navigation stalls
+    setTimeout(() => {
+      setLoadingEnvId((current) => (current === env.id ? null : current));
+    }, 5000);
   };
 
   const handleCreate = async (e: React.FormEvent) => {

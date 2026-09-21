@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getExtraAssigneesMap } from "@/lib/assignees";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -18,6 +19,7 @@ export async function GET(
       createdBy: { select: { id: true, displayName: true, avatarColor: true } },
       labels: { select: { id: true, name: true, color: true } },
       column: true,
+      board: { select: { id: true, name: true } },
       comments: {
         include: {
           author: { select: { id: true, displayName: true, avatarColor: true } },
@@ -35,5 +37,11 @@ export async function GET(
 
   if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json(ticket);
+  // Attach multi-assignees additively (fail-soft until migration is applied).
+  const extrasMap = await getExtraAssigneesMap([ticket.id]);
+
+  return NextResponse.json({
+    ...ticket,
+    extraAssignees: (extrasMap.get(ticket.id) ?? []).map((user) => ({ user })),
+  });
 }

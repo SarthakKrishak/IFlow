@@ -35,122 +35,209 @@
   }
 
   .dark {
-    /* Premium Vercel/Linear Dark Mode */
-    --background: 0 0% 0%; /* Pure black */
-    --foreground: 0 0% 95%;
-    --card: 0 0% 4%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 4%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 12%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* VSCode Dark+ — vivid blue accent so buttons pop (not monochrome) */
+    --background: 220 13% 7%; /* #0F1115-ish, softer than pure black */
+    --foreground: 0 0% 93%;
+    --card: 220 13% 9%;
+    --card-foreground: 0 0% 93%;
+    --popover: 220 13% 9%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 207 90% 54%; /* VSCode blue #1F8AD6 / #007ACC brightened */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 13% 14%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 220 13% 14%;
+    --muted-foreground: 220 9% 60%;
+    --accent: 220 13% 14%;
+    --accent-foreground: 0 0% 93%;
+    --destructive: 0 62.8% 45%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 0 0% 83.1%;
-    
-    --surface-base: 0 0% 0%;
-    --surface-elevated: 0 0% 6%;
-    --surface-border: 0 0% 14.9%;
-    --text-primary: 0 0% 95%;
-    --text-secondary: 0 0% 63.9%;
+    --border: 220 13% 17%;
+    --input: 220 13% 17%;
+    --ring: 207 90% 54%;
+
+    --surface-base: 220 13% 6%;
+    --surface-elevated: 220 13% 9%;
+    --surface-border: 220 13% 16%;
+    --text-primary: 0 0% 93%;
+    --text-secondary: 220 9% 60%;
     --editor-text: #ffffff;
   }
 
   .ocean {
-    /* Deep Nord/Ocean Blue */
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 14%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 14%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 199 89% 48%; /* Bright cyan/blue accent */
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* Night Owl — deep navy with bright cyan accent */
+    --background: 222 47% 9%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 12%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 12%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 187 92% 48%; /* Night Owl cyan */
+    --primary-foreground: 222 47% 9%;
+    --secondary: 217.2 32.6% 16%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217.2 32.6% 16%;
+    --muted-foreground: 215 20.2% 62%;
+    --accent: 217.2 32.6% 16%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 72% 55%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 22%;
-    --input: 217.2 32.6% 22%;
-    --ring: 199 89% 48%;
+    --border: 217.2 32.6% 21%;
+    --input: 217.2 32.6% 21%;
+    --ring: 187 92% 48%;
 
-    --surface-base: 222 47% 10%;
-    --surface-elevated: 222 47% 13%;
-    --surface-border: 217.2 32.6% 20%;
-    --text-primary: 210 40% 98%;
-    --text-secondary: 215 20.2% 65.1%;
+    --surface-base: 222 47% 8%;
+    --surface-elevated: 222 47% 11%;
+    --surface-border: 217.2 32.6% 19%;
+    --text-primary: 210 40% 96%;
+    --text-secondary: 215 20.2% 62%;
     --editor-text: #ffffff;
   }
 
-  .forest {
-    /* Rich Evergreen / Raycast */
-    --background: 160 12% 8%;
-    --foreground: 150 15% 95%;
-    --card: 160 12% 11%;
-    --card-foreground: 150 15% 95%;
-    --popover: 160 12% 11%;
-    --popover-foreground: 150 15% 95%;
-    --primary: 150 60% 45%;
-    --primary-foreground: 160 12% 8%;
-    --secondary: 160 12% 15%;
-    --secondary-foreground: 150 15% 95%;
-    --muted: 160 12% 15%;
-    --muted-foreground: 150 10% 60%;
-    --accent: 160 12% 15%;
-    --accent-foreground: 150 15% 95%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 150 15% 95%;
-    --border: 160 12% 20%;
-    --input: 160 12% 20%;
-    --ring: 150 60% 45%;
+  .dracula {
+    /* Dracula — dark plum with purple/pink accents */
+    --background: 231 15% 10%; /* #191A21 */
+    --foreground: 60 30% 96%; /* #F8F8F2 */
+    --card: 232 14% 13%; /* #21222C */
+    --card-foreground: 60 30% 96%;
+    --popover: 232 14% 13%;
+    --popover-foreground: 60 30% 96%;
+    --primary: 265 89% 78%; /* Dracula purple #BD93F9 */
+    --primary-foreground: 231 15% 12%;
+    --secondary: 232 14% 18%;
+    --secondary-foreground: 60 30% 96%;
+    --muted: 232 14% 18%;
+    --muted-foreground: 225 27% 68%; /* comment #6272A4 */
+    --accent: 232 14% 18%;
+    --accent-foreground: 60 30% 96%;
+    --destructive: 0 100% 67%; /* Dracula red #FF5555 */
+    --destructive-foreground: 60 30% 96%;
+    --border: 232 14% 22%;
+    --input: 232 14% 22%;
+    --ring: 265 89% 78%;
 
-    --surface-base: 160 12% 7%;
-    --surface-elevated: 160 12% 10%;
-    --surface-border: 160 12% 18%;
-    --text-primary: 150 15% 95%;
-    --text-secondary: 150 10% 60%;
+    --surface-base: 231 15% 9%;
+    --surface-elevated: 232 14% 12%;
+    --surface-border: 232 14% 20%;
+    --text-primary: 60 30% 96%;
+    --text-secondary: 225 27% 68%;
+    --editor-text: #F8F8F2;
+  }
+
+  .monokai {
+    /* Monokai Pro — warm charcoal with amber/green accents */
+    --background: 0 0% 10%; /* #1A1A1A */
+    --foreground: 0 0% 93%; /* #E7E7E7 */
+    --card: 0 0% 13%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 46 100% 66%; /* Monokai yellow #FFD866 */
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 17%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 17%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 17%;
+    --accent-foreground: 0 0% 93%;
+    --destructive: 0 100% 67%; /* Monokai red #FF657A-ish */
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 21%;
+    --input: 0 0% 21%;
+    --ring: 46 100% 66%;
+
+    --surface-base: 0 0% 9%;
+    --surface-elevated: 0 0% 12%;
+    --surface-border: 0 0% 19%;
+    --text-primary: 0 0% 93%;
+    --text-secondary: 0 0% 60%;
     --editor-text: #ffffff;
+  }
+
+  .onedark {
+    /* One Dark Pro — Atom-style slate with sky-blue accent */
+    --background: 220 13% 12%; /* #1E222A */
+    --foreground: 220 14% 86%; /* #ABB2BF */
+    --card: 220 13% 15%;
+    --card-foreground: 220 14% 86%;
+    --popover: 220 13% 15%;
+    --popover-foreground: 220 14% 86%;
+    --primary: 207 82% 66%; /* One Dark blue #61AFEF */
+    --primary-foreground: 220 13% 12%;
+    --secondary: 220 13% 19%;
+    --secondary-foreground: 220 14% 86%;
+    --muted: 220 13% 19%;
+    --muted-foreground: 220 10% 55%;
+    --accent: 220 13% 19%;
+    --accent-foreground: 220 14% 86%;
+    --destructive: 355 65% 65%; /* One Dark red #E06C75 */
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 23%;
+    --input: 220 13% 23%;
+    --ring: 207 82% 66%;
+
+    --surface-base: 220 13% 11%;
+    --surface-elevated: 220 13% 14%;
+    --surface-border: 220 13% 21%;
+    --text-primary: 220 14% 86%;
+    --text-secondary: 220 10% 55%;
+    --editor-text: #ABB2BF;
+  }
+
+  /* Deprecated aliases: users who had forest/sunset stored fall back gracefully. */
+  .forest {
+    --background: 231 15% 10%;
+    --foreground: 60 30% 96%;
+    --card: 232 14% 13%;
+    --card-foreground: 60 30% 96%;
+    --popover: 232 14% 13%;
+    --popover-foreground: 60 30% 96%;
+    --primary: 265 89% 78%;
+    --primary-foreground: 231 15% 12%;
+    --secondary: 232 14% 18%;
+    --secondary-foreground: 60 30% 96%;
+    --muted: 232 14% 18%;
+    --muted-foreground: 225 27% 68%;
+    --accent: 232 14% 18%;
+    --accent-foreground: 60 30% 96%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 60 30% 96%;
+    --border: 232 14% 22%;
+    --input: 232 14% 22%;
+    --ring: 265 89% 78%;
+    --surface-base: 231 15% 9%;
+    --surface-elevated: 232 14% 12%;
+    --surface-border: 232 14% 20%;
+    --text-primary: 60 30% 96%;
+    --text-secondary: 225 27% 68%;
+    --editor-text: #F8F8F2;
   }
 
   .sunset {
-    /* Catppuccin Mocha / Warm Mauve Dark */
-    --background: 240 21% 12%;
-    --foreground: 270 10% 95%;
-    --card: 240 21% 15%;
-    --card-foreground: 270 10% 95%;
-    --popover: 240 21% 15%;
-    --popover-foreground: 270 10% 95%;
-    --primary: 346 87% 65%; /* Pink/Red accent */
-    --primary-foreground: 240 21% 12%;
-    --secondary: 240 21% 20%;
-    --secondary-foreground: 270 10% 95%;
-    --muted: 240 21% 20%;
-    --muted-foreground: 270 10% 70%;
-    --accent: 240 21% 20%;
-    --accent-foreground: 270 10% 95%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 270 10% 95%;
-    --border: 240 21% 25%;
-    --input: 240 21% 25%;
-    --ring: 346 87% 65%;
-
-    --surface-base: 240 21% 10%;
-    --surface-elevated: 240 21% 14%;
-    --surface-border: 240 21% 22%;
-    --text-primary: 270 10% 95%;
-    --text-secondary: 270 10% 70%;
+    --background: 0 0% 10%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 13%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 46 100% 66%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 17%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 17%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 17%;
+    --accent-foreground: 0 0% 93%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 21%;
+    --input: 0 0% 21%;
+    --ring: 46 100% 66%;
+    --surface-base: 0 0% 9%;
+    --surface-elevated: 0 0% 12%;
+    --surface-border: 0 0% 19%;
+    --text-primary: 0 0% 93%;
+    --text-secondary: 0 0% 60%;
     --editor-text: #ffffff;
   }
 }
@@ -243,7 +330,7 @@
     height: 100%;
     padding-bottom: 1rem;
     align-items: flex-start;
-    scroll-snap-type: x mandatory;
+    scroll-snap-type: x proximity;
   }
 
   .board-column {

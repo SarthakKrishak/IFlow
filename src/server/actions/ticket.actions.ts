@@ -35,12 +35,16 @@ export async function createTicket(input: {
     const { boardId, columnId, title } = parsed.data;
 
     // Get the board's department and max order in column
-    const [board, maxOrderResult] = await Promise.all([
+    const [board, targetColumn, maxOrderResult] = await Promise.all([
       prisma.board.findUnique({ where: { id: boardId }, select: { department: true } }),
+      prisma.column.findUnique({ where: { id: columnId }, select: { boardId: true } }),
       prisma.ticket.aggregate({ where: { columnId }, _max: { order: true } }),
     ]);
 
     if (!board) return { success: false, error: "Board not found" };
+    if (!targetColumn || targetColumn.boardId !== boardId) {
+      return { success: false, error: "Column does not belong to this board" };
+    }
 
     const order = (maxOrderResult._max.order ?? -1) + 1;
 
@@ -91,6 +95,12 @@ export async function updateTicket(input: {
     if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };
 
     const { ticketId, changes } = parsed.data;
+
+    if (Object.keys(changes).length === 0) {
+      const current = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!current) return { success: false, error: "Ticket not found" };
+      return { success: true, data: current };
+    }
 
     const existingTicket = await prisma.ticket.findUnique({
       where: { id: ticketId },
@@ -164,16 +174,19 @@ export async function moveTicket(input: {
         where: { id: ticketId },
         include: { column: { select: { name: true } } },
       }),
-      prisma.column.findUnique({ where: { id: toColumnId }, select: { name: true, id: true } }),
+      prisma.column.findUnique({ where: { id: toColumnId }, select: { name: true, id: true, boardId: true } }),
     ]);
 
     if (!existingTicket) return { success: false, error: "Ticket not found" };
     if (!toColumn) return { success: false, error: "Target column not found" };
+    if (toColumn.boardId !== existingTicket.boardId) {
+      return { success: false, error: "Cannot move a ticket to another board" };
+    }
 
     const fromColumnName = existingTicket.column.name;
     const toColumnName = toColumn.name;
-    const isDone = toColumnName === "Done";
-    const wasInDone = fromColumnName === "Done";
+    const isDone = /done|complet/i.test(toColumnName);
+    const wasInDone = /done|complet/i.test(fromColumnName);
 
     const ticket = await prisma.$transaction(async (tx) => {
       const updated = await tx.ticket.update({
@@ -232,10 +245,14 @@ export async function assignTicket(input: {
         include: { assignee: { select: { displayName: true } } },
       }),
       assigneeId
-        ? prisma.user.findUnique({ where: { id: assigneeId }, select: { displayName: true } })
+        ? prisma.user.findUnique({ where: { id: assigneeId }, select: { displayName: true, role: true } })
         : Promise.resolve(null),
     ]);
     if (!existingTicket) return { success: false, error: "Ticket not found" };
+    // The admin account is never assigned work
+    if (newAssignee?.role === "ADMIN") {
+      return { success: false, error: "Cannot assign to the admin account" };
+    }
     const newAssigneeName = newAssignee?.displayName;
 
     const ticket = await prisma.$transaction(async (tx) => {

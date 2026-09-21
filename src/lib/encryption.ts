@@ -1,8 +1,17 @@
 import crypto from 'crypto';
 
 // The encryption key should be exactly 32 bytes (256 bits).
-// We use a fallback key for development if not provided, but in production this MUST be set.
-const ENCRYPTION_KEY = (typeof process !== 'undefined' && process.env ? process.env.ENCRYPTION_KEY : undefined) || 'fallback_development_key_32_bytes_!';
+// Fail closed in production: never encrypt team secrets with a public fallback.
+// (Checked lazily at call time so imports/builds never crash on a missing key.)
+const FALLBACK_KEY = 'fallback_development_key_32_bytes_!';
+const configuredKey = (typeof process !== 'undefined' && process.env ? process.env.ENCRYPTION_KEY : undefined);
+
+function requireKey(): string {
+  if (!configuredKey && typeof process !== 'undefined' && process.env?.NODE_ENV === "production") {
+    throw new Error("ENCRYPTION_KEY is not set. Refusing to encrypt secrets with a fallback key.");
+  }
+  return configuredKey || FALLBACK_KEY;
+}
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const SALT_LENGTH = 64;
@@ -13,6 +22,7 @@ const SALT_LENGTH = 64;
  * @returns The encrypted string, containing salt, iv, auth tag, and ciphertext.
  */
 export function encryptValue(text: string): string {
+  const ENCRYPTION_KEY = requireKey();
   // To ensure the key is exactly 32 bytes, we use PBKDF2 to derive it.
   const salt = crypto.randomBytes(SALT_LENGTH);
   const key = crypto.pbkdf2Sync(ENCRYPTION_KEY, salt, 100000, 32, 'sha512');
@@ -41,6 +51,7 @@ export function encryptValue(text: string): string {
  */
 export function decryptValue(encryptedText: string): string {
   if (!encryptedText) return '';
+  const ENCRYPTION_KEY = requireKey();
   
   try {
     const parts = encryptedText.split(':');

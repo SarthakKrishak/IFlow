@@ -7,6 +7,7 @@ import { setProjectCookie } from "@/app/(app)/actions";
 import { useRouter } from "next/navigation";
 import { createProject } from "@/server/actions/project.actions";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { deleteProject } from "@/server/actions/project";
 import { Trash2 } from "lucide-react";
@@ -36,14 +37,21 @@ export function ProjectSwitcher({
 
   async function handleDelete(projectId: string) {
     setIsSubmitting(true);
-    const res = await deleteProject(projectId);
-    if (res.success) {
-      if (activeProject.id === projectId) {
-        // Just let it refresh, or explicitly navigate away
-        router.push("/overview");
+    try {
+      const res = await deleteProject(projectId);
+      if (res.success) {
+        if (activeProject.id === projectId) {
+          // Just let it refresh, or explicitly navigate away
+          router.push("/overview");
+        } else {
+          router.refresh();
+        }
       } else {
-        router.refresh();
+        toast.error(res.error || "Failed to delete project");
       }
+    } catch (error) {
+      console.error("Delete project failed:", error);
+      toast.error("Network error — couldn't delete project");
     }
     setIsSubmitting(false);
     setIsDeleting(null);
@@ -167,15 +175,23 @@ export function ProjectSwitcher({
               onSubmit={async (e) => {
                 e.preventDefault();
                 setIsSubmitting(true);
-                const formData = new FormData(e.currentTarget);
-                const result = await createProject({
-                  name: formData.get("name") as string,
-                  description: formData.get("description") as string,
-                });
-                setIsSubmitting(false);
-                if (result.success) {
-                  setIsCreating(false);
-                  handleSwitch(result.data.id);
+                try {
+                  const formData = new FormData(e.currentTarget);
+                  const result = await createProject({
+                    name: formData.get("name") as string,
+                    description: formData.get("description") as string,
+                  });
+                  setIsSubmitting(false);
+                  if (result.success) {
+                    setIsCreating(false);
+                    handleSwitch(result.data.id);
+                  } else {
+                    toast.error(result.error || "Failed to create project");
+                  }
+                } catch (error) {
+                  console.error("Create project failed:", error);
+                  setIsSubmitting(false);
+                  toast.error("Network error — couldn't create project");
                 }
               }}
               className="space-y-4"

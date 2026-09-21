@@ -30,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const [projects, boards, users, myTasksCount] = await Promise.all([
+  const [projects, boards, users] = await Promise.all([
     prisma.project.findMany({ orderBy: { name: "asc" } }),
     prisma.board.findMany({
       where: { projectId: activeProject.id },
@@ -38,16 +38,37 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       orderBy: { createdAt: "asc" },
     }),
     getCachedUsers(),
-    prisma.ticket.count({
+  ]);
+
+  // Matches my-tasks page semantics: primary OR multi-assignee, and any
+  // non-done column (case-insensitive), so the badge never undercounts.
+  // Falls back to the legacy single-assignee count pre-migration.
+  let myTasksCount = 0;
+  try {
+    myTasksCount = await prisma.ticket.count({
+      where: {
+        OR: [
+          { assigneeId: session.user.id },
+          { extraAssignees: { some: { userId: session.user.id } } },
+        ],
+        NOT: [
+          { column: { name: { contains: "done", mode: "insensitive" } } },
+          { column: { name: { contains: "complet", mode: "insensitive" } } },
+        ],
+      }
+    });
+  } catch (error) {
+    console.error("myTasksCount fallback (non-blocking):", error);
+    myTasksCount = await prisma.ticket.count({
       where: {
         assigneeId: session.user.id,
         column: { name: { notIn: ["Done", "Completed"] } }
       }
-    })
-  ]);
+    });
+  }
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange themes={['light', 'dark', 'ocean', 'dracula', 'monokai', 'onedark', 'forest', 'sunset']}>
       <TopLoader />
       <div className="flex h-screen overflow-hidden bg-surface-base">
         <Sidebar

@@ -39,8 +39,12 @@ export function DeploymentIndicator() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const formatTimeAgo = (dateString: string) => {
-    const diff = Date.now() - new Date(dateString).getTime();
+  const formatTimeAgo = (dateString?: string | null) => {
+    if (!dateString) return "—";
+    const time = new Date(dateString).getTime();
+    if (Number.isNaN(time)) return "—";
+    const diff = Date.now() - time;
+    if (diff < 0) return "Just now";
     if (diff < 60000) return "Just now";
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
@@ -87,7 +91,7 @@ export function DeploymentIndicator() {
       >
         <Server size={14} strokeWidth={2} className={isBuilding ? "animate-pulse" : "group-hover:scale-110 transition-transform"} />
         <span className="text-[12px] font-bold">
-           {isBuilding ? "Building" : overallColor === 'bg-red-500' ? "Failing" : "Healthy"}
+           {!health ? "Checking" : isBuilding ? "Building" : overallColor === 'bg-red-500' ? "Failing" : "Healthy"}
         </span>
         {health && (
           <span className={`w-2 h-2 rounded-full ${overallColor} ${isBuilding ? 'animate-pulse' : ''}`} />

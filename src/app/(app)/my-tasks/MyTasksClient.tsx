@@ -1,11 +1,19 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { 
-  Briefcase, Circle, Clock, CheckCircle2, AlertCircle, 
-  Search, ChevronLeft, ChevronRight, Calendar,
-  Code, Pencil, Folder, MessageSquare, LayoutTemplate, 
-  Bug, Box, Square, CheckSquare
+import {
+  Circle,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  Layers,
+  Flag,
+  Inbox,
+  RotateCcw,
 } from "lucide-react";
 import { PriorityChip } from "@/components/shared";
 import Link from "next/link";
@@ -14,89 +22,125 @@ interface MyTasksClientProps {
   initialTickets: any[];
 }
 
+function isDoneStatus(columnName: string) {
+  const n = columnName.toLowerCase();
+  return n.includes("done") || n.includes("complet");
+}
+
+function statusMeta(columnName: string) {
+  const n = columnName.toLowerCase();
+  if (n.includes("done") || n.includes("complet"))
+    return { dot: "bg-emerald-500", badge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" };
+  if (n.includes("review"))
+    return { dot: "bg-amber-500", badge: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30" };
+  if (n.includes("progress"))
+    return { dot: "bg-blue-500", badge: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30" };
+  return { dot: "bg-slate-400", badge: "bg-slate-500/10 text-slate-500 border-slate-500/25" };
+}
+
 export function MyTasksClient({ initialTickets }: MyTasksClientProps) {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All Status");
+  // Quick checkbox-style status filter (multi-select). Empty = all.
+  const [activeStatuses, setActiveStatuses] = useState<Set<string>>(new Set());
   const [boardFilter, setBoardFilter] = useState("All Boards");
   const [priorityFilter, setPriorityFilter] = useState("Priority");
-  
+  const [hideDone, setHideDone] = useState(false);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
 
-  // Debounce search input
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchInput);
-      setCurrentPage(1); // reset to page 1 on search
+      setCurrentPage(1);
     }, 300);
     return () => clearTimeout(handler);
   }, [searchInput]);
 
-  // Derive unique boards and statuses for filters
-  const uniqueBoards = Array.from(new Set(initialTickets.map(t => t.board.name)));
-  const uniqueStatuses = Array.from(new Set(initialTickets.map(t => t.column.name)));
+  const uniqueBoards = useMemo(
+    () => Array.from(new Set(initialTickets.map((t) => t.board.name))),
+    [initialTickets]
+  );
+  const uniqueStatuses = useMemo(
+    () => Array.from(new Set(initialTickets.map((t) => t.column.name))),
+    [initialTickets]
+  );
   const uniquePriorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
-  // Filter tasks
-  const filteredTasks = useMemo(() => {
-    return initialTickets.filter(t => {
-      const matchSearch = t.title.toLowerCase().includes(debouncedSearch.toLowerCase());
-      const matchStatus = statusFilter === "All Status" || t.column.name === statusFilter;
-      const matchBoard = boardFilter === "All Boards" || t.board.name === boardFilter;
-      const matchPriority = priorityFilter === "Priority" || t.priority === priorityFilter;
-      return matchSearch && matchStatus && matchBoard && matchPriority;
+  const statusCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    initialTickets.forEach((t) => m.set(t.column.name, (m.get(t.column.name) ?? 0) + 1));
+    return m;
+  }, [initialTickets]);
+
+  const toggleStatus = (s: string) => {
+    setActiveStatuses((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
     });
-  }, [initialTickets, debouncedSearch, statusFilter, boardFilter, priorityFilter]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage) || 1;
-  const paginatedTasks = filteredTasks.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  const toggleTask = (id: string) => {
-    const next = new Set(selectedTasks);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedTasks(next);
+    setCurrentPage(1);
   };
 
-  // Stats calculation
+  const filteredTasks = useMemo(() => {
+    return initialTickets.filter((t) => {
+      const matchSearch =
+        t.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        (t.description ?? "").toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchStatus = activeStatuses.size === 0 || activeStatuses.has(t.column.name);
+      const matchBoard = boardFilter === "All Boards" || t.board.name === boardFilter;
+      const matchPriority = priorityFilter === "Priority" || t.priority === priorityFilter;
+      const matchHideDone = !hideDone || !isDoneStatus(t.column.name);
+      return matchSearch && matchStatus && matchBoard && matchPriority && matchHideDone;
+    });
+  }, [initialTickets, debouncedSearch, activeStatuses, boardFilter, priorityFilter, hideDone]);
+
+  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage) || 1;
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedTasks = filteredTasks.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage);
+
   const stats = useMemo(() => {
     let todo = 0, inProgress = 0, inReview = 0, completed = 0, overdue = 0;
-    
-    initialTickets.forEach(t => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    initialTickets.forEach((t) => {
+      const done = isDoneStatus(t.column.name);
       const status = t.column.name.toLowerCase();
-      if (status.includes("done") || status.includes("complet")) completed++;
+      if (done) completed++;
       else if (status.includes("review")) inReview++;
       else if (status.includes("progress")) inProgress++;
       else todo++;
-
-      if (t.dueDate && new Date(t.dueDate) < new Date() && !status.includes("done")) {
-        overdue++;
-      }
+      if (t.dueDate && new Date(t.dueDate) < todayStart && !done) overdue++;
     });
-
-    return {
-      total: initialTickets.length,
-      todo,
-      inProgress,
-      inReview,
-      completed,
-      overdue
-    };
+    return { total: initialTickets.length, todo, inProgress, inReview, completed, overdue };
   }, [initialTickets]);
+
+  const completionPct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+
+  const resetFilters = () => {
+    setSearchInput("");
+    setDebouncedSearch("");
+    setActiveStatuses(new Set());
+    setBoardFilter("All Boards");
+    setPriorityFilter("Priority");
+    setHideDone(false);
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters =
+    searchInput !== "" || activeStatuses.size > 0 || boardFilter !== "All Boards" ||
+    priorityFilter !== "Priority" || hideDone;
 
   const getRelativeTime = (dateStr: Date | string | null) => {
     if (!dateStr) return "No due date";
     const d = new Date(dateStr);
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
     const target = new Date(d);
-    target.setHours(0,0,0,0);
-    
+    target.setHours(0, 0, 0, 0);
     const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Tomorrow";
     if (diffDays === -1) return "Yesterday";
@@ -104,312 +148,346 @@ export function MyTasksClient({ initialTickets }: MyTasksClientProps) {
     return `${Math.abs(diffDays)} days ago`;
   };
 
-  const getTaskIcon = (title: string, index: number) => {
-    const t = title.toLowerCase();
-    const colors = ["bg-indigo-500", "bg-emerald-500", "bg-orange-500", "bg-blue-500", "bg-cyan-500", "bg-purple-500", "bg-pink-500"];
-    const color = colors[index % colors.length];
-
-    let Icon = Box;
-    if (t.includes("chat") || t.includes("message")) Icon = MessageSquare;
-    else if (t.includes("ui") || t.includes("landing") || t.includes("design")) Icon = Pencil;
-    else if (t.includes("api") || t.includes("integration") || t.includes("backend")) Icon = Code;
-    else if (t.includes("bug") || t.includes("fix") || t.includes("issue")) Icon = Bug;
-    else if (t.includes("flow") || t.includes("onboard")) Icon = LayoutTemplate;
-
-    return (
-      <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-sm flex-shrink-0 ${color}`}>
-        <Icon size={14} />
-      </div>
-    );
-  };
-
-  const getStatusDisplay = (columnName: string) => {
-    const name = columnName.toLowerCase();
-    let color = "bg-gray-500";
-    let textColor = "text-gray-400";
-    let Icon: any = Circle;
-
-    if (name.includes("done") || name.includes("complet")) {
-      color = "bg-emerald-500";
-      textColor = "text-emerald-500";
-      Icon = CheckCircle2;
-    } else if (name.includes("progress")) {
-      color = "bg-blue-500";
-      textColor = "text-blue-500";
-      Icon = () => <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>;
-    } else if (name.includes("review")) {
-      color = "bg-orange-500";
-      textColor = "text-orange-500";
-      Icon = () => <div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div>;
-    } else {
-      Icon = () => <div className="w-2.5 h-2.5 rounded-full border-2 border-gray-400"></div>;
-    }
-
-    return (
-      <div className="flex items-center gap-2 px-2.5 py-1 rounded-full border border-surface-border bg-surface-elevated w-fit">
-        <Icon size={12} className={textColor} />
-        <span className="text-[11px] font-bold text-foreground">{columnName}</span>
-      </div>
-    );
-  };
-
-  const getBoardDisplay = (boardName: string) => {
-    const isDesign = boardName.toLowerCase().includes("design");
-    return (
-      <div className="flex items-center gap-1.5 px-2 py-1">
-        {isDesign ? <Pencil size={12} className="text-purple-500" /> : <Code size={12} className="text-indigo-500" />}
-        <span className="text-[12px] font-medium text-muted-foreground">{boardName}</span>
-      </div>
-    );
-  };
-
-  const getProjectDisplay = (projectName: string) => {
-    return (
-      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-400 w-fit">
-        <Folder size={12} />
-        <span className="text-[11px] font-bold">{projectName}</span>
-      </div>
-    );
+  const isOverdue = (t: any) => {
+    if (!t.dueDate || isDoneStatus(t.column.name)) return false;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return new Date(t.dueDate) < todayStart;
   };
 
   return (
-    <div className="p-8 pb-24 max-w-[1500px] mx-auto space-y-8 animate-fade-in">
-      
-      {/* Filters Only (Headers removed as per request) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-end gap-6 pt-2">
-        <div className="flex items-center gap-3 flex-wrap">
-          <select 
-            value={statusFilter} 
-            onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-            className="px-3 py-2 rounded-xl bg-surface-elevated border border-surface-border text-[12px] font-bold text-foreground outline-none cursor-pointer"
-          >
-            <option value="All Status">All Status</option>
-            {uniqueStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+    <div className="p-6 lg:p-8 pb-24 max-w-[1400px] mx-auto space-y-6 animate-fade-in">
+      {/* ── Header: summary + progress ─────────────────────────────── */}
+      <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 lg:p-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0">
+              <Inbox size={20} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold text-foreground tracking-tight">My work queue</h2>
+              <p className="text-[12.5px] text-muted-foreground mt-0.5">
+                {stats.total} assigned · {stats.completed} done · {stats.overdue > 0 ? `${stats.overdue} overdue` : "nothing overdue"}
+              </p>
+            </div>
+          </div>
 
-          <select 
-            value={boardFilter} 
-            onChange={e => { setBoardFilter(e.target.value); setCurrentPage(1); }}
-            className="px-3 py-2 rounded-xl bg-surface-elevated border border-surface-border text-[12px] font-bold text-foreground outline-none cursor-pointer"
-          >
-            <option value="All Boards">All Boards</option>
-            {uniqueBoards.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
-
-          <select 
-            value={priorityFilter} 
-            onChange={e => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
-            className="px-3 py-2 rounded-xl bg-surface-elevated border border-surface-border text-[12px] font-bold text-foreground outline-none cursor-pointer"
-          >
-            <option value="Priority">Priority</option>
-            {uniquePriorities.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input 
-              type="text" 
-              placeholder="Search tasks..." 
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              className="pl-9 pr-3 py-2 w-48 rounded-xl bg-surface-elevated border border-surface-border text-[12px] font-medium text-foreground outline-none focus:border-primary/50 transition-colors"
-            />
+          {/* Progress */}
+          <div className="flex items-center gap-4 lg:pr-2">
+            <div className="w-40 sm:w-52">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Completion</span>
+                <span className="text-[11px] font-bold text-foreground font-mono">{completionPct}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-surface-border overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
+                  style={{ width: `${completionPct}%` }}
+                />
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 text-[12px] font-medium text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-400" />{stats.todo} to do</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" />{stats.inProgress} active</span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" />{stats.completed} done</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Top Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:border-primary/30 transition-colors">
-           <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500 flex-shrink-0">
-             <Briefcase size={20} />
-           </div>
-           <div>
-             <p className="text-[11px] font-bold text-muted-foreground">Total Tasks</p>
-             <p className="text-2xl font-bold text-foreground leading-none mt-1">{stats.total}</p>
-             <p className="text-[10px] text-muted-foreground mt-1">Assigned to you</p>
-           </div>
-        </div>
-        
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:border-primary/30 transition-colors">
-           <div className="w-12 h-12 rounded-2xl bg-surface-base border border-surface-border flex items-center justify-center text-muted-foreground flex-shrink-0">
-             <Circle size={20} />
-           </div>
-           <div>
-             <p className="text-[11px] font-bold text-muted-foreground">To Do</p>
-             <p className="text-2xl font-bold text-foreground leading-none mt-1">{stats.todo}</p>
-           </div>
-        </div>
-
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:border-primary/30 transition-colors">
-           <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 flex-shrink-0">
-             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-             </svg>
-           </div>
-           <div>
-             <p className="text-[11px] font-bold text-muted-foreground">In Progress</p>
-             <p className="text-2xl font-bold text-foreground leading-none mt-1">{stats.inProgress}</p>
-           </div>
-        </div>
-
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:border-primary/30 transition-colors">
-           <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500 flex-shrink-0">
-             <AlertCircle size={20} />
-           </div>
-           <div>
-             <p className="text-[11px] font-bold text-muted-foreground">In Review</p>
-             <p className="text-2xl font-bold text-foreground leading-none mt-1">{stats.inReview}</p>
-           </div>
-        </div>
-
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:border-primary/30 transition-colors">
-           <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 flex-shrink-0">
-             <CheckCircle2 size={20} />
-           </div>
-           <div>
-             <p className="text-[11px] font-bold text-muted-foreground">Completed</p>
-             <p className="text-2xl font-bold text-foreground leading-none mt-1">{stats.completed}</p>
-           </div>
-        </div>
-
-        <div className="bg-surface-elevated border border-surface-border rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:border-primary/30 transition-colors">
-           <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 flex-shrink-0">
-             <Clock size={20} />
-           </div>
-           <div>
-             <p className="text-[11px] font-bold text-muted-foreground">Overdue</p>
-             <p className="text-2xl font-bold text-foreground leading-none mt-1">{stats.overdue}</p>
-           </div>
+        {/* Quick status checkboxes */}
+        <div className="flex items-center gap-2 flex-wrap mt-5 pt-4 border-t border-surface-border">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mr-1">Status</span>
+          {uniqueStatuses.map((s) => {
+            // Empty selection = "all" — report pressed=true so AT matches visuals
+            const pressed = activeStatuses.size === 0 || activeStatuses.has(s);
+            const meta = statusMeta(s);
+            return (
+              <button
+                key={s}
+                onClick={() => toggleStatus(s)}
+                aria-pressed={pressed}
+                title={activeStatuses.has(s) ? `Remove ${s} filter` : `Only show ${s}`}
+                className={`flex items-center gap-2 pl-2.5 pr-3 py-1.5 rounded-lg border text-[12px] font-semibold transition-all ${
+                  activeStatuses.has(s)
+                    ? "border-primary/60 bg-primary/[0.08] text-foreground shadow-sm"
+                    : pressed
+                      ? "border-surface-border bg-surface-base text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      : "border-surface-border bg-surface-base text-muted-foreground/50 hover:text-foreground opacity-60"
+                }`}
+              >
+                <span
+                  className={`w-3.5 h-3.5 rounded-[5px] border flex items-center justify-center flex-shrink-0 transition-colors ${
+                    activeStatuses.has(s) ? "bg-primary border-primary text-white" : "border-surface-border bg-surface-elevated"
+                  }`}
+                >
+                  {activeStatuses.has(s) && <CheckCircle2 size={11} strokeWidth={3} />}
+                </span>
+                <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                {s}
+                <span className="font-mono text-[11px] opacity-70">({statusCounts.get(s) ?? 0})</span>
+              </button>
+            );
+          })}
+          <button
+            onClick={() => { setHideDone(!hideDone); setCurrentPage(1); }}
+            aria-pressed={hideDone}
+            className="flex items-center gap-2 ml-1 pl-3 border-l border-surface-border text-[12px] font-medium text-muted-foreground hover:text-foreground cursor-pointer select-none transition-colors"
+          >
+            <span
+              className={`w-3.5 h-3.5 rounded-[5px] border flex items-center justify-center transition-colors ${
+                hideDone ? "bg-emerald-500 border-emerald-500 text-white" : "border-surface-border bg-surface-elevated"
+              }`}
+            >
+              {hideDone && <CheckCircle2 size={11} strokeWidth={3} />}
+            </span>
+            Hide done
+          </button>
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              className="flex items-center gap-1.5 ml-auto text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <RotateCcw size={12} />
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Task Table */}
-      <div className="bg-surface-elevated border border-surface-border rounded-3xl shadow-sm overflow-hidden flex flex-col">
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left min-w-[1000px]">
-            <thead>
-              <tr className="border-b border-surface-border">
-                <th className="px-6 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-[28%]">Task</th>
-                <th className="px-4 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-[15%]">Project</th>
-                <th className="px-4 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-[15%]">Status</th>
-                <th className="px-4 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-[15%]">Board</th>
-                <th className="px-4 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest w-[12%]">Priority</th>
-                <th className="px-4 py-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Due Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-border">
-              {paginatedTasks.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center text-muted-foreground">
-                    <CheckCircle2 size={40} className="mx-auto mb-4 text-emerald-500/50" />
-                    <p className="text-sm font-medium">No tasks found</p>
-                    <p className="text-xs mt-1 opacity-70">Try adjusting your filters or search query.</p>
-                  </td>
-                </tr>
-              ) : (
-                paginatedTasks.map((t, i) => {
-                  return (
-                    <tr key={t.id} className="hover:bg-surface-base transition-colors group">
-                      <td className="px-6 py-3">
-                        <div className="flex items-center gap-3">
-                           {getTaskIcon(t.title, i)}
-                           <div className="flex flex-col min-w-0">
-                             <Link href={`/board/${t.boardId}`} className="text-[13px] font-bold text-foreground hover:text-primary transition-colors truncate">
-                               {t.title}
-                             </Link>
-                             <span className="text-[11px] text-muted-foreground truncate">{t.description || "No description provided"}</span>
-                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {getProjectDisplay(t.board.project.name)}
-                      </td>
-                      <td className="px-4 py-3">
-                        {getStatusDisplay(t.column.name)}
-                      </td>
-                      <td className="px-4 py-3">
-                        {getBoardDisplay(t.board.name)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <PriorityChip priority={t.priority} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                           <Calendar size={14} className="text-muted-foreground" />
-                           <div className="flex flex-col">
-                             <span className="text-[13px] font-bold text-foreground">
-                               {t.dueDate ? new Date(t.dueDate).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) : "No Date"}
-                             </span>
-                             <span className="text-[11px] text-muted-foreground font-medium">
-                               {getRelativeTime(t.dueDate)}
-                             </span>
-                           </div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+      {/* ── Toolbar: board / priority / search ─────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground">
+            <Layers size={13} /> Board
+          </span>
+          <select
+            value={boardFilter}
+            onChange={(e) => { setBoardFilter(e.target.value); setCurrentPage(1); }}
+            className="px-3 py-2 rounded-xl bg-surface-elevated border border-surface-border text-[12px] font-semibold text-foreground outline-none cursor-pointer hover:border-primary/40 transition-colors"
+          >
+            <option value="All Boards">All boards</option>
+            {uniqueBoards.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+          <span className="flex items-center gap-1.5 text-[12px] font-semibold text-muted-foreground ml-1">
+            <Flag size={13} /> Priority
+          </span>
+          <select
+            value={priorityFilter}
+            onChange={(e) => { setPriorityFilter(e.target.value); setCurrentPage(1); }}
+            className="px-3 py-2 rounded-xl bg-surface-elevated border border-surface-border text-[12px] font-semibold text-foreground outline-none cursor-pointer hover:border-primary/40 transition-colors"
+          >
+            <option value="Priority">All priorities</option>
+            {uniquePriorities.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div className="relative sm:ml-auto">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search title or description…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="pl-9 pr-8 py-2 w-full sm:w-64 rounded-xl bg-surface-elevated border border-surface-border text-[12.5px] font-medium text-foreground outline-none focus:border-primary/60 transition-colors placeholder:text-muted-foreground/60"
+          />
+          {searchInput && (
+            <button
+              onClick={() => setSearchInput("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-sm leading-none"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Task list (Jira-style rows) ────────────────────────────── */}
+      <div className="bg-surface-elevated border border-surface-border rounded-2xl shadow-sm overflow-hidden">
+        <div className="hidden md:grid grid-cols-[minmax(0,1fr)_150px_130px_120px_130px] gap-3 px-5 py-3 border-b border-surface-border bg-surface-base/60 text-[10.5px] font-bold text-muted-foreground uppercase tracking-widest">
+          <span>Task</span>
+          <span>Status</span>
+          <span>Board</span>
+          <span>Priority</span>
+          <span className="text-right">Due</span>
         </div>
 
-        {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-surface-border bg-surface-base">
+        {paginatedTasks.length === 0 ? (
+          <div className="px-6 py-16 text-center">
+            <CheckCircle2 size={36} className="mx-auto mb-3 text-emerald-500/50" />
+            <p className="text-sm font-semibold text-foreground">No tasks match</p>
+            <p className="text-xs mt-1 text-muted-foreground">Adjust filters or search — or enjoy the empty queue.</p>
+            {hasActiveFilters && (
+              <button onClick={resetFilters} className="mt-4 px-4 py-2 rounded-xl bg-primary text-white text-[12px] font-bold hover:opacity-90 transition-opacity">
+                Clear all filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <ul className="divide-y divide-surface-border">
+            {paginatedTasks.map((t) => {
+              const done = isDoneStatus(t.column.name);
+              const meta = statusMeta(t.column.name);
+              const overdue = isOverdue(t);
+              return (
+                <li
+                  key={t.id}
+                  className={`relative transition-colors group ${
+                    done
+                      ? "bg-emerald-500/[0.05] hover:bg-emerald-500/[0.09]"
+                      : "hover:bg-surface-base"
+                  }`}
+                >
+                  {/* done rail */}
+                  <span
+                    className={`absolute left-0 top-0 bottom-0 w-[3px] ${done ? "bg-emerald-500" : "bg-transparent group-hover:bg-primary/40"}`}
+                  />
+                  <div className="grid md:grid-cols-[minmax(0,1fr)_150px_130px_120px_130px] gap-2 md:gap-3 items-center px-5 py-3.5">
+                    {/* Task */}
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span className={`mt-1 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                        done ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-400/60"
+                      }`}>
+                        {done && <CheckCircle2 size={11} strokeWidth={3.5} />}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-mono text-[10.5px] text-muted-foreground/70 flex-shrink-0">
+                            {t.id.slice(-6).toUpperCase()}
+                          </span>
+                          {done && (
+                            <span className="text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-px rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex-shrink-0">
+                              Done
+                            </span>
+                          )}
+                          {overdue && (
+                            <span className="flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-px rounded bg-red-500/10 text-red-500 border border-red-500/25 flex-shrink-0">
+                              <AlertCircle size={9} /> Overdue
+                            </span>
+                          )}
+                        </div>
+                        <Link
+                          href={`/board/${t.boardId}?ticket=${t.id}`}
+                          className={`block text-[13.5px] font-semibold truncate transition-colors ${
+                            done ? "text-muted-foreground line-through decoration-emerald-500/50" : "text-foreground hover:text-primary"
+                          }`}
+                          title={t.title}
+                        >
+                          {t.title}
+                        </Link>
+                        <p className="text-[11.5px] text-muted-foreground/80 truncate">
+                          {t.description || "No description"}
+                          {t.labels?.length > 0 && (
+                            <span className="ml-2">
+                              {t.labels.slice(0, 3).map((l: any) => (
+                                <span
+                                  key={l.id}
+                                  className="inline-block mr-1 px-1.5 py-px rounded text-[10px] font-semibold border"
+                                  style={{ color: l.color, borderColor: `${l.color}40`, background: `${l.color}12` }}
+                                >
+                                  {l.name}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold ${meta.badge}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                        {t.column.name}
+                      </span>
+                    </div>
+
+                    {/* Board */}
+                    <div className="text-[12px] font-medium text-muted-foreground truncate">{t.board.name}</div>
+
+                    {/* Priority */}
+                    <div><PriorityChip priority={t.priority} /></div>
+
+                    {/* Due */}
+                    <div className="flex items-center md:justify-end gap-2">
+                      <Calendar size={13} className={overdue ? "text-red-500" : "text-muted-foreground"} />
+                      <div className="leading-tight md:text-right">
+                        <p className={`text-[12.5px] font-bold ${overdue ? "text-red-500" : done ? "text-muted-foreground" : "text-foreground"}`}>
+                          {t.dueDate
+                            ? new Date(t.dueDate).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
+                            : "No date"}
+                        </p>
+                        <p className="text-[10.5px] text-muted-foreground font-medium">{getRelativeTime(t.dueDate)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {/* Pagination */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 border-t border-surface-border bg-surface-base/60">
           <p className="text-[12px] font-medium text-muted-foreground">
-            Showing {filteredTasks.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredTasks.length)} of {filteredTasks.length} tasks
+            Showing {filteredTasks.length === 0 ? 0 : (safePage - 1) * itemsPerPage + 1}–{Math.min(safePage * itemsPerPage, filteredTasks.length)} of {filteredTasks.length}
+            {stats.overdue > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 text-red-500 font-semibold">
+                <Clock size={11} /> {stats.overdue} overdue
+              </span>
+            )}
           </p>
-          
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-1">
-              <button 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safePage === 1}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
+                aria-label="Previous page"
               >
                 <ChevronLeft size={14} />
               </button>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-[12px] font-bold transition-colors ${
-                    currentPage === page 
-                      ? 'bg-primary text-white border border-primary' 
-                      : 'border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-              
-              <button 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+              <span className="text-[12px] font-bold text-foreground font-mono px-2">{safePage} / {totalPages}</span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage === totalPages}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
+                aria-label="Next page"
               >
                 <ChevronRight size={14} />
               </button>
             </div>
-
-            <select 
+            <select
               value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1); // reset to page 1 on size change
-              }}
-              className="px-3 py-1.5 rounded-xl border border-surface-border bg-surface-elevated text-[12px] font-bold text-foreground outline-none cursor-pointer"
+              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              className="px-2.5 py-1.5 rounded-lg border border-surface-border bg-surface-elevated text-[12px] font-semibold text-foreground outline-none cursor-pointer"
             >
-              <option value={10}>10 per page</option>
-              <option value={20}>20 per page</option>
-              <option value={50}>50 per page</option>
+              <option value={10}>10 / page</option>
+              <option value={20}>20 / page</option>
+              <option value={50}>50 / page</option>
             </select>
           </div>
         </div>
       </div>
-      
+
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[
+          { label: "To do", value: stats.todo, icon: Circle, tint: "text-slate-500" },
+          { label: "In progress", value: stats.inProgress, icon: Clock, tint: "text-blue-500" },
+          { label: "In review", value: stats.inReview, icon: AlertCircle, tint: "text-amber-500" },
+          { label: "Completed", value: stats.completed, icon: CheckCircle2, tint: "text-emerald-500" },
+          { label: "Overdue", value: stats.overdue, icon: AlertCircle, tint: "text-red-500" },
+          { label: "Total", value: stats.total, icon: Inbox, tint: "text-primary" },
+        ].map((k) => (
+          <div key={k.label} className="bg-surface-elevated border border-surface-border rounded-xl px-4 py-3 flex items-center gap-3 shadow-sm">
+            <k.icon size={17} className={k.tint} />
+            <div>
+              <p className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">{k.label}</p>
+              <p className="text-lg font-bold text-foreground leading-none mt-0.5 font-mono">{k.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

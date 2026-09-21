@@ -137,6 +137,8 @@ export function OverviewDashboard({
 
   const formatTimeAgo = (date: Date) => {
     const diff = Date.now() - new Date(date).getTime();
+    if (diff < 0) return "Just now";
+    if (diff < 60000) return "Just now";
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
     return `${Math.floor(diff / 86400000)}d ago`;
@@ -386,7 +388,7 @@ export function OverviewDashboard({
               );
             })}
           </div>
-          <Link href="#" className="text-[13px] font-semibold text-primary mt-6 inline-block hover:underline">
+          <Link href="/calendar" className="text-[13px] font-semibold text-primary mt-6 inline-block hover:underline">
             + View calendar
           </Link>
         </div>

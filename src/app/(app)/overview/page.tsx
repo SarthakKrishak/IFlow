@@ -1,7 +1,7 @@
 import { getCachedSession, getCachedUsers } from "@/lib/queries";
 import { prisma } from "@/lib/prisma";
+import { OverviewDashboardLoader } from "./OverviewDashboardLoader";
 import type { Metadata } from "next";
-import { OverviewDashboard } from "./OverviewDashboard";
 
 export const metadata: Metadata = { title: "Overview - IFlow" };
 
@@ -25,9 +25,20 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
   rangeStart.setDate(rangeStart.getDate() - range);
   rangeStart.setHours(0, 0, 0, 0);
 
+  function startOfToday() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
   // We optimize this with Promise.all and concurrent queries, just as before.
+  // Project cards use grouped counts (no per-ticket rows), so the page stays
+  // fast as ticket volume grows over time.
   const [
-    allProjectsData,
+    projectRows,
+    ticketCounts,
+    boardRows,
+    columnRows,
     statusGroups,
     activityLogs,
     chartTickets,
@@ -35,22 +46,21 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
     allUsers,
   ] = await Promise.all([
     prisma.project.findMany({
-      select: { 
-        id: true, 
-        name: true, 
-        createdAt: true,
-        boards: {
-          select: {
-            id: true,
-            tickets: {
-              select: {
-                id: true,
-                column: { select: { name: true, order: true } }
-              }
-            }
-          }
-        }
-      }
+      where: projectId ? { id: projectId } : {},
+      select: { id: true, name: true, createdAt: true },
+    }),
+    prisma.ticket.groupBy({
+      by: ["boardId", "columnId"],
+      where: projectId ? { board: { projectId } } : {},
+      _count: { id: true },
+    }),
+    prisma.board.findMany({
+      where: projectId ? { projectId } : {},
+      select: { id: true, projectId: true },
+    }),
+    prisma.column.findMany({
+      where: projectId ? { board: { projectId } } : {},
+      select: { id: true, name: true, order: true },
     }),
     prisma.ticket.groupBy({
       by: ["columnId"],
@@ -67,18 +77,21 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
       take: 20
     }),
     prisma.ticket.findMany({
-      where: { 
-        board: boardWhere, 
-        OR: [{ createdAt: { gte: rangeStart } }, { updatedAt: { gte: rangeStart } }] 
+      where: {
+        board: boardWhere,
+        OR: [{ createdAt: { gte: rangeStart } }, { updatedAt: { gte: rangeStart } }]
       },
       select: { createdAt: true, updatedAt: true, dueDate: true, column: { select: { name: true, order: true } } },
       take: 2000,
     }),
     prisma.ticket.findMany({
-      where: { 
-        board: boardWhere, 
-        dueDate: { gte: new Date() },
-        column: { name: { notIn: ["Done", "Completed"] } } 
+      where: {
+        board: boardWhere,
+        dueDate: { gte: startOfToday() },
+        NOT: [
+          { column: { name: { contains: "done", mode: "insensitive" } } },
+          { column: { name: { contains: "complet", mode: "insensitive" } } },
+        ],
       },
       select: {
         id: true,
@@ -115,17 +128,24 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
     .filter(g => columnMap.get(g.columnId)?.name.toLowerCase().includes("done"))
     .reduce((sum, g) => sum + g._count.id, 0);
 
-  const projectsFormatted = allProjectsData.map(p => {
+  const boardProject = new Map(boardRows.map(b => [b.id, b.projectId]));
+  const columnName = new Map(columnRows.map(c => [c.id, c.name]));
+  const boardsPerProject = new Map<string, number>();
+  boardRows.forEach(b => boardsPerProject.set(b.projectId, (boardsPerProject.get(b.projectId) ?? 0) + 1));
+
+  const projectsFormatted = projectRows.map(p => {
     let totalTasks = 0;
     let completedTasks = 0;
     let openTasks = 0;
-    
-    p.boards.forEach(b => {
-      b.tickets.forEach(t => {
-        totalTasks++;
-        if (t.column?.name.toLowerCase().includes("done")) completedTasks++;
-        else openTasks++;
-      });
+
+    ticketCounts.forEach(tc => {
+      if (boardProject.get(tc.boardId) !== p.id) return;
+      totalTasks += tc._count.id;
+      if ((columnName.get(tc.columnId) ?? "").toLowerCase().includes("done")) {
+        completedTasks += tc._count.id;
+      } else {
+        openTasks += tc._count.id;
+      }
     });
 
     const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
@@ -136,7 +156,7 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
     return {
       id: p.id,
       name: p.name,
-      boardsCount: p.boards.length,
+      boardsCount: boardsPerProject.get(p.id) ?? 0,
       openTasks,
       progress,
       status
@@ -179,20 +199,20 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
     return prev > 0 ? (recent / prev) * 100 : (recent > 0 ? 100 : 0);
   };
 
-  const recentProjects = allProjectsData.filter(p => p.createdAt >= rangeStart).length;
-  
+  const recentProjects = projectRows.filter(p => p.createdAt >= rangeStart).length;
+
   const recentOpen = chartTickets.filter(t => t.createdAt >= rangeStart && (t.column?.order ?? 99) < 2).length;
   const recentInProgress = chartTickets.filter(t => t.updatedAt >= rangeStart && (t.column?.order === 2 || t.column?.name.toLowerCase().includes("progress"))).length;
   const recentCompleted = chartTickets.filter(t => t.updatedAt >= rangeStart && t.column?.name.toLowerCase().includes("done")).length;
 
   const topStats = {
-    totalProjects: allProjectsData.length,
+    totalProjects: projectRows.length,
     openTasks: openTasksCount,
     inProgress: inProgressCount,
     completed: completedCount,
     sparklines: sparklineData,
     trends: {
-      projects: calcTrend(recentProjects, allProjectsData.length),
+      projects: calcTrend(recentProjects, projectRows.length),
       open: calcTrend(recentOpen, openTasksCount),
       inProgress: calcTrend(recentInProgress, inProgressCount),
       completed: calcTrend(recentCompleted, completedCount),
@@ -204,9 +224,12 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
 
   // Calculate workload balance
   const openAssignedTickets = await prisma.ticket.findMany({
-    where: { 
-       board: boardWhere, 
-       column: { name: { notIn: ["Done", "Completed"] } },
+    where: {
+       board: boardWhere,
+       NOT: [
+         { column: { name: { contains: "done", mode: "insensitive" } } },
+         { column: { name: { contains: "complet", mode: "insensitive" } } },
+       ],
        assigneeId: { not: null }
     },
     select: { assigneeId: true }
@@ -253,7 +276,7 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
   return (
     <div className="w-full h-full bg-surface-base text-foreground"> 
       {/* We pass all the computed data down to the Client Component which will handle interactivity */}
-      <OverviewDashboard 
+      <OverviewDashboardLoader 
         stats={topStats}
         projects={projectsFormatted}
         activityLogs={activityLogs}

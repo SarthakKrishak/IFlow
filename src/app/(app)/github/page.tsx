@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { GithubTracker } from "./GithubTracker";
+import { GithubTrackerLoader } from "./GithubTrackerLoader";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getCachedActiveProject } from "@/lib/queries";
@@ -20,7 +20,7 @@ export default async function GithubPage() {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-surface-base">
-      <GithubTracker 
+      <GithubTrackerLoader
         projectId={project.id} 
         initialRepo={project.githubRepo || ""} 
         isAdmin={session.user.role === "ADMIN"}

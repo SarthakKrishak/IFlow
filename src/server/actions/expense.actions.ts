@@ -14,11 +14,11 @@ async function getSession() {
 }
 
 const createExpenseSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  amount: z.number().positive("Amount must be positive"),
-  date: z.string(), // ISO string
-  payerId: z.string().min(1, "Payer is required"),
-  involvedUserIds: z.array(z.string()).min(1, "At least one person must be involved"),
+  name: z.string().min(1, "Name is required").max(200),
+  amount: z.number().positive("Amount must be positive").max(100000000),
+  date: z.string().refine((s) => !Number.isNaN(new Date(s).getTime()), "Invalid date"),
+  payerId: z.string().cuid("Invalid payer"),
+  involvedUserIds: z.array(z.string().cuid()).min(1, "At least one person must be involved").max(50),
 });
 
 export async function createExpense(input: {
@@ -43,7 +43,26 @@ export async function createExpense(input: {
 
     const { name, amount, date, payerId, involvedUserIds } = parsed.data;
 
-    const splitAmount = amount / involvedUserIds.length;
+    // Verify payer + involved users exist
+    const uniqueIds = Array.from(new Set([payerId, ...involvedUserIds]));
+    const existingUsers = await prisma.user.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true },
+    });
+    if (existingUsers.length !== uniqueIds.length) {
+      return { success: false, error: "One or more selected users no longer exist" };
+    }
+
+    // Split to paise so the parts always sum back to the exact total
+    const totalPaise = Math.round(amount * 100);
+    const n = involvedUserIds.length;
+    const basePaise = Math.floor(totalPaise / n);
+    let remainder = totalPaise - basePaise * n;
+    const splitAmounts = involvedUserIds.map(() => {
+      const extra = remainder > 0 ? 1 : 0;
+      if (remainder > 0) remainder -= 1;
+      return (basePaise + extra) / 100;
+    });
 
     const expense = await prisma.$transaction(async (tx) => {
       const exp = await tx.expense.create({
@@ -53,9 +72,9 @@ export async function createExpense(input: {
           date: new Date(date),
           payerId,
           splits: {
-            create: involvedUserIds.map((userId) => ({
+            create: involvedUserIds.map((userId, i) => ({
               userId,
-              amountOwed: splitAmount,
+              amountOwed: splitAmounts[i],
             })),
           },
         },

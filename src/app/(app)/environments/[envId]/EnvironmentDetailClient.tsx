@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Plus, Eye, EyeOff, Save, Trash2, KeyRound } from "lucide-react";
+import { ArrowLeft, Plus, Eye, EyeOff, Save, Trash2, KeyRound, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { saveEnvironmentVariable, deleteEnvironmentVariable, saveMultipleEnvironmentVariables } from "@/server/actions/environment.actions";
@@ -15,14 +15,17 @@ type Variable = {
 export function EnvironmentDetailClient({
   environment,
   variables: initialVariables,
-  isAdmin
+  isAdmin,
+  canWrite = false,
 }: {
   environment: any;
   variables: Variable[];
   isAdmin: boolean;
+  canWrite?: boolean;
 }) {
   const [variables, setVariables] = useState<Variable[]>(initialVariables);
   const [visibleValues, setVisibleValues] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState(false);
   
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
@@ -127,6 +130,29 @@ export function EnvironmentDetailClient({
     }
   };
 
+  // Copy the whole file as NAME=value lines for pasting into a .env
+  const handleCopyEnv = async () => {
+    if (variables.length === 0) {
+      toast.error("Nothing to copy yet");
+      return;
+    }
+    const text = variables.map(v => `${v.key}=${v.value}`).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Fallback for non-secure contexts / older browsers
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    toast.success(`Copied ${variables.length} variables as NAME=value`);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="w-full h-full flex flex-col bg-surface-base">
       <header className="px-8 py-6 border-b border-surface-border flex items-center justify-between shrink-0">
@@ -146,8 +172,8 @@ export function EnvironmentDetailClient({
       <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
         <div className="max-w-4xl mx-auto space-y-8">
           
-          {/* Add Variable Form */}
-          {isAdmin && (
+          {/* Add Variable Form (admins + users with write access) */}
+          {canWrite && (
             <div className="bg-surface-elevated border border-surface-border rounded-xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-text-primary">Add New Variable</h2>
@@ -225,9 +251,19 @@ export function EnvironmentDetailClient({
           <div className="bg-surface-elevated border border-surface-border rounded-xl shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between">
               <h2 className="font-bold text-text-primary">Environment Variables</h2>
-              <span className="text-xs font-semibold bg-surface-base px-2.5 py-1 rounded-md border border-surface-border text-muted-foreground">
-                {variables.length} Items
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopyEnv}
+                  className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-md border border-surface-border bg-surface-base text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+                  title="Copy all as NAME=value lines"
+                >
+                  {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                  {copied ? "Copied!" : "Copy .env"}
+                </button>
+                <span className="text-xs font-semibold bg-surface-base px-2.5 py-1 rounded-md border border-surface-border text-muted-foreground">
+                  {variables.length} Items
+                </span>
+              </div>
             </div>
             
             <div className="divide-y divide-surface-border">
@@ -256,7 +292,7 @@ export function EnvironmentDetailClient({
                         >
                           {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
-                        {isAdmin && (
+                        {canWrite && (
                           <button
                             onClick={() => handleDelete(variable.id)}
                             className="p-1.5 text-muted-foreground hover:text-red-500 rounded-md hover:bg-red-500/10 transition-colors"

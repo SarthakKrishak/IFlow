@@ -39,13 +39,25 @@ export default function WikiEditor({
         const parsed = JSON.parse(content);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const htmlMap: Record<string, string> = {};
-          parsed.forEach((html, i) => htmlMap[`page-${i}`] = html);
+          parsed.forEach((html, i) => htmlMap[`page-${i}`] = typeof html === "string" ? html : "");
           return htmlMap;
-        } else if (typeof parsed === "object") {
-          return parsed;
+        } else if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          // Only accept plain string-valued maps (reject null/arrays/objects)
+          const clean: Record<string, string> = {};
+          for (const [k, v] of Object.entries(parsed)) {
+            if (typeof v === "string") clean[k] = v;
+          }
+          if (Object.keys(clean).length > 0) return clean;
         }
       } else if (content.trim().startsWith("{")) {
-        return JSON.parse(content);
+        const parsed = JSON.parse(content);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const clean: Record<string, string> = {};
+          for (const [k, v] of Object.entries(parsed)) {
+            if (typeof v === "string") clean[k] = v;
+          }
+          if (Object.keys(clean).length > 0) return clean;
+        }
       }
     } catch (e) {
       // Fallback
@@ -98,6 +110,12 @@ export default function WikiEditor({
     syncPageIds();
 
     return () => {
+      // Flush any pending debounced save so navigating away never loses edits
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+        updateNotebookContent(notebookId, JSON.stringify(latestHtmlRef.current)).catch(() => {});
+      }
       metadata.unobserve(syncPageIds);
       provider.destroy();
       doc.destroy();
@@ -126,7 +144,9 @@ export default function WikiEditor({
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      updateNotebookContent(notebookId, JSON.stringify(latestHtmlRef.current));
+      updateNotebookContent(notebookId, JSON.stringify(latestHtmlRef.current)).catch((err) => {
+        console.error("Wiki autosave failed:", err);
+      });
     }, 2000);
   }, [notebookId]);
 
@@ -142,13 +162,22 @@ export default function WikiEditor({
     const metadata = setup.doc.getMap("metadata");
     const newPageIds = pageIds.filter(id => id !== pageId);
     metadata.set("pageIds", newPageIds);
-    
+
+    // Drop the page's Yjs content too — otherwise the deleted text keeps
+    // syncing to peers and can resurrect the page.
+    try {
+      const frag = setup.doc.getXmlFragment(pageId);
+      if (frag.length > 0) frag.delete(0, frag.length);
+    } catch {
+      // Non-fatal: Postgres + pageIds already reflect the deletion
+    }
+
     // Also remove it from local HTML cache
     const updatedHtml = { ...latestHtmlRef.current };
     delete updatedHtml[pageId];
     latestHtmlRef.current = updatedHtml;
-    
-    updateNotebookContent(notebookId, JSON.stringify(updatedHtml));
+
+    updateNotebookContent(notebookId, JSON.stringify(updatedHtml)).catch(() => {});
   };
 
   if (!supabaseUrl || !supabaseAnonKey) {

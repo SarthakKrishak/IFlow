@@ -90,19 +90,24 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
     if (!repoPath) return;
 
     let isMounted = true;
+    // Encode each path segment so owner/repo values can't inject queries
+    const safeRepo = repoPath.split("/").map((s) => encodeURIComponent(s.trim())).join("/");
     const fetchData = async () => {
       setLoading(true);
       setError("");
       try {
         const [repoRes, commitsRes, contribRes, langRes, actRes] = await Promise.all([
-          fetch(`https://api.github.com/repos/${repoPath}`),
-          fetch(`https://api.github.com/repos/${repoPath}/commits?per_page=5`),
-          fetch(`https://api.github.com/repos/${repoPath}/contributors?per_page=5`),
-          fetch(`https://api.github.com/repos/${repoPath}/languages`),
-          fetch(`https://api.github.com/repos/${repoPath}/stats/commit_activity`)
+          fetch(`https://api.github.com/repos/${safeRepo}`),
+          fetch(`https://api.github.com/repos/${safeRepo}/commits?per_page=5`),
+          fetch(`https://api.github.com/repos/${safeRepo}/contributors?per_page=5`),
+          fetch(`https://api.github.com/repos/${safeRepo}/languages`),
+          fetch(`https://api.github.com/repos/${safeRepo}/stats/commit_activity`)
         ]);
 
-        if (!repoRes.ok) throw new Error("Repository not found or API limit reached.");
+        if (repoRes.status === 403) {
+          throw new Error("GitHub API rate limit reached (60/hr unauthenticated). Try again later.");
+        }
+        if (!repoRes.ok) throw new Error("Repository not found. Check the owner/name.");
         
         const rData = await repoRes.json();
         const cData = commitsRes.ok ? await commitsRes.json() : [];
@@ -117,14 +122,16 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
           
           // Process Languages for Pie Chart
           const totalBytes = Object.values(langData).reduce((a: any, b: any) => a + b, 0) as number;
-          const formattedLangs = Object.entries(langData)
-            .sort((a: any, b: any) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([name, value], index) => ({
-              name,
-              value: Math.round(((value as number) / totalBytes) * 100),
-              color: COLORS[index % COLORS.length]
-            }));
+          const formattedLangs = totalBytes > 0
+            ? Object.entries(langData)
+              .sort((a: any, b: any) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([name, value], index) => ({
+                name,
+                value: Math.round(((value as number) / totalBytes) * 100),
+                color: COLORS[index % COLORS.length]
+              }))
+            : [];
           setLanguages(formattedLangs);
 
           // Process Commit Activity for Area Chart (last 12 weeks)
@@ -155,8 +162,9 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
 
     fetchData();
 
-    // Poll every 60 seconds
-    const interval = setInterval(fetchData, 60000);
+    // Poll every 10 minutes: 5 unauthenticated GitHub calls per tick must stay
+    // far under the 60/hr rate limit (5/min polling guaranteed 403s).
+    const interval = setInterval(fetchData, 600000);
     return () => {
       isMounted = false;
       clearInterval(interval);

@@ -51,6 +51,15 @@ export async function createBoard(input: {
     const existing = await prisma.board.findUnique({ where: { slug } });
     if (existing) slug = `${slug}-${Date.now()}`;
 
+    // Only connect users that actually exist (ignore stale ids)
+    const validMembers =
+      memberIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: Array.from(new Set(memberIds)) } },
+            select: { id: true },
+          })
+        : [];
+
     const board = await prisma.board.create({
       data: {
         name,
@@ -62,7 +71,7 @@ export async function createBoard(input: {
           create: DEFAULT_COLUMNS,
         },
         members: {
-          connect: memberIds.map((id) => ({ id })),
+          connect: validMembers.map((u) => ({ id: u.id })),
         },
       },
     });
@@ -166,9 +175,11 @@ export async function deleteBoard(boardId: string): Promise<Result<void>> {
       return { success: false, error: "Admin only" };
     }
 
-    await prisma.board.delete({
-      where: { id: boardId },
-    });
+    await prisma.$transaction([
+      // Ticket.board / Ticket.column have no DB-level cascade
+      prisma.ticket.deleteMany({ where: { boardId } }),
+      prisma.board.delete({ where: { id: boardId } }),
+    ]);
 
     return { success: true, data: undefined };
   } catch (error) {

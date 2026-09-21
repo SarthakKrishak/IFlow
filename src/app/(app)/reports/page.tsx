@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ReportsClient } from "./ReportsClient";
+import { ReportsClientLoader } from "./ReportsClientLoader";
 import { getActiveProject } from "@/lib/project";
 import type { Metadata } from "next";
 
@@ -45,7 +45,8 @@ export default async function ReportsPage({
   };
 
   const users = await prisma.user.findMany({
-    where: { isActive: true },
+    // The admin account is never assigned work — keep it out of velocity/workload
+    where: { isActive: true, role: { not: "ADMIN" } },
     select: { id: true, displayName: true, avatarColor: true }
   });
 
@@ -155,7 +156,7 @@ export default async function ReportsPage({
   }
 
   return (
-    <ReportsClient
+    <ReportsClientLoader
       stats={{ createdCount, completedInRange, overdueCount: overdueTickets.length, avgCycleTime }}
       overdueTickets={overdueTickets}
       velocityData={velocityData}

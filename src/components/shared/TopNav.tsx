@@ -1,11 +1,12 @@
 "use client";
 
-import { Bell, Calendar, ChevronDown, Upload, KeyRound, LogOut, Settings, User as UserIcon, Loader2, Folder, LayoutDashboard, Users, CheckSquare, Server, Book } from "lucide-react";
+import { KeyRound, LogOut, User as UserIcon, Loader2, Folder, LayoutDashboard, Users, CheckSquare, Server, Book } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { ThemeToggle } from "./ThemeToggle";
+import { NotificationBell } from "./NotificationBell";
 import { setOffline } from "@/server/actions/ping";
 import { setProjectCookie } from "@/app/(app)/actions";
 import type { Project } from "@prisma/client";
@@ -51,46 +52,6 @@ export function TopNav({ displayName, avatarColor, isAdmin, projects, activeProj
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleExport = async () => {
-    const element = document.getElementById("dashboard-content");
-    if (element) {
-      // Get the current theme's background color so the PDF doesn't render white text on white bg
-      const bgColor = window.getComputedStyle(document.body).backgroundColor;
-      
-      const originalBg = element.style.backgroundColor;
-      const originalPadding = element.style.padding;
-      const originalBorderRadius = element.style.borderRadius;
-      
-      // Temporarily style the element for a beautiful PDF export
-      element.style.backgroundColor = bgColor;
-      element.style.padding = "20px";
-      element.style.borderRadius = "12px";
-
-      const opt = {
-        margin:       0.2,
-        filename:     'IFlow-Dashboard-Export.pdf',
-        image:        { type: 'jpeg' as const, quality: 1.0 },
-        html2canvas:  { 
-          scale: 3, // High resolution
-          useCORS: true, 
-          logging: false,
-          backgroundColor: bgColor,
-          windowWidth: 1400 // Force a desktop layout
-        },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' as const }
-      };
-      
-      // Dynamically import to avoid SSR errors
-      const html2pdf = (await import("html2pdf.js")).default;
-      await html2pdf().set(opt).from(element).save();
-      
-      // Restore original styles
-      element.style.backgroundColor = originalBg;
-      element.style.padding = originalPadding;
-      element.style.borderRadius = originalBorderRadius;
-    }
-  };
 
   const handleSwitchProject = async (projectId: string) => {
     await setProjectCookie(projectId);
@@ -164,38 +125,15 @@ export function TopNav({ displayName, avatarColor, isAdmin, projects, activeProj
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Date Filter (Static UI for design match) */}
-          <button className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-surface-border bg-surface-elevated text-foreground text-[13px] font-medium hover:border-primary/50 transition-colors">
-            <Calendar size={14} className="text-muted-foreground" />
-            This Week
-            <ChevronDown size={14} className="text-muted-foreground ml-1" />
-          </button>
-
-          {/* Export Button */}
-          {pathname === "/overview" && (
-            <button 
-              onClick={handleExport}
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-surface-border bg-surface-elevated text-foreground text-[13px] font-medium hover:border-primary/50 transition-colors"
-            >
-              <Upload size={14} className="text-muted-foreground" />
-              Export
-            </button>
-          )}
-
-          {/* Theme Toggle */}
-          <div className="flex items-center rounded-xl border border-surface-border bg-surface-elevated px-1 py-0.5">
+          {/* Theme Toggle (labeled button) */}
+          <div className="flex items-center rounded-xl border border-surface-border bg-surface-elevated py-0.5">
              <ThemeToggle />
           </div>
 
           <DeploymentIndicator />
 
-          {/* Notification Bell */}
-          <button className="relative w-9 h-9 flex items-center justify-center rounded-xl border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground transition-colors">
-            <Bell size={16} strokeWidth={2} />
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-surface-base">
-              3
-            </span>
-          </button>
+          {/* Notification Bell (live @mention notifications) */}
+          <NotificationBell />
 
           {/* Profile Dropdown */}
           <div className="relative ml-2" ref={profileRef}>
