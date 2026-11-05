@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -21,6 +21,7 @@ import {
   Search,
   ShieldCheck,
   Unplug,
+  Users,
   Video,
   XCircle,
 } from "lucide-react";
@@ -36,7 +37,10 @@ import {
   rescheduleOccurrence,
   retrySync,
   setGoogleCalendar,
+  syncMeetings,
+  getMeetingAttendance,
 } from "@/server/actions/meeting.actions";
+import type { AttendanceResult, CalendarFeedEvent } from "@/lib/meetings/service";
 import { dateOnly, formatInZone } from "@/lib/meetings/time";
 import { MeetingForm } from "./MeetingForm";
 import { browserTimeZone, dayHeading, dayKey, scheduleSummary, timeRange, upcomingOccurrences, viewerNote, type Occurrence } from "./helpers";
@@ -114,6 +118,7 @@ function KebabMenu({ items, label }: { items: MenuItem[]; label: string }) {
 /** The next (or live) meeting, with the one action that matters: join. */
 function NextUp({
   occurrences,
+  external,
   now,
   viewerTz,
   members,
@@ -121,13 +126,43 @@ function NextUp({
   onCopy,
 }: {
   occurrences: Occurrence[];
+  external: FeedItem[];
   now: Date | null;
   viewerTz: string;
   members: MemberRow[];
   statusOf: (o: Occurrence) => { label: string; tone: "success" | "warning" } | null;
   onCopy: (url: string) => void;
 }) {
-  const next = now ? occurrences.find((o) => o.end >= now && o.meeting.status === "ACTIVE") : undefined;
+  const nextIflow = now ? occurrences.find((o) => o.end >= now && o.meeting.status === "ACTIVE") : undefined;
+  const nextGoogle = now ? external.find((g) => g.end >= now) : undefined;
+  if (nextGoogle && now && (!nextIflow || nextGoogle.start < nextIflow.start)) {
+    const live = nextGoogle.start <= now && nextGoogle.end >= now;
+    return (
+      <div>
+        <h3 className="text-[13px] font-semibold text-foreground mb-3">Next up</h3>
+        <div className="rounded-xl border border-surface-border bg-surface-elevated p-4 shadow-card">
+          <p className={cn("text-[12px] font-medium", live ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+            {live ? "Live now" : `Starts ${formatDistanceToNowStrict(nextGoogle.start, { addSuffix: true })}`} · from Google Calendar
+          </p>
+          <p className="text-[16px] font-semibold text-foreground mt-1.5 leading-snug">{nextGoogle.ev.title}</p>
+          <p className="text-[12.5px] text-muted-foreground mt-1">
+            {formatInZone(nextGoogle.start, viewerTz, { weekday: "short", month: "short", day: "numeric" })} · {timeRange(nextGoogle.start, nextGoogle.end, viewerTz)}
+          </p>
+          {nextGoogle.ev.meetUrl && (
+            <div className="flex items-center gap-2 mt-4">
+              <a href={nextGoogle.ev.meetUrl} target="_blank" rel="noopener noreferrer" className={buttonStyles(live ? "primary" : "secondary", "md", "flex-1")}>
+                <Video size={14} /> Join Google Meet
+              </a>
+              <button onClick={() => onCopy(nextGoogle.ev.meetUrl!)} className={buttonStyles("ghost", "md", "!w-8 !px-0")} aria-label="Copy Meet link" title="Copy Meet link">
+                <ClipboardCopy size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  const next = nextIflow;
   return (
     <div>
       <h3 className="text-[13px] font-semibold text-foreground mb-3">Next up</h3>
@@ -172,7 +207,7 @@ function NextUp({
 }
 
 /** Seven-day load at a glance: one bar per day, height = number of meetings. */
-function WeekStrip({ occurrences, now, viewerTz }: { occurrences: Occurrence[]; now: Date; viewerTz: string }) {
+function WeekStrip({ occurrences, now, viewerTz }: { occurrences: { start: Date }[]; now: Date; viewerTz: string }) {
   const days = Array.from({ length: 7 }, (_, i) => new Date(now.getTime() + i * 86400000));
   const counts = days.map((d) => occurrences.filter((o) => dayKey(o.start, viewerTz) === dayKey(d, viewerTz)).length);
   const max = Math.max(1, ...counts);
@@ -195,6 +230,187 @@ function WeekStrip({ occurrences, now, viewerTz }: { occurrences: Occurrence[]; 
         ))}
       </div>
     </div>
+  );
+}
+
+/** A Google-only occurrence in the agenda (IFlow shows it; edit it in Google Calendar). */
+type FeedItem = { key: string; start: Date; end: Date; ev: CalendarFeedEvent };
+
+function ExternalRow({ item, now, viewerTz, onCopy }: { item: FeedItem; now: Date | null; viewerTz: string; onCopy: (url: string) => void }) {
+  const { ev } = item;
+  const live = !!now && item.start <= now && item.end >= now;
+  const minutes = Math.round((item.end.getTime() - item.start.getTime()) / 60_000);
+  const soon = !!now && !live && item.start.getTime() - now.getTime() <= 3_600_000 && item.start > now;
+  return (
+    <li className={cn("group relative flex items-center gap-x-3 sm:gap-x-4 rounded-lg px-2 sm:px-3 py-2.5 -mx-2 sm:-mx-3 transition-colors hover:bg-surface-hover/60", live && "bg-emerald-500/[0.06]")}>
+      <span className={cn("self-stretch w-[3px] rounded-full shrink-0", live ? "bg-emerald-500" : "bg-muted-foreground/30")} aria-hidden="true" />
+      <div className="hidden sm:block w-[84px] shrink-0">
+        <p className="text-[13px] font-medium text-foreground tabular-nums">{formatInZone(item.start, viewerTz, { hour: "numeric", minute: "2-digit" })}</p>
+        <p className="text-[12px] text-muted-foreground tabular-nums">{minutes} min</p>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[13.5px] font-medium text-foreground truncate max-w-full">{ev.title}</p>
+          {live && <Badge tone="success" dot>Live now</Badge>}
+          {soon && <Badge tone="warning" dot>{`In ${formatDistanceToNowStrict(item.start)}`}</Badge>}
+          <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md border border-surface-border text-[11px] text-muted-foreground" title="Created in Google Calendar — edit it there">
+            <CalendarClock size={11} /> Google Calendar
+          </span>
+        </div>
+        <p className="text-[12px] text-muted-foreground mt-0.5 truncate">
+          <span className="sm:hidden text-foreground/80 tabular-nums">
+            {formatInZone(item.start, viewerTz, { hour: "numeric", minute: "2-digit" })} · {minutes}m ·{" "}
+          </span>
+          {ev.recurring && (
+            <>
+              <Repeat size={11} className="inline -mt-0.5 mr-1" />
+              Repeats ·{" "}
+            </>
+          )}
+          {ev.organizer ? `by ${ev.organizer}` : "on the team calendar"}
+          {ev.attendeeCount > 0 ? ` · ${ev.attendeeCount} invited` : ""}
+        </p>
+      </div>
+      <div className="flex items-center gap-1 shrink-0 ml-auto">
+        {ev.meetUrl && (
+          <a href={ev.meetUrl} target="_blank" rel="noopener noreferrer" className={buttonStyles(live ? "primary" : "secondary", "sm")}>
+            <Video size={13} /> <span className="hidden sm:inline">Join</span>
+          </a>
+        )}
+        <KebabMenu
+          label={`Actions for ${ev.title}`}
+          items={[
+            { label: "Copy Meet link", icon: <ClipboardCopy size={14} />, onClick: () => ev.meetUrl && onCopy(ev.meetUrl), hidden: !ev.meetUrl },
+            { label: "Open in Google Calendar", icon: <ExternalLink size={14} />, onClick: () => ev.htmlLink && window.open(ev.htmlLink, "_blank", "noopener,noreferrer"), hidden: !ev.htmlLink },
+          ]}
+        />
+      </div>
+    </li>
+  );
+}
+
+const norm = (v: string | null | undefined) => (v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/** Who joined each call on this meeting's Meet link, matched against the invite list by name. */
+function AttendanceDialog({ meeting, members, isAdmin, onClose }: { meeting: MeetingRow; members: MemberRow[]; isAdmin: boolean; onClose: () => void }) {
+  const [data, setData] = useState<AttendanceResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getMeetingAttendance({ meetingId: meeting.id }).then((r) => {
+      if (!alive) return;
+      if (r.success) setData(r.data);
+      else setError(r.error);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [meeting.id]);
+
+  const invitees = meeting.attendees.map((a) => {
+    const m = a.userId ? members.find((x) => x.id === a.userId) : null;
+    return { key: a.id, name: m?.displayName ?? a.displayName ?? a.email, email: a.email, color: m?.avatarColor ?? "#64748b" };
+  });
+  const matches = (inv: { name: string; email: string }, participant: string) => {
+    const p = norm(participant);
+    if (!p) return false;
+    const n = norm(inv.name);
+    const local = norm(inv.email.split("@")[0]);
+    return p === n || p === local || (n.split(" ").length > 1 && n.split(" ").every((t) => p.includes(t)));
+  };
+  const fmtTime = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "—");
+
+  return (
+    <Dialog title="Attendance" description={meeting.title} onClose={onClose} size="lg">
+      {!data && !error ? (
+        <div className="py-12 flex justify-center text-muted-foreground">
+          <Loader2 className="animate-spin" />
+        </div>
+      ) : error ? (
+        <p className="text-[13px] text-red-600 dark:text-red-400">{error}</p>
+      ) : data && !data.ok ? (
+        data.reason === "NEEDS_PERMISSION" ? (
+          <div className="space-y-3 text-[13px]">
+            <p className="text-foreground font-medium">Attendance needs one more Google permission.</p>
+            <ol className="list-decimal pl-5 space-y-1.5 text-muted-foreground">
+              <li>
+                In Google Cloud Console (the IFlow project), enable the <span className="text-foreground">Google Meet REST API</span>.
+              </li>
+              <li>
+                Under Google Auth Platform → Data access, add the scope <code className="text-[12px] text-foreground">…/auth/meetings.space.readonly</code>.
+              </li>
+              <li>An admin reconnects Google from the Google Calendar tab and ticks the new permission.</li>
+            </ol>
+            {isAdmin && (
+              <a href="/api/google/connect" className={buttonStyles("primary", "md")}>
+                Reconnect Google
+              </a>
+            )}
+          </div>
+        ) : (
+          <p className="text-[13px] text-muted-foreground">{data.error}</p>
+        )
+      ) : data && data.ok && data.sessions.length === 0 ? (
+        <p className="text-[13px] text-muted-foreground">No calls found on this Meet link in the last 30 days. Attendance appears here once a call has started.</p>
+      ) : (
+        data &&
+        data.ok && (
+          <div className="space-y-8">
+            {data.sessions.map((sess, i) => {
+              const joinedNames = sess.participants.map((p) => p.name);
+              const absent = invitees.filter((inv) => !joinedNames.some((n) => matches(inv, n)));
+              const mins = sess.endTime ? Math.round((new Date(sess.endTime).getTime() - new Date(sess.startTime).getTime()) / 60_000) : null;
+              return (
+                <section key={i}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+                    <h3 className="text-[14px] font-semibold text-foreground">
+                      {new Date(sess.startTime).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · {fmtTime(sess.startTime)}
+                      {sess.endTime ? ` – ${fmtTime(sess.endTime)}` : ""}
+                    </h3>
+                    <span className="text-[12.5px] text-muted-foreground tabular-nums">
+                      {sess.endTime ? `${mins} min` : "In progress"} · {sess.participants.length} joined
+                      {invitees.length > 0 && ` · ${invitees.length - absent.length}/${invitees.length} invited`}
+                    </span>
+                  </div>
+                  <ul className="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden">
+                    {sess.participants.map((p, j) => {
+                      const invited = invitees.find((inv) => matches(inv, p.name));
+                      return (
+                        <li key={j} className="flex items-center gap-3 px-4 h-11 text-[13px]">
+                          <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10.5px] font-semibold shrink-0" style={{ background: invited?.color ?? "#64748b" }}>
+                            {p.name.charAt(0).toUpperCase()}
+                          </span>
+                          <span className="flex-1 min-w-0 truncate text-foreground">{p.name}</span>
+                          {!invited && (
+                            <span className="text-[11.5px] text-muted-foreground">{p.kind === "anonymous" ? "Guest (not signed in)" : p.kind === "phone" ? "Phone" : "Not invited"}</span>
+                          )}
+                          <span className="w-[120px] text-right text-[12.5px] text-muted-foreground tabular-nums">
+                            {fmtTime(p.joinedAt)} – {p.leftAt ? fmtTime(p.leftAt) : "now"}
+                          </span>
+                          <span className="w-[56px] text-right text-[12.5px] text-foreground/85 tabular-nums">{p.minutes != null ? `${p.minutes}m` : ""}</span>
+                        </li>
+                      );
+                    })}
+                    {absent.map((inv) => (
+                      <li key={inv.key} className="flex items-center gap-3 px-4 h-11 text-[13px] bg-surface-base/60">
+                        <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10.5px] font-semibold shrink-0 opacity-50" style={{ background: inv.color }}>
+                          {inv.name.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="flex-1 min-w-0 truncate text-muted-foreground">{inv.name}</span>
+                        <span className="text-[12.5px] text-red-600 dark:text-red-400">Didn&apos;t join</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              );
+            })}
+            <p className="text-[12px] text-muted-foreground">
+              From Google Meet&apos;s records (kept 30 days). People are matched to invitees by their Google account name.
+            </p>
+          </div>
+        )
+      )}
+    </Dialog>
   );
 }
 
@@ -252,7 +468,52 @@ export function MeetingsClient({ meetings, members, connection, viewer, flash, f
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Google sync: mirrors deletions/edits from Google and loads the calendar's other meetings ──
+  const [external, setExternal] = useState<CalendarFeedEvent[]>([]);
+  const [sync, setSync] = useState<{ at: string | null; running: boolean; error: string | null }>({ at: null, running: false, error: null });
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+  const runSync = useCallback(
+    async (force = false) => {
+      if (!connected) return;
+      setSync((x) => ({ ...x, running: true }));
+      const r = await syncMeetings({ force });
+      if (!r.success) {
+        setSync((x) => ({ ...x, running: false, error: r.error }));
+        if (force) toast.error(r.error);
+        return;
+      }
+      setExternal(r.data.external);
+      setSync({ at: r.data.syncedAt, running: false, error: null });
+      if (r.data.changed > 0) {
+        refreshRef.current();
+        if (force) toast.success(`Updated ${r.data.changed} meeting${r.data.changed > 1 ? "s" : ""} from Google Calendar`);
+      } else if (force) toast.success("Up to date with Google Calendar");
+    },
+    [connected]
+  );
+  useEffect(() => {
+    runSync();
+    const iv = setInterval(() => document.visibilityState === "visible" && runSync(), 120_000);
+    const onVis = () => document.visibilityState === "visible" && runSync();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [runSync]);
+  const [attendanceFor, setAttendanceFor] = useState<MeetingRow | null>(null);
+
   const occurrences = useMemo(() => (now ? upcomingOccurrences(meetings, now, 30) : []), [meetings, now]);
+  const externalItems = useMemo<FeedItem[]>(
+    () =>
+      now
+        ? external
+            .map((ev) => ({ key: `g-${ev.id}`, start: new Date(ev.start), end: new Date(ev.end), ev }))
+            .filter((x) => x.end.getTime() >= now.getTime())
+        : [],
+    [external, now]
+  );
   const nextByMeeting = useMemo(() => {
     if (!now) return new Map<string, Occurrence>();
     const map = new Map<string, Occurrence>();
@@ -341,6 +602,7 @@ export function MeetingsClient({ meetings, members, connection, viewer, flash, f
     { label: "Edit this occurrence", icon: <CalendarClock size={14} />, onClick: () => o && setOccurrenceEdit(o), hidden: !canSchedule || !o || m.kind !== "RECURRING" },
     { label: "Copy Meet link", icon: <ClipboardCopy size={14} />, onClick: () => m.meetUrl && copyLink(m.meetUrl), hidden: !m.meetUrl },
     { label: "Open in Google Calendar", icon: <ExternalLink size={14} />, onClick: () => m.htmlLink && window.open(m.htmlLink, "_blank", "noopener,noreferrer"), hidden: !m.htmlLink },
+    { label: "Attendance", icon: <Users size={14} />, onClick: () => setAttendanceFor(m), hidden: !m.meetUrl || !connected },
     { label: "Refresh from Google", icon: <RefreshCw size={14} />, onClick: () => doRefresh(m), hidden: !m.googleEventId || m.status !== "ACTIVE" },
     { label: "Cancel this occurrence", icon: <XCircle size={14} />, onClick: () => o && doCancelOccurrence(o), danger: true, hidden: !canSchedule || !o || m.kind !== "RECURRING" },
     { label: m.kind === "RECURRING" ? "Cancel entire series" : "Cancel meeting", icon: <CalendarX2 size={14} />, onClick: () => doCancelMeeting(m), danger: true, hidden: !canSchedule || m.status !== "ACTIVE" },
@@ -348,16 +610,21 @@ export function MeetingsClient({ meetings, members, connection, viewer, flash, f
 
   // ── agenda grouping (in the viewer's zone) ──
   const days = useMemo(() => {
-    const groups: { key: string; heading: string; items: Occurrence[] }[] = [];
+    type Entry = { kind: "iflow"; start: Date; o: Occurrence } | { kind: "google"; start: Date; g: FeedItem };
+    const groups: { key: string; heading: string; items: Entry[] }[] = [];
     if (!now) return groups;
-    for (const o of occurrences) {
-      const key = dayKey(o.start, viewerTz);
+    const entries: Entry[] = [
+      ...occurrences.map((o) => ({ kind: "iflow" as const, start: o.start, o })),
+      ...externalItems.map((g) => ({ kind: "google" as const, start: g.start, g })),
+    ].sort((a, b) => a.start.getTime() - b.start.getTime());
+    for (const e of entries) {
+      const key = dayKey(e.start, viewerTz);
       let g = groups.find((x) => x.key === key);
-      if (!g) groups.push((g = { key, heading: dayHeading(o.start, viewerTz, now), items: [] }));
-      g.items.push(o);
+      if (!g) groups.push((g = { key, heading: dayHeading(e.start, viewerTz, now), items: [] }));
+      g.items.push(e);
     }
     return groups;
-  }, [occurrences, viewerTz, now]);
+  }, [occurrences, externalItems, viewerTz, now]);
 
   const statusOf = (o: Occurrence) => {
     if (!now) return null;
@@ -376,11 +643,25 @@ export function MeetingsClient({ meetings, members, connection, viewer, flash, f
             <h2 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">Meetings</h2>
             <p className="text-[13px] text-muted-foreground mt-1">Google Meet calls for the team — scheduled once, kept in sync with Google Calendar.</p>
           </div>
-          {(
+          <div className="flex items-center gap-2">
+            {connected && (
+              <button
+                type="button"
+                onClick={() => runSync(true)}
+                disabled={sync.running}
+                className="h-8 px-2.5 rounded-lg inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors disabled:opacity-60"
+                title="Sync now with Google Calendar"
+              >
+                <RefreshCw size={13} className={sync.running ? "animate-spin" : ""} />
+                <span className="hidden sm:inline">
+                  {sync.running ? "Syncing…" : sync.error ? "Sync failed — retry" : sync.at ? `Synced ${formatDistanceToNowStrict(new Date(sync.at), { addSuffix: true })}` : "Sync"}
+                </span>
+              </button>
+            )}
             <Button variant="primary" disabled={!canSchedule} onClick={() => setFormFor("new")} title={!connected ? "Connect Google first" : undefined}>
               <Plus size={14} /> Schedule meeting
             </Button>
-          )}
+          </div>
         </div>
         <nav className="mt-5 flex items-center gap-5 border-b border-surface-border" aria-label="Meetings views">
           {(
@@ -466,7 +747,9 @@ export function MeetingsClient({ meetings, members, connection, viewer, flash, f
 
                       {/* That day's meetings */}
                       <ul className="space-y-1 min-w-0">
-                        {day.items.map((o) => {
+                        {day.items.map((entry) => {
+                          if (entry.kind === "google") return <ExternalRow key={entry.g.key} item={entry.g} now={now} viewerTz={viewerTz} onCopy={copyLink} />;
+                          const o = entry.o;
                           const st = statusOf(o);
                           const m = o.meeting;
                           const note = viewerNote(o.start, o.end, m.timezone, viewerTz);
@@ -528,8 +811,8 @@ export function MeetingsClient({ meetings, members, connection, viewer, flash, f
 
           {/* Rail */}
           <aside className="space-y-8 lg:border-l lg:border-surface-border lg:pl-10 min-w-0">
-            <NextUp occurrences={occurrences} now={now} viewerTz={viewerTz} members={members} statusOf={statusOf} onCopy={copyLink} />
-            {now && <WeekStrip occurrences={occurrences} now={now} viewerTz={viewerTz} />}
+            <NextUp occurrences={occurrences} external={externalItems} now={now} viewerTz={viewerTz} members={members} statusOf={statusOf} onCopy={copyLink} />
+            {now && <WeekStrip occurrences={[...occurrences, ...externalItems]} now={now} viewerTz={viewerTz} />}
             <div>
               <h3 className="text-[13px] font-semibold text-foreground mb-2">Google Calendar</h3>
               <button onClick={() => setTab("google")} className="w-full text-left flex items-center gap-2.5 text-[12.5px] rounded-lg -mx-2 px-2 py-1.5 hover:bg-surface-hover/60 transition-colors">
@@ -633,6 +916,8 @@ export function MeetingsClient({ meetings, members, connection, viewer, flash, f
 
       {/* ── Google ── */}
       {tab === "google" && <GooglePanel connection={connection} isAdmin={isAdmin} confirmAsk={ask} onChanged={refresh} />}
+
+      {attendanceFor && <AttendanceDialog meeting={attendanceFor} members={members} isAdmin={isAdmin} onClose={() => setAttendanceFor(null)} />}
 
       {formFor && (
         <MeetingForm

@@ -16,6 +16,10 @@ import {
   getAccessToken,
   getConnection,
   pullFromGoogle,
+  syncWithGoogle,
+  getAttendance,
+  type SyncOutcome,
+  type AttendanceResult,
   pushMeeting,
   rescheduleOccurrenceOnGoogle,
 } from "@/lib/meetings/service";
@@ -285,6 +289,36 @@ export async function retrySync(input: { meetingId: string }): Promise<Result<Sa
     return done({ id: m.id, synced: sync.ok, syncError: sync.ok ? undefined : sync.error, meetUrl: sync.ok ? sync.meetUrl : m.meetUrl });
   } catch (e) {
     return toResult(e, "retrySync");
+  }
+}
+
+/**
+ * Sync with Google Calendar: mirrors deletions/edits made in Google onto IFlow meetings and
+ * returns the calendar's other (non-IFlow) meetings for display. Any team member may call it.
+ */
+export async function syncMeetings(input?: { force?: boolean }): Promise<Result<SyncOutcome & { connected: boolean }>> {
+  try {
+    await requireActor();
+    const project = await getActiveProject();
+    if (!project) return fail("No active project");
+    const conn = await getConnection();
+    if (!conn || conn.status !== "ACTIVE") return done({ connected: false, changed: 0, external: [], syncedAt: new Date().toISOString() });
+    const outcome = await syncWithGoogle(project.id, !!input?.force);
+    return done({ connected: true, ...outcome });
+  } catch (e) {
+    if (e instanceof MeetingError) return fail(e.message);
+    return toResult(e, "syncMeetings");
+  }
+}
+
+/** Who joined the calls held on this meeting's Meet link (last 30 days). */
+export async function getMeetingAttendance(input: { meetingId: string }): Promise<Result<AttendanceResult>> {
+  try {
+    await requireActor();
+    if (!idSchema.safeParse(input?.meetingId).success) return fail("Invalid request");
+    return done(await getAttendance(input.meetingId));
+  } catch (e) {
+    return toResult(e, "getMeetingAttendance");
   }
 }
 

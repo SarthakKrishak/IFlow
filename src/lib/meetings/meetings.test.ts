@@ -316,3 +316,12 @@ test("rejects duplicate attendees (case-insensitive) and a recurring meeting wit
     }).success
   );
 });
+
+test("meetingCodeFromUrl extracts the Meet code used for attendance lookups", async () => {
+  const { meetingCodeFromUrl } = await import("./google");
+  assert.equal(meetingCodeFromUrl("https://meet.google.com/abc-defg-hij"), "abc-defg-hij");
+  assert.equal(meetingCodeFromUrl("https://meet.google.com/ABC-DEFG-HIJ?authuser=1"), "abc-defg-hij");
+  assert.equal(meetingCodeFromUrl("https://meet.google.com/lookup/xyz"), null);
+  assert.equal(meetingCodeFromUrl("https://zoom.us/j/123"), null);
+  assert.equal(meetingCodeFromUrl(null), null);
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import { ImageTextarea, RichText } from "@/components/shared/ImageAttachments";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -703,11 +704,11 @@ function CreateWorkItemModal({
         </div>
         <div>
           <label className={labelCls}>Description / expected outcome</label>
-          <textarea className={`${inputCls} min-h-[70px]`} maxLength={5000} value={f.description} onChange={(e) => set("description", e.target.value)} />
+          <ImageTextarea minHeight={70} maxLength={5000} value={f.description} onValueChange={(v) => set("description", v)} />
         </div>
         <div>
           <label className={labelCls}>Acceptance criteria</label>
-          <textarea className={`${inputCls} min-h-[56px]`} maxLength={3000} value={f.acceptanceCriteria} onChange={(e) => set("acceptanceCriteria", e.target.value)} placeholder="How will the reviewer know it is done?" />
+          <ImageTextarea minHeight={56} maxLength={3000} value={f.acceptanceCriteria} onValueChange={(v) => set("acceptanceCriteria", v)} placeholder="How will the reviewer know it is done?" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>

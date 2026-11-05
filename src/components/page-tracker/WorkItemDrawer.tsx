@@ -1,5 +1,6 @@
 "use client";
 
+import { ImageTextarea, RichText } from "@/components/shared/ImageAttachments";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -834,7 +835,7 @@ function OwnerStep(p: {
             {p.nextNumber > 1 && <p className="text-[12.5px] text-muted-foreground">This becomes submission #{p.nextNumber}. Earlier submissions stay in the history.</p>}
             <div>
               <label className={labelCls}>What did you complete?</label>
-              <Textarea autoFocus value={p.summary} maxLength={3000} onChange={(e) => p.setSummary(e.target.value)} placeholder="A short summary for your reviewer" />
+              <ImageTextarea autoFocus value={p.summary} maxLength={3000} onValueChange={p.setSummary} placeholder="A short summary for your reviewer — paste screenshots too" />
             </div>
             {(p.problems.length > 0 || p.dirty) && (
               <ul className="text-[12.5px] text-amber-700 dark:text-amber-400 space-y-1">
@@ -927,7 +928,7 @@ function ReviewBox(p: {
       body={`From ${p.submission.submittedBy.displayName} · ${fmtDateTime(p.submission.submittedAt)}. You can approve or request changes; you can't edit their work.`}
     >
       <div className="space-y-4">
-        <p className="text-[13.5px] whitespace-pre-wrap text-foreground/90 leading-relaxed">{p.submission.summary}</p>
+        <RichText text={p.submission.summary} className="text-[13.5px] text-foreground/90 leading-relaxed" />
         {ev.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {ev.map((e, i) => (
@@ -956,7 +957,7 @@ function ReviewBox(p: {
         )}
         <div>
           <label className={labelCls}>Comment {""}<span className="font-normal text-muted-foreground">— required when requesting changes</span></label>
-          <Textarea value={p.comment} maxLength={2000} onChange={(e) => p.setComment(e.target.value)} placeholder="What's good, or what needs to change?" />
+          <ImageTextarea value={p.comment} maxLength={2000} onValueChange={p.setComment} placeholder="What's good, or what needs to change? Paste a screenshot to point at it." />
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="danger" disabled={p.busy || p.comment.trim().length < 3} onClick={p.onRequestChanges}>
@@ -975,7 +976,7 @@ function ReadBlock({ label, children, empty }: { label: string; children?: React
   return (
     <section>
       <h3 className="text-[12.5px] font-medium text-muted-foreground mb-2">{label}</h3>
-      {children ? <div className="text-[14px] text-foreground/90 leading-relaxed whitespace-pre-wrap">{children}</div> : <p className="text-[13px] text-muted-foreground/70">{empty}</p>}
+      {children ? <RichText text={typeof children === "string" ? children : String(children)} className="text-[14px] text-foreground/90 leading-relaxed" /> : <p className="text-[13px] text-muted-foreground/70">{empty}</p>}
     </section>
   );
 }
@@ -1031,11 +1032,11 @@ function DetailsForm({ form, set }: { form: FormState; set: <K extends keyof For
       </div>
       <div>
         <label className={labelCls}>Description / expected outcome</label>
-        <Textarea className="min-h-[96px]" value={form.description} maxLength={5000} onChange={(e) => set("description", e.target.value)} />
+        <ImageTextarea minHeight={96} value={form.description} maxLength={5000} onValueChange={(v) => set("description", v)} />
       </div>
       <div>
         <label className={labelCls}>Acceptance criteria</label>
-        <Textarea value={form.acceptanceCriteria} maxLength={3000} onChange={(e) => set("acceptanceCriteria", e.target.value)} placeholder="How will the reviewer know it's done?" />
+        <ImageTextarea value={form.acceptanceCriteria} maxLength={3000} onValueChange={(v) => set("acceptanceCriteria", v)} placeholder="How will the reviewer know it's done?" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
@@ -1045,7 +1046,7 @@ function DetailsForm({ form, set }: { form: FormState; set: <K extends keyof For
       </div>
       <div>
         <label className={labelCls}>Progress / technical notes</label>
-        <Textarea value={form.notes} maxLength={5000} onChange={(e) => set("notes", e.target.value)} />
+        <ImageTextarea value={form.notes} maxLength={5000} onValueChange={(v) => set("notes", v)} />
       </div>
       <div>
         <label className={labelCls}>References (Figma, PR, docs…)</label>
@@ -1161,7 +1162,7 @@ function Submissions({ item }: { item: WorkItemDetail["item"] }) {
                 · {s.submittedBy.displayName} · {fmtDateTime(s.submittedAt)}
               </span>
             </div>
-            <p className="text-[13.5px] whitespace-pre-wrap text-foreground/90 mt-2 leading-relaxed">{s.summary}</p>
+            <RichText text={s.summary} className="text-[13.5px] text-foreground/90 mt-2 leading-relaxed" />
             {ev.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2.5">
                 {ev.map((e, i) => (
@@ -1185,7 +1186,7 @@ function Submissions({ item }: { item: WorkItemDetail["item"] }) {
                     {s.review.decision === "APPROVED" ? "approved" : "requested changes"} · {fmtDateTime(s.review.reviewedAt)}
                   </span>
                 </p>
-                {s.review.comment && <p className="mt-1.5 text-[13px] whitespace-pre-wrap text-foreground/85">{s.review.comment}</p>}
+                {s.review.comment && <RichText text={s.review.comment} className="mt-1.5 text-[13px] text-foreground/85" />}
                 {s.review.exceptionReason && (
                   <p className="mt-1.5 text-[12.5px] text-amber-700 dark:text-amber-400">
                     <span className="font-medium">Test exception:</span> {s.review.exceptionReason}
@@ -1223,21 +1224,24 @@ function Discussion({
             <p className="text-[12.5px] text-muted-foreground">
               <span className="font-medium text-foreground">{c.author.displayName}</span> · {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true })}
             </p>
-            <p className="text-[13.5px] whitespace-pre-wrap text-foreground/90 mt-1 leading-relaxed">{c.body}</p>
+            <RichText text={c.body} className="text-[13.5px] text-foreground/90 mt-1 leading-relaxed" />
           </div>
         </div>
       ))}
       <div className="rounded-xl border border-surface-border bg-surface-elevated focus-within:border-primary/50 focus-within:shadow-ring transition-[border-color,box-shadow]">
-        <textarea
-          className="w-full min-h-[72px] bg-transparent px-3 py-2.5 text-[13px] outline-none resize-y placeholder:text-muted-foreground/60"
-          placeholder="Write a comment… use @username to mention someone"
-          value={value}
-          maxLength={2000}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && value.trim()) onPost();
-          }}
-        />
+        <div className="px-3 pt-2.5">
+          <ImageTextarea
+            bare
+            minHeight={64}
+            placeholder="Write a comment… use @username to mention someone"
+            value={value}
+            maxLength={2000}
+            onValueChange={setValue}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && value.trim()) onPost();
+            }}
+          />
+        </div>
         <div className="flex items-center justify-between px-3 pb-2.5">
           <span className="text-[11.5px] text-muted-foreground">Ctrl + Enter to post</span>
           <Button size="sm" variant="primary" disabled={busy || !value.trim()} onClick={onPost}>

@@ -16,6 +16,11 @@ import {
   googleConfig,
   insertEvent,
   listInstances,
+  listEvents,
+  listConferenceRecords,
+  listParticipants,
+  meetingCodeFromUrl,
+  MEET_ATTENDANCE_SCOPE,
   patchEvent,
   refreshAccessToken,
   type GoogleEvent,
@@ -300,5 +305,180 @@ export async function pullFromGoogle(meetingId: string): Promise<{ ok: true; cha
     return { ok: true, changed };
   } catch (e) {
     return { ok: false, error: e instanceof MeetingError ? e.message : friendlyGoogleError(e) };
+  }
+}
+
+// ── Two-way awareness: sync from Google + show the rest of the calendar ─────
+
+/** An event on the connected calendar that IFlow did not create (read-only in IFlow). */
+export interface CalendarFeedEvent {
+  id: string;
+  title: string;
+  start: string; // ISO
+  end: string; // ISO
+  meetUrl: string | null;
+  htmlLink: string | null;
+  organizer: string | null;
+  attendeeCount: number;
+  recurring: boolean;
+}
+
+export interface SyncOutcome {
+  /** IFlow meetings whose data changed (deleted / edited in Google) — the page should refresh. */
+  changed: number;
+  external: CalendarFeedEvent[];
+  syncedAt: string;
+}
+
+const SYNC_TTL_MS = 60_000;
+const FEED_DAYS = 30;
+const syncCache = new Map<string, { at: number; outcome: SyncOutcome }>();
+
+async function mapLimit<T>(items: T[], limit: number, fn: (t: T) => Promise<void>) {
+  let i = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (i < items.length) await fn(items[i++]);
+    })
+  );
+}
+
+/**
+ * Brings IFlow in line with Google Calendar and returns the calendar's other meetings.
+ *  - Every active IFlow meeting is re-read from Google (deleted → Cancelled; title/time edits copied).
+ *  - Single occurrences deleted in Google become cancelled occurrences in IFlow.
+ *  - Timed events IFlow didn't create are returned for display (all-day events are skipped).
+ * Throttled per project; pass `force` for a manual "Sync now".
+ */
+export async function syncWithGoogle(projectId: string, force = false): Promise<SyncOutcome> {
+  const cached = syncCache.get(projectId);
+  if (!force && cached && Date.now() - cached.at < SYNC_TTL_MS) return { ...cached.outcome, changed: 0 };
+
+  const { token, calendarId } = await getAccessToken();
+  let changed = 0;
+
+  // 1) Re-read every active IFlow meeting that lives on Google.
+  const active = await prisma.meeting.findMany({
+    where: { projectId, status: "ACTIVE", googleEventId: { not: null } },
+    select: { id: true },
+  });
+  await mapLimit(active, 4, async (m) => {
+    const r = await pullFromGoogle(m.id);
+    if (r.ok && r.changed) changed++;
+  });
+
+  // 2) One window read of the calendar: deleted occurrences + everything IFlow didn't create.
+  const now = Date.now();
+  const events = await listEvents(token, calendarId, new Date(now - 12 * 3_600_000), new Date(now + FEED_DAYS * 86_400_000));
+
+  // Ids of every IFlow-owned event (any project, any status) so they're never shown twice.
+  const owned = await prisma.meeting.findMany({
+    where: { googleEventId: { not: null } },
+    select: { id: true, googleEventId: true, timezone: true, status: true, projectId: true, kind: true },
+  });
+  const byEventId = new Map(owned.map((m) => [m.googleEventId!, m]));
+
+  for (const ev of events) {
+    if (ev.status !== "cancelled" || !ev.recurringEventId) continue;
+    const m = byEventId.get(ev.recurringEventId);
+    if (!m || m.projectId !== projectId || m.status !== "ACTIVE" || m.kind !== "RECURRING") continue;
+    const orig = ev.originalStartTime?.dateTime;
+    if (!orig) continue;
+    const originalStartLocal = utcToZoned(new Date(orig), m.timezone);
+    const existing = await prisma.meetingException.findUnique({
+      where: { meetingId_originalStartLocal: { meetingId: m.id, originalStartLocal } },
+      select: { type: true },
+    });
+    if (existing?.type === "CANCELLED") continue;
+    await prisma.meetingException.upsert({
+      where: { meetingId_originalStartLocal: { meetingId: m.id, originalStartLocal } },
+      create: { meetingId: m.id, originalStartLocal, type: "CANCELLED", googleInstanceId: ev.id },
+      update: { type: "CANCELLED", newStartLocal: null, newDurationMin: null, googleInstanceId: ev.id },
+    });
+    changed++;
+  }
+
+  const external: CalendarFeedEvent[] = events
+    .filter(
+      (ev) =>
+        ev.status !== "cancelled" &&
+        !!ev.start?.dateTime &&
+        !!ev.end?.dateTime &&
+        ev.eventType !== "workingLocation" &&
+        ev.eventType !== "outOfOffice" &&
+        ev.eventType !== "focusTime" &&
+        !byEventId.has(ev.id) &&
+        !(ev.recurringEventId && byEventId.has(ev.recurringEventId))
+    )
+    .map((ev) => ({
+      id: ev.id,
+      title: ev.summary?.trim() || "(No title)",
+      start: new Date(ev.start!.dateTime!).toISOString(),
+      end: new Date(ev.end!.dateTime!).toISOString(),
+      meetUrl: extractMeetUrl(ev),
+      htmlLink: ev.htmlLink ?? null,
+      organizer: ev.organizer?.self ? null : ev.organizer?.displayName ?? ev.organizer?.email ?? null,
+      attendeeCount: (ev.attendees ?? []).filter((a) => !a.resource).length,
+      recurring: !!ev.recurringEventId,
+    }))
+    .sort((a, b) => a.start.localeCompare(b.start));
+
+  const outcome: SyncOutcome = { changed, external, syncedAt: new Date().toISOString() };
+  syncCache.set(projectId, { at: Date.now(), outcome });
+  return outcome;
+}
+
+// ── Attendance (Google Meet REST API) ───────────────────────────────────────
+
+export interface AttendanceSession {
+  startTime: string;
+  endTime: string | null;
+  participants: { name: string; kind: "signed_in" | "anonymous" | "phone"; joinedAt: string | null; leftAt: string | null; minutes: number | null }[];
+}
+
+export type AttendanceResult =
+  | { ok: true; sessions: AttendanceSession[] }
+  | { ok: false; reason: "NO_LINK" | "NEEDS_PERMISSION" | "ERROR"; error: string };
+
+/** Who joined each call held on this meeting's Meet link (Google keeps records for 30 days). */
+export async function getAttendance(meetingId: string): Promise<AttendanceResult> {
+  const m = await prisma.meeting.findUnique({ where: { id: meetingId }, select: { meetUrl: true } });
+  const code = meetingCodeFromUrl(m?.meetUrl);
+  if (!code) return { ok: false, reason: "NO_LINK", error: "This meeting has no Google Meet link." };
+
+  const conn = await getConnection();
+  if (conn && !conn.scope.includes(MEET_ATTENDANCE_SCOPE)) {
+    return { ok: false, reason: "NEEDS_PERMISSION", error: "Reconnect Google to allow IFlow to read Meet attendance." };
+  }
+  try {
+    const { token } = await getAccessToken();
+    const records = (await listConferenceRecords(token, code)).slice(0, 10);
+    const sessions: AttendanceSession[] = [];
+    for (const r of records) {
+      const people = await listParticipants(token, r.name);
+      sessions.push({
+        startTime: r.startTime,
+        endTime: r.endTime ?? null,
+        participants: people
+          .map((p) => {
+            const kind = p.signedinUser ? ("signed_in" as const) : p.phoneUser ? ("phone" as const) : ("anonymous" as const);
+            const name = p.signedinUser?.displayName || p.anonymousUser?.displayName || p.phoneUser?.displayName || "Unknown participant";
+            const joinedAt = p.earliestStartTime ?? null;
+            const leftAt = p.latestEndTime ?? null;
+            const minutes = joinedAt ? Math.max(1, Math.round(((leftAt ? new Date(leftAt).getTime() : Date.now()) - new Date(joinedAt).getTime()) / 60_000)) : null;
+            return { name, kind, joinedAt, leftAt, minutes };
+          })
+          .sort((a, b) => (a.joinedAt ?? "").localeCompare(b.joinedAt ?? "")),
+      });
+    }
+    return { ok: true, sessions };
+  } catch (e) {
+    if (e instanceof GoogleApiError && (e.kind === "FORBIDDEN" || e.kind === "AUTH") && /scope|permission|insufficient/i.test(e.message)) {
+      return { ok: false, reason: "NEEDS_PERMISSION", error: "Google needs extra permission for attendance — enable the Meet REST API and reconnect Google." };
+    }
+    if (e instanceof GoogleApiError && /has not been used|is disabled|SERVICE_DISABLED/i.test(e.message + (e.reason ?? ""))) {
+      return { ok: false, reason: "NEEDS_PERMISSION", error: "Turn on the “Google Meet REST API” in your Google Cloud project, then reconnect Google." };
+    }
+    return { ok: false, reason: "ERROR", error: e instanceof MeetingError ? e.message : friendlyGoogleError(e) };
   }
 }

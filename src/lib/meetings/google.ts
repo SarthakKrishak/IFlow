@@ -5,6 +5,9 @@
  * 429/5xx/rate-limit 403s, typed errors, and 404/410-tolerant deletes.
  */
 
+/** Optional: without it everything works except the attendance view. */
+export const MEET_ATTENDANCE_SCOPE = "https://www.googleapis.com/auth/meetings.space.readonly";
+
 export const GOOGLE_SCOPES = [
   "openid",
   "email",
@@ -12,6 +15,8 @@ export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/calendar.events",
   // List calendars so an admin can pick the team calendar.
   "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+  // Read Meet conference records (who joined, when) for calls this account organises.
+  MEET_ATTENDANCE_SCOPE,
 ];
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -218,9 +223,12 @@ export interface GoogleEvent {
   hangoutLink?: string;
   summary?: string;
   recurringEventId?: string;
-  start?: { dateTime?: string; timeZone?: string };
-  end?: { dateTime?: string; timeZone?: string };
-  originalStartTime?: { dateTime?: string };
+  start?: { dateTime?: string; date?: string; timeZone?: string };
+  end?: { dateTime?: string; date?: string; timeZone?: string };
+  originalStartTime?: { dateTime?: string; date?: string };
+  organizer?: { email?: string; displayName?: string; self?: boolean };
+  attendees?: { email?: string; displayName?: string; responseStatus?: string; self?: boolean; organizer?: boolean; resource?: boolean }[];
+  eventType?: string;
   conferenceData?: { entryPoints?: { entryPointType?: string; uri?: string }[]; createRequest?: { status?: { statusCode?: string } } };
 }
 
@@ -270,4 +278,75 @@ export async function listInstances(token: string, calendarId: string, eventId: 
   });
   const data = await request<{ items?: GoogleEvent[] }>(`${API}/calendars/${cal(calendarId)}/events/${encodeURIComponent(eventId)}/instances?${q}`, { token });
   return data.items ?? [];
+}
+
+/**
+ * Every event (recurring ones expanded to single instances) in a time window,
+ * INCLUDING cancelled ones, so deletions made in Google can be mirrored.
+ */
+export async function listEvents(token: string, calendarId: string, timeMin: Date, timeMax: Date): Promise<GoogleEvent[]> {
+  const out: GoogleEvent[] = [];
+  let pageToken: string | undefined;
+  for (let page = 0; page < 6; page++) {
+    const q = new URLSearchParams({
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: "true",
+      showDeleted: "true",
+      maxResults: "250",
+    });
+    if (pageToken) q.set("pageToken", pageToken);
+    const data = await request<{ items?: GoogleEvent[]; nextPageToken?: string }>(`${API}/calendars/${cal(calendarId)}/events?${q}`, { token });
+    out.push(...(data.items ?? []));
+    pageToken = data.nextPageToken;
+    if (!pageToken) break;
+  }
+  return out;
+}
+
+// ── Meet (attendance) ───────────────────────────────────────────────────────
+
+const MEET_API = "https://meet.googleapis.com/v2";
+
+export interface ConferenceRecord {
+  name: string; // "conferenceRecords/{id}"
+  startTime: string;
+  endTime?: string;
+}
+
+export interface MeetParticipant {
+  name: string;
+  earliestStartTime?: string;
+  latestEndTime?: string;
+  signedinUser?: { user?: string; displayName?: string };
+  anonymousUser?: { displayName?: string };
+  phoneUser?: { displayName?: string };
+}
+
+/** "https://meet.google.com/abc-defg-hij" → "abc-defg-hij" */
+export function meetingCodeFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m = url.match(/meet\.google\.com\/([a-z]{3,4}-[a-z]{4}-[a-z]{3,4})/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+/** Past (and in-progress) calls held in the Meet space with this code, newest first. Kept by Google for 30 days. */
+export async function listConferenceRecords(token: string, meetingCode: string): Promise<ConferenceRecord[]> {
+  const q = new URLSearchParams({ filter: `space.meeting_code = "${meetingCode}"`, pageSize: "25" });
+  const data = await request<{ conferenceRecords?: ConferenceRecord[] }>(`${MEET_API}/conferenceRecords?${q}`, { token });
+  return (data.conferenceRecords ?? []).sort((a, b) => b.startTime.localeCompare(a.startTime));
+}
+
+export async function listParticipants(token: string, recordName: string): Promise<MeetParticipant[]> {
+  const out: MeetParticipant[] = [];
+  let pageToken: string | undefined;
+  for (let page = 0; page < 5; page++) {
+    const q = new URLSearchParams({ pageSize: "100" });
+    if (pageToken) q.set("pageToken", pageToken);
+    const data = await request<{ participants?: MeetParticipant[]; nextPageToken?: string }>(`${MEET_API}/${recordName}/participants?${q}`, { token });
+    out.push(...(data.participants ?? []));
+    pageToken = data.nextPageToken;
+    if (!pageToken) break;
+  }
+  return out;
 }

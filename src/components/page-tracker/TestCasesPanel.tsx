@@ -1,5 +1,6 @@
 "use client";
 
+import { ImageTextarea, RichText } from "@/components/shared/ImageAttachments";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Bug, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
@@ -170,7 +171,7 @@ export function TestCasesPanel({
                         .map(([k, v]) => (
                           <div key={k}>
                             <dt className="text-[12px] text-muted-foreground">{k}</dt>
-                            <dd className="whitespace-pre-wrap text-foreground/90 mt-0.5">{v}</dd>
+                            <dd className="text-foreground/90 mt-0.5"><RichText text={v} /></dd>
                           </div>
                         ))}
                     </dl>
@@ -318,15 +319,15 @@ function TestCaseForm({
         </div>
         <div>
           <label className={labelCls}>Preconditions</label>
-          <textarea className={`${inputCls} min-h-[52px]`} value={f.preconditions} maxLength={2000} onChange={(e) => set("preconditions", e.target.value)} />
+          <ImageTextarea minHeight={52} value={f.preconditions} maxLength={2000} onValueChange={(v) => set("preconditions", v)} />
         </div>
         <div>
           <label className={labelCls}>Steps</label>
-          <textarea className={`${inputCls} min-h-[80px]`} value={f.steps} maxLength={4000} onChange={(e) => set("steps", e.target.value)} />
+          <ImageTextarea minHeight={80} value={f.steps} maxLength={4000} onValueChange={(v) => set("steps", v)} />
         </div>
         <div>
           <label className={labelCls}>Expected result</label>
-          <textarea className={`${inputCls} min-h-[52px]`} value={f.expected} maxLength={2000} onChange={(e) => set("expected", e.target.value)} />
+          <ImageTextarea minHeight={52} value={f.expected} maxLength={2000} onValueChange={(v) => set("expected", v)} />
         </div>
         <label className="flex items-center gap-2.5 text-[12.5px] cursor-pointer">
           <input type="checkbox" className="accent-[hsl(var(--primary))]" checked={f.isMandatory} onChange={(e) => set("isMandatory", e.target.checked)} />
@@ -405,7 +406,7 @@ function RecordResult({ testCase, onChanged }: { testCase: TestCaseRow; onChange
             )}
             <div>
               <label className={labelCls}>Actual result {(f.result === "FAIL" || f.result === "BLOCKED") && <span className="text-red-500">(required)</span>}</label>
-              <textarea className={`${inputCls} min-h-[80px]`} value={f.actual} maxLength={4000} onChange={(e) => set("actual", e.target.value)} />
+              <ImageTextarea minHeight={80} value={f.actual} maxLength={4000} onValueChange={(v) => set("actual", v)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

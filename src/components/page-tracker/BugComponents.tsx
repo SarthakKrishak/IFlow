@@ -1,5 +1,6 @@
 "use client";
 
+import { ImageTextarea, RichText } from "@/components/shared/ImageAttachments";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Bug, Plus } from "lucide-react";
@@ -232,7 +233,7 @@ export function BugCard({
                 .map(([k, v]) => (
                   <div key={k} className={k === "Description" || k === "Steps to reproduce" ? "sm:col-span-2" : ""}>
                     <p className="text-[12px] text-muted-foreground">{k}</p>
-                    <p className="whitespace-pre-wrap text-foreground/90 mt-0.5">{v}</p>
+                    <RichText text={v} className="text-foreground/90 mt-0.5" />
                   </div>
                 ))}
               {bug.evidenceUrl && (
@@ -408,7 +409,7 @@ function RetestModal({ bugId, onClose, onSaved }: { bugId: string; onClose: () =
         <p className="text-[12.5px] text-muted-foreground">Run the failed scenario again, then record what happened.</p>
         <div>
           <label className={labelCls}>Notes (required if it still fails)</label>
-          <textarea className={`${inputCls} min-h-[90px]`} value={note} maxLength={2000} onChange={(e) => setNote(e.target.value)} />
+          <ImageTextarea minHeight={90} value={note} maxLength={2000} onValueChange={(v) => setNote(v)} />
         </div>
         <div className="flex justify-end gap-2">
           <button className={btnGhost} onClick={onClose}>Cancel</button>
@@ -491,20 +492,20 @@ export function CreateBugModal({
         </div>
         <div>
           <label className={labelCls}>Description</label>
-          <textarea className={`${inputCls} min-h-[60px]`} value={f.description} maxLength={4000} onChange={(e) => set("description", e.target.value)} />
+          <ImageTextarea minHeight={60} value={f.description} maxLength={4000} onValueChange={(v) => set("description", v)} />
         </div>
         <div>
           <label className={labelCls}>Steps to reproduce</label>
-          <textarea className={`${inputCls} min-h-[60px]`} value={f.stepsToReproduce} maxLength={4000} onChange={(e) => set("stepsToReproduce", e.target.value)} />
+          <ImageTextarea minHeight={60} value={f.stepsToReproduce} maxLength={4000} onValueChange={(v) => set("stepsToReproduce", v)} />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Expected result</label>
-            <textarea className={`${inputCls} min-h-[56px]`} value={f.expectedResult} maxLength={2000} onChange={(e) => set("expectedResult", e.target.value)} />
+            <ImageTextarea minHeight={56} value={f.expectedResult} maxLength={2000} onValueChange={(v) => set("expectedResult", v)} />
           </div>
           <div>
             <label className={labelCls}>Actual result</label>
-            <textarea className={`${inputCls} min-h-[56px]`} value={f.actualResult} maxLength={2000} onChange={(e) => set("actualResult", e.target.value)} />
+            <ImageTextarea minHeight={56} value={f.actualResult} maxLength={2000} onValueChange={(v) => set("actualResult", v)} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
