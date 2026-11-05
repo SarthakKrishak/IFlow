@@ -80,7 +80,7 @@ export function LeadControls({
     <div className="space-y-5">
       {!closed && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-5">
             <div className="space-y-2">
               <label className={labelCls}>Reassign owner</label>
               <UserSelect
@@ -123,9 +123,9 @@ export function LeadControls({
             </div>
           </div>
 
-          <div className="rounded-xl border border-surface-border bg-surface-base p-3.5 space-y-3">
+          <div className="rounded-lg border border-surface-border bg-surface-elevated p-3 space-y-3">
             <p className="text-[12px] font-medium text-muted-foreground">Planning</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div>
                 <label className={labelCls}>Priority</label>
                 <select className={inputCls} value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
@@ -172,7 +172,7 @@ export function LeadControls({
           </div>
 
           <div className="flex flex-wrap items-end gap-2">
-            <div className="flex-1 min-w-[200px]">
+            <div className="flex-1 min-w-0 basis-full">
               <label className={labelCls}>Cancel this work item</label>
               <input className={inputCls} placeholder="Reason (required, recorded)" value={cancelReason} maxLength={500} onChange={(e) => setCancelReason(e.target.value)} />
             </div>
@@ -277,7 +277,7 @@ export function AdminOverride({
             <label className={labelCls}>Description</label>
             <textarea className={`${inputCls} min-h-[60px]`} value={f.description} onChange={(e) => set("description", e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <div>
               <label className={labelCls}>Priority</label>
               <select className={inputCls} value={f.priority} onChange={(e) => set("priority", e.target.value as Priority)}>
@@ -292,7 +292,7 @@ export function AdminOverride({
             </div>
           </div>
           {item.status !== "READY_FOR_REVIEW" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div>
                 <label className={labelCls}>Force status</label>
                 <select className={inputCls} value={f.status} onChange={(e) => set("status", e.target.value)}>

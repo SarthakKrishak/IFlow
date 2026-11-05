@@ -1,6 +1,7 @@
 "use client";
 
 import { Dialog, buttonStyles, controlCls } from "@/components/ui";
+import { PriorityIcon } from "@/components/shared/StatusGlyphs";
 import {
   PRIORITY_COLOR,
   STATUS_COLOR,
@@ -64,14 +65,81 @@ export function Pill({ color, children, title }: { color: string; children: Reac
   );
 }
 
+/**
+ * Work-item status glyph — same visual language as the board's status rings:
+ * the ring fills as work moves toward Done; Blocked / Changes / Cancelled get distinct marks.
+ */
+export function WorkItemStatusIcon({ status, size = 14 }: { status: WorkItemStatus; size?: number }) {
+  const color = STATUS_COLOR[status];
+  const common = { width: size, height: size, viewBox: "0 0 14 14", className: "shrink-0", "aria-hidden": true } as const;
+  const r = 3.5;
+  const c = 2 * Math.PI * r;
+  switch (status) {
+    case "DONE":
+      return (
+        <svg {...common}>
+          <circle cx="7" cy="7" r="6.25" fill={color} />
+          <path d="M4.3 7.2 6.2 9l3.5-3.8" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "BLOCKED":
+      return (
+        <svg {...common}>
+          <circle cx="7" cy="7" r="6" fill="none" stroke={color} strokeWidth="1.5" />
+          <path d="M3.2 10.8 10.8 3.2" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      );
+    case "CHANGES_REQUESTED":
+      return (
+        <svg {...common}>
+          <circle cx="7" cy="7" r="6" fill="none" stroke={color} strokeWidth="1.5" />
+          <path d="M7 3.9v3.6" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+          <circle cx="7" cy="9.9" r="0.95" fill={color} />
+        </svg>
+      );
+    case "CANCELLED":
+      return (
+        <svg {...common}>
+          <circle cx="7" cy="7" r="6" fill="none" stroke={color} strokeWidth="1.5" strokeDasharray="1.6 1.9" />
+          <path d="m5 5 4 4M9 5 5 9" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      );
+    default: {
+      const fill = status === "IN_PROGRESS" ? 0.5 : status === "READY_FOR_REVIEW" ? 0.75 : 0;
+      return (
+        <svg {...common}>
+          <circle cx="7" cy="7" r="6" fill="none" stroke={color} strokeWidth="1.5" />
+          {fill > 0 && <circle cx="7" cy="7" r={r} fill="none" stroke={color} strokeWidth={r * 2} strokeDasharray={`${c * fill} ${c}`} transform="rotate(-90 7 7)" />}
+        </svg>
+      );
+    }
+  }
+}
+
+/** Status as glyph + label — calm, no coloured pill. */
 export function StatusBadge({ status }: { status: WorkItemStatus }) {
-  return <Pill color={STATUS_COLOR[status]}>{STATUS_LABEL[status]}</Pill>;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[12.5px] text-foreground/85 whitespace-nowrap">
+      <WorkItemStatusIcon status={status} size={13} />
+      {STATUS_LABEL[status]}
+    </span>
+  );
 }
 export function PriorityBadge({ priority }: { priority: Priority }) {
-  return <Pill color={PRIORITY_COLOR[priority]}>{priority[0] + priority.slice(1).toLowerCase()}</Pill>;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[12.5px] text-foreground/85 whitespace-nowrap" title={`Priority: ${priority.toLowerCase()}`}>
+      <PriorityIcon priority={priority} size={13} />
+      {priority[0] + priority.slice(1).toLowerCase()}
+    </span>
+  );
 }
 export function WorkstreamBadge({ ws }: { ws: Workstream }) {
-  return <Pill color={WORKSTREAM_COLOR[ws]}>{WORKSTREAM_LABEL[ws]}</Pill>;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[12.5px] text-foreground/85 whitespace-nowrap">
+      <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: WORKSTREAM_COLOR[ws] }} />
+      {WORKSTREAM_LABEL[ws]}
+    </span>
+  );
 }
 
 export function UserDot({ user, size = 22 }: { user: Person; size?: number }) {
@@ -201,7 +269,7 @@ export function Meter({
 }) {
   const pct = total ? Math.round((done / total) * 100) : 0;
   return (
-    <div className="h-1.5 rounded-full bg-surface-base overflow-hidden">
+    <div className="h-1 rounded-full bg-foreground/[0.07] overflow-hidden">
       <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
     </div>
   );

@@ -23,12 +23,15 @@ import {
   History,
   ExternalLink,
   Kanban,
+  Rocket,
+  ChevronRight,
 } from "lucide-react";
 import type { getPageDetail } from "@/lib/page-tracker/queries";
 import {
   ACTION_LABEL,
   LIFECYCLE_COLOR,
   LIFECYCLE_LABEL,
+  STATUS_LABEL,
   WORKSTREAMS,
   WORKSTREAM_COLOR,
   WORKSTREAM_LABEL,
@@ -48,6 +51,7 @@ import {
   UserChip,
   UserDot,
   UserSelect,
+  WorkItemStatusIcon,
   btnGhost,
   btnPrimary,
   cardCls,
@@ -62,6 +66,7 @@ import {
   type Viewer,
 } from "./ui";
 import { WorkItemDrawer } from "./WorkItemDrawer";
+import { Button, Segmented } from "@/components/ui";
 import { BugsPanel } from "./BugComponents";
 
 type Detail = NonNullable<Awaited<ReturnType<typeof getPageDetail>>>;
@@ -147,248 +152,310 @@ export function PageDetailClient({
     refresh();
   };
 
-  return (
-    <div className="h-full overflow-y-auto custom-scrollbar px-4 sm:px-6 lg:px-10 py-6 space-y-5">
-      <Link href="/page-tracker" className="inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground hover:text-foreground">
-        <ArrowLeft size={14} /> All pages
-      </Link>
+  const [filter, setFilter] = useState<"all" | "mine" | "review">("all");
+  const counts = {
+    all: page.workItems.filter((i) => !i.archivedAt).length,
+    mine: page.workItems.filter((i) => !i.archivedAt && i.assigneeId === viewer.id).length,
+    review: page.workItems.filter((i) => !i.archivedAt && i.reviewerId === viewer.id && i.status === "READY_FOR_REVIEW").length,
+  };
+  const visibleByStream = useMemo(() => {
+    const m: Record<Workstream, PageItem[]> = { DESIGN: [], DEVELOPMENT: [], TESTING: [] };
+    for (const w of WORKSTREAMS)
+      m[w] = byStream[w].filter((i) =>
+        filter === "mine" ? i.assigneeId === viewer.id : filter === "review" ? i.reviewerId === viewer.id && i.status === "READY_FOR_REVIEW" : true
+      );
+    return m;
+  }, [byStream, filter, viewer.id]);
+  const bugCountFor = (id: string) =>
+    page.bugs.filter((b) => (b.devWorkItemId === id || b.testWorkItemId === id) && !["VERIFIED", "CLOSED", "WONT_FIX", "DUPLICATE"].includes(b.status)).length;
 
-      {/* Header */}
-      <div className={`${cardCls} p-5 space-y-4`}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1.5">
-              <span className="text-[11.5px] font-medium text-muted-foreground">
-                {page.type === "MODULE" ? "Module" : "Page"}
-              </span>
-              <Pill color={LIFECYCLE_COLOR[life.lifecycle]}>{LIFECYCLE_LABEL[life.lifecycle]}</Pill>
+  return (
+    <div className="h-full overflow-y-auto custom-scrollbar">
+      <div className="px-4 sm:px-6 lg:px-10 pt-5 pb-16 max-w-[1240px]">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground" aria-label="Breadcrumb">
+          <Link href="/page-tracker" className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+            <ArrowLeft size={13} /> Pages
+          </Link>
+          <span className="opacity-50">/</span>
+          <span className="text-foreground truncate">{page.name}</span>
+        </nav>
+
+        {/* Header */}
+        <header className="mt-4 flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px] text-muted-foreground">
+              <span>{page.type === "MODULE" ? "Module" : "Page"}</span>
+              <span className="opacity-40">·</span>
               <PriorityBadge priority={page.priority as Priority} />
-              {page.archivedAt && <Pill color="#6B7280">Archived</Pill>}
+              <span className="opacity-40">·</span>
+              <span className="inline-flex items-center gap-1.5 text-foreground/85">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: LIFECYCLE_COLOR[life.lifecycle] }} />
+                {LIFECYCLE_LABEL[life.lifecycle]}
+              </span>
+              {page.archivedAt && <span className="text-amber-600 dark:text-amber-400">· Archived</span>}
             </div>
-            <h1 className="text-[22px] font-semibold text-foreground tracking-tight">{page.name}</h1>
-            {page.description && (
-              <p className="text-[13px] text-muted-foreground mt-1.5 max-w-3xl whitespace-pre-wrap">{page.description}</p>
-            )}
+            <h1 className="text-[26px] font-semibold tracking-[-0.025em] text-foreground mt-1.5 leading-tight">{page.name}</h1>
+            {page.description && <p className="text-[14px] text-muted-foreground mt-2 max-w-3xl leading-relaxed whitespace-pre-wrap line-clamp-3">{page.description}</p>}
+            <div className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-muted-foreground">
+              <span className="inline-flex items-center gap-2">
+                Owner <UserChip user={page.owner} empty="none" />
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays size={13} /> Target <span className="text-foreground">{page.targetDate ? fmtDate(page.targetDate) : "not set"}</span>
+              </span>
+              {links.map((l, i) => (
+                <SafeLink key={i} href={l.url} className="inline-flex items-center gap-1 text-foreground/85 hover:text-foreground hover:underline underline-offset-2">
+                  <ExternalLink size={12} className="text-muted-foreground" /> {l.label || safeHost(l.url)}
+                </SafeLink>
+              ))}
+            </div>
           </div>
           {lead && (
-            <div className="flex flex-wrap gap-2">
-              <button className={btnGhost} onClick={() => setEditing(true)}>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setEditing(true)}>
                 <Settings2 size={14} /> Settings
-              </button>
-              <button className={btnGhost} disabled={busy} onClick={doArchive}>
-                <Archive size={14} /> {page.archivedAt ? "Restore" : "Archive"}
-              </button>
+              </Button>
+              <Button variant="ghost" disabled={busy} onClick={doArchive} title={page.archivedAt ? "Restore page" : "Archive page"}>
+                <Archive size={14} /> <span className="hidden sm:inline">{page.archivedAt ? "Restore" : "Archive"}</span>
+              </Button>
             </div>
           )}
-        </div>
+        </header>
 
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[12.5px]">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            Owner: <UserChip user={page.owner} empty="none" />
-          </span>
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <CalendarDays size={14} /> Target: <b className="text-foreground">{fmtDate(page.targetDate)}</b>
-          </span>
-          {links.map((l, i) => (
-            <SafeLink key={i} href={l.url} className="inline-flex items-center gap-1 text-primary hover:underline">
-              <ExternalLink size={12} /> {l.label || new URL(l.url).hostname}
-            </SafeLink>
-          ))}
-        </div>
-
-        {/* Per-stream summary + completion gate */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {WORKSTREAMS.map((w) => {
-            const s = life.streams[w];
-            return (
-              <div key={w} className="rounded-xl bg-surface-base border border-surface-border p-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-[12px] font-medium text-muted-foreground">
-                    {WORKSTREAM_LABEL[w]}
-                    {!s.required && <span className="ml-1.5 normal-case font-medium">(optional)</span>}
-                  </p>
-                  {s.complete && <CheckCircle2 size={14} className="text-emerald-500" />}
-                </div>
-                <div className="mt-2">
-                  <Meter done={s.done} total={s.total} color={WORKSTREAM_COLOR[w]} />
-                </div>
-                <p className="text-[11.5px] text-muted-foreground mt-1.5 tabular-nums">
-                  {s.done}/{s.total} done · {s.inProgress} active · {s.inReview} in review
-                  {s.blocked ? ` · ${s.blocked} blocked` : ""}
-                </p>
+        {/* Delivery pipeline: three separate streams, never one blended % */}
+        <section className="mt-7" aria-label="Delivery pipeline">
+          <ol className="grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-xl border border-surface-border bg-surface-border">
+            {WORKSTREAMS.map((w) => {
+              const s = life.streams[w];
+              const state = !s.required && s.total === 0
+                ? { text: "Not required", tone: "text-muted-foreground" }
+                : s.complete
+                  ? { text: "Done", tone: "text-emerald-600 dark:text-emerald-400" }
+                  : s.blocked
+                    ? { text: `${s.blocked} blocked`, tone: "text-red-600 dark:text-red-400" }
+                    : s.inReview
+                      ? { text: `${s.inReview} in review`, tone: "text-primary" }
+                      : s.inProgress || s.changes
+                        ? { text: "In progress", tone: "text-amber-600 dark:text-amber-400" }
+                        : { text: s.total ? "Not started" : "No items yet", tone: "text-muted-foreground" };
+              return (
+                <li key={w} className="bg-surface-elevated px-4 py-3.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-[13px] font-medium text-foreground">
+                      <span className="w-2 h-2 rounded-sm" style={{ background: WORKSTREAM_COLOR[w] }} />
+                      {WORKSTREAM_LABEL[w]}
+                    </span>
+                    {s.complete && <CheckCircle2 size={15} className="text-emerald-500" />}
+                  </div>
+                  <p className={`text-[12.5px] mt-1.5 ${state.tone}`}>{state.text}</p>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <div className="flex-1">
+                      <Meter done={s.done} total={s.total} color={WORKSTREAM_COLOR[w]} />
+                    </div>
+                    <span className="text-[11.5px] text-muted-foreground tabular-nums">
+                      {s.done}/{s.total}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+            <li className="bg-surface-elevated px-4 py-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-[13px] font-medium text-foreground">
+                  <Rocket size={13} className="text-muted-foreground" /> Release
+                </span>
+                {life.lifecycle === "COMPLETED" && <CheckCircle2 size={15} className="text-emerald-500" />}
               </div>
-            );
-          })}
-        </div>
+              <p className={`text-[12.5px] mt-1.5 ${life.gatePassed ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                {life.lifecycle === "COMPLETED"
+                  ? "Completed"
+                  : life.gatePassed
+                    ? page.requireFinalApproval && !page.releasedAt
+                      ? "Awaiting release approval"
+                      : "Ready"
+                    : `${life.gateProblems.length} thing${life.gateProblems.length === 1 ? "" : "s"} left`}
+              </p>
+              {lead && life.gatePassed && page.requireFinalApproval && !page.releasedAt && !page.archivedAt ? (
+                <Button size="sm" variant="primary" className="mt-2" disabled={busy} onClick={doRelease}>
+                  Approve release
+                </Button>
+              ) : (
+                <p className="text-[11.5px] text-muted-foreground mt-2.5">{openBugs.length ? `${openBugs.length} open bug${openBugs.length > 1 ? "s" : ""}` : "No open bugs"}</p>
+              )}
+            </li>
+          </ol>
+          {!life.gatePassed && life.gateProblems.length > 0 && (
+            <details className="mt-3 group">
+              <summary className="list-none cursor-pointer inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground hover:text-foreground select-none">
+                <ChevronRight size={13} className="transition-transform group-open:rotate-90" />
+                What's left before this is complete
+              </summary>
+              <ul className="mt-2 ml-5 space-y-1 text-[13px] text-foreground/85">
+                {life.gateProblems.map((p, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="mt-[7px] w-1 h-1 rounded-full bg-muted-foreground shrink-0" />
+                    {p}
+                  </li>
+                ))}
+                <li className="text-[12px] text-muted-foreground pt-1">Progress bars are informational — completion needs every required item approved.</li>
+              </ul>
+            </details>
+          )}
+        </section>
 
-        <div
-          className={`rounded-xl border px-4 py-3 text-[12.5px] flex flex-wrap items-center justify-between gap-3 ${
-            life.gatePassed
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              : "border-surface-border bg-surface-base text-muted-foreground"
-          }`}
-        >
-          <div className="flex items-start gap-2">
-            {life.gatePassed ? <CheckCircle2 size={15} className="mt-0.5" /> : <CircleAlert size={15} className="mt-0.5" />}
-            <div>
-              <p className="font-semibold text-foreground">
-                {life.gatePassed
-                  ? page.requireFinalApproval && !page.releasedAt
-                    ? "All gates passed — waiting for final release approval"
-                    : "Completion gate passed"
-                  : "Not complete yet"}
-              </p>
-              {!life.gatePassed && <p className="mt-0.5">{life.gateProblems.join(" · ")}</p>}
-              <p className="text-[11px] mt-1 opacity-80">
-                Percentages are progress indicators only — completion needs every required item approved, no blockers and no release-blocking bugs.
-              </p>
-            </div>
+        {/* Tabs */}
+        <div className="mt-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-3 border-b border-surface-border">
+          <div className="flex items-center gap-5 -mb-px" role="tablist">
+            {(
+              [
+                { id: "board", label: "Work items", count: counts.all },
+                { id: "bugs", label: "Bugs", count: openBugs.length },
+                { id: "activity", label: "Activity", count: 0 },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                onClick={() => setTab(t.id)}
+                className={`h-10 flex items-center gap-1.5 border-b-[1.5px] text-[13px] whitespace-nowrap transition-colors ${
+                  tab === t.id ? "border-foreground text-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t.label}
+                {t.count > 0 && <span className="text-[11.5px] text-muted-foreground tabular-nums">{t.count}</span>}
+              </button>
+            ))}
           </div>
-          {lead && life.gatePassed && page.requireFinalApproval && !page.releasedAt && !page.archivedAt && (
-            <button className={btnPrimary} disabled={busy} onClick={doRelease}>
-              Approve release
-            </button>
+          {tab === "board" && (
+            <div className="flex items-center gap-3 pb-2">
+              {lead && archivedCount > 0 && (
+                <label className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground cursor-pointer whitespace-nowrap">
+                  <input type="checkbox" className="accent-[hsl(var(--primary))]" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+                  Archived ({archivedCount})
+                </label>
+              )}
+              <Segmented
+                value={filter}
+                onChange={setFilter}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "mine", label: `Mine${counts.mine ? ` ${counts.mine}` : ""}` },
+                  { value: "review", label: `To review${counts.review ? ` ${counts.review}` : ""}` },
+                ]}
+              />
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-surface-border overflow-x-auto">
-        {(
-          [
-            { id: "board", label: "Workstreams", icon: LayoutGrid },
-            { id: "bugs", label: `Bugs${openBugs.length ? ` (${openBugs.length})` : ""}`, icon: Bug },
-            { id: "activity", label: "Activity", icon: History },
-          ] as const
-        ).map((t) => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 h-10 text-[13px] font-medium border-b-[1.5px] -mb-px whitespace-nowrap transition-colors ${
-                tab === t.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon size={14} /> {t.label}
-            </button>
-          );
-        })}
         {tab === "board" && (
-          <div className="ml-auto flex items-center gap-3 pr-1 text-[12px] text-muted-foreground">
-            <label className="flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
-              <input type="checkbox" className="accent-[hsl(var(--primary))]" checked={mineOnly} onChange={(e) => setMineOnly(e.target.checked)} />
-              Mine only
-            </label>
-            {lead && archivedCount > 0 && (
-              <label className="flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
-                <input type="checkbox" className="accent-[hsl(var(--primary))]" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
-                Archived ({archivedCount})
-              </label>
+          <div className="mt-6 space-y-8">
+            {WORKSTREAMS.map((w) => {
+              const s = life.streams[w];
+              const items = visibleByStream[w];
+              return (
+                <section key={w} aria-label={WORKSTREAM_LABEL[w]}>
+                  <div className="flex items-center justify-between gap-3 mb-2.5">
+                    <h2 className="flex items-center gap-2 text-[14px] font-semibold text-foreground">
+                      <span className="w-2.5 h-2.5 rounded-sm" style={{ background: WORKSTREAM_COLOR[w] }} />
+                      {WORKSTREAM_LABEL[w]}
+                      <span className="text-[12.5px] font-normal text-muted-foreground tabular-nums">
+                        {s.done}/{s.total} done{!s.required && " · optional"}
+                      </span>
+                    </h2>
+                    {canCreate(true) && (
+                      <Button size="sm" variant="ghost" onClick={() => setAdding(w)}>
+                        <Plus size={14} /> Add item
+                      </Button>
+                    )}
+                  </div>
+                  {items.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-surface-border px-4 py-5 text-[13px] text-muted-foreground flex flex-wrap items-center justify-between gap-3">
+                      <span>
+                        {filter === "all" ? `No ${WORKSTREAM_LABEL[w].toLowerCase()} items yet.` : filter === "mine" ? "None assigned to you here." : "Nothing waiting for your review here."}
+                      </span>
+                      {filter === "all" && canCreate(true) && (
+                        <Button size="sm" onClick={() => setAdding(w)}>
+                          <Plus size={13} /> Add the first
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <ul className="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-elevated">
+                      {items.map((item, idx) => (
+                        <WorkItemRow
+                          key={item.id}
+                          item={item}
+                          viewer={viewer}
+                          lead={lead && filter === "all"}
+                          canMoveUp={idx > 0}
+                          canMoveDown={idx < items.length - 1}
+                          onOpen={() => open(item.id)}
+                          onChanged={refresh}
+                          bugs={bugCountFor(item.id)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "bugs" && (
+          <div className="mt-6">
+            <BugsPanel
+              pageId={page.id}
+              archived={!!page.archivedAt}
+              bugs={page.bugs}
+              devItems={devItems}
+              viewer={viewer}
+              members={members}
+              onChanged={refresh}
+              onOpenItem={(id) => {
+                setTab("board");
+                open(id);
+              }}
+            />
+          </div>
+        )}
+
+        {tab === "activity" && (
+          <div className="mt-6">
+            {activity.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground">No activity yet.</p>
+            ) : (
+              <ol className="space-y-4">
+                {activity.map((a) => (
+                  <li key={a.id} className="flex gap-3 text-[13px]">
+                    <UserDot user={a.actor} size={22} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-muted-foreground">
+                        <span className="font-medium text-foreground">{a.actor.displayName}</span>{" "}
+                        {ACTION_LABEL[a.action] ?? a.action.toLowerCase().replace(/_/g, " ")}
+                        {a.workItem && (
+                          <>
+                            {" "}
+                            <button type="button" className="text-foreground hover:underline underline-offset-2" onClick={() => open(a.workItem!.id)}>
+                              {a.workItem.title}
+                            </button>
+                          </>
+                        )}
+                        {a.isOverride && <span className="ml-2 text-[11.5px] font-medium text-red-600 dark:text-red-400">admin override</span>}
+                      </p>
+                      {a.reason && <p className="text-muted-foreground/90 mt-0.5">“{a.reason}”</p>}
+                    </div>
+                    <span className="text-[12px] text-muted-foreground whitespace-nowrap">{formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}</span>
+                  </li>
+                ))}
+              </ol>
             )}
           </div>
         )}
       </div>
-
-      {tab === "board" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-          {WORKSTREAMS.map((w) => (
-            <section key={w} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: WORKSTREAM_COLOR[w] }} />
-                  {WORKSTREAM_LABEL[w]}
-                  <span className="text-muted-foreground font-medium">{byStream[w].length}</span>
-                </h2>
-                {canCreate(true) && (
-                  <button
-                    className="text-[12px] font-semibold text-primary hover:underline inline-flex items-center gap-1"
-                    onClick={() => setAdding(w)}
-                  >
-                    <Plus size={13} /> Add item
-                  </button>
-                )}
-              </div>
-
-              {byStream[w].length === 0 ? (
-                <EmptyBlock>
-                  No {WORKSTREAM_LABEL[w].toLowerCase()} work items yet.
-                  {canCreate(true) ? " Add the first one." : ""}
-                </EmptyBlock>
-              ) : (
-                byStream[w].map((item, idx) => (
-                  <WorkItemCard
-                    key={item.id}
-                    item={item}
-                    viewer={viewer}
-                    lead={lead}
-                    canMoveUp={idx > 0}
-                    canMoveDown={idx < byStream[w].length - 1}
-                    onOpen={() => open(item.id)}
-                    onChanged={refresh}
-                    devBugs={page.bugs.filter((b) => (b.devWorkItemId === item.id || b.testWorkItemId === item.id) && !["VERIFIED", "CLOSED", "WONT_FIX", "DUPLICATE"].includes(b.status)).length}
-                  />
-                ))
-              )}
-            </section>
-          ))}
-        </div>
-      )}
-
-      {tab === "bugs" && (
-        <BugsPanel
-          pageId={page.id}
-          archived={!!page.archivedAt}
-          bugs={page.bugs}
-          devItems={devItems}
-          viewer={viewer}
-          members={members}
-          onChanged={refresh}
-          onOpenItem={(id) => {
-            setTab("board");
-            open(id);
-          }}
-        />
-      )}
-
-      {tab === "activity" && (
-        <div className={`${cardCls} p-5`}>
-          {activity.length === 0 ? (
-            <p className="text-[12.5px] text-muted-foreground">No activity yet.</p>
-          ) : (
-            <ul className="space-y-3">
-              {activity.map((a) => (
-                <li key={a.id} className="flex gap-3 text-[12.5px]">
-                  <UserDot user={a.actor} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-muted-foreground">
-                      <b className="text-foreground">{a.actor.displayName}</b>{" "}
-                      {ACTION_LABEL[a.action] ?? a.action.toLowerCase().replace(/_/g, " ")}
-                      {a.workItem && (
-                        <>
-                          {" "}
-                          <button className="text-primary hover:underline" onClick={() => open(a.workItem!.id)}>
-                            {a.workItem.title}
-                          </button>
-                        </>
-                      )}
-                      {a.isOverride && (
-                        <span className="ml-2">
-                          <Pill color="#D1495B">admin override</Pill>
-                        </span>
-                      )}
-                    </p>
-                    {a.reason && <p className="text-muted-foreground/90 mt-0.5">“{a.reason}”</p>}
-                  </div>
-                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                    {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
 
       {adding && (
         <CreateWorkItemModal
@@ -406,26 +473,36 @@ export function PageDetailClient({
         />
       )}
 
-      {editing && <PageSettingsModal page={page} members={members} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); refresh(); }} />}
+      {editing && (
+        <PageSettingsModal
+          page={page}
+          members={members}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            refresh();
+          }}
+        />
+      )}
 
       {selectedId && (
-        <WorkItemDrawer
-          key={selectedId}
-          itemId={selectedId}
-          viewer={viewer}
-          members={members}
-          devItems={devItems}
-          onClose={() => open(null)}
-          onChanged={refresh}
-        />
+        <WorkItemDrawer key={selectedId} itemId={selectedId} viewer={viewer} members={members} devItems={devItems} onClose={() => open(null)} onChanged={refresh} />
       )}
     </div>
   );
 }
 
-// ── Card ────────────────────────────────────────────────────────────────────
+function safeHost(url: string) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
 
-function WorkItemCard({
+// ── Row ─────────────────────────────────────────────────────────────────────
+
+function WorkItemRow({
   item,
   viewer,
   lead,
@@ -433,7 +510,7 @@ function WorkItemCard({
   canMoveDown,
   onOpen,
   onChanged,
-  devBugs,
+  bugs,
 }: {
   item: PageItem;
   viewer: Viewer;
@@ -442,12 +519,12 @@ function WorkItemCard({
   canMoveDown: boolean;
   onOpen: () => void;
   onChanged: () => void;
-  devBugs: number;
+  bugs: number;
 }) {
   const mine = item.assigneeId === viewer.id;
   const reviewing = item.reviewerId === viewer.id && item.status === "READY_FOR_REVIEW";
-  const overdue = isOverdue(item.dueDate, item.status);
-  const evidenceCount = Array.isArray(item.evidence) ? item.evidence.length : 0;
+  const overdue = isOverdue(item.dueDate, item.status as never);
+  const closed = item.status === "DONE" || item.status === "CANCELLED";
 
   const move = async (e: React.MouseEvent, direction: "up" | "down") => {
     e.stopPropagation();
@@ -457,97 +534,104 @@ function WorkItemCard({
   };
 
   return (
-    <div
+    <li
       role="button"
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onOpen())}
-      className={`${cardCls} p-3.5 cursor-pointer hover:border-primary/50 hover:shadow-md transition-all group relative ${
+      className={`group relative flex items-center gap-3 px-4 min-h-[52px] py-2.5 cursor-pointer hover:bg-surface-hover/60 transition-colors focus-visible:outline-none focus-visible:bg-surface-hover ${
         item.archivedAt ? "opacity-60" : ""
-      } ${reviewing ? "ring-1 ring-purple-500/50" : ""}`}
-      style={mine ? { borderLeft: "3px solid hsl(var(--primary))" } : undefined}
+      }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p
-          className={`text-[13.5px] font-semibold leading-snug ${
-            item.status === "DONE" || item.status === "CANCELLED" ? "text-muted-foreground line-through decoration-muted-foreground/40" : "text-foreground"
-          }`}
-        >
-          {item.title}
-        </p>
-        {lead && (
-          <div className="flex flex-col opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity -mt-1 -mr-1">
-            <button disabled={!canMoveUp} onClick={(e) => move(e, "up")} className="text-muted-foreground hover:text-foreground disabled:opacity-25" aria-label="Move up">
-              <ChevronUp size={14} />
-            </button>
-            <button disabled={!canMoveDown} onClick={(e) => move(e, "down")} className="text-muted-foreground hover:text-foreground disabled:opacity-25" aria-label="Move down">
-              <ChevronDown size={14} />
-            </button>
-          </div>
-        )}
-      </div>
+      <span title={STATUS_LABEL[item.status as never]}>
+        <WorkItemStatusIcon status={item.status as never} size={15} />
+      </span>
 
-      <div className="flex flex-wrap items-center gap-1.5 mt-2">
-        <StatusBadge status={item.status as never} />
-        <PriorityBadge priority={item.priority as Priority} />
-        {item.archivedAt && <Pill color="#6B7280">Archived</Pill>}
-        {!item.ownerAcknowledged && <Pill color="#F59E0B">Needs acknowledgement</Pill>}
-        {!item.isRequired && <Pill color="#9AA1AE" title={item.exclusionReason ?? undefined}>Optional</Pill>}
-        {reviewing && <Pill color="#A855F7">Your review</Pill>}
-      </div>
-
-      {item.status === "BLOCKED" && item.blockedReason && (
-        <p className="text-[11.5px] text-red-500 mt-2 line-clamp-2">Blocked: {item.blockedReason}</p>
-      )}
-
-      <div className="flex items-center justify-between gap-2 mt-3 text-[11.5px]">
-        <div className="flex items-center gap-2 min-w-0">
-          <UserChip user={item.assignee} />
-          {!mine && <span title="Only the assignee can edit this item"><Lock size={11} className="text-muted-foreground/60" /></span>}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className={`text-[13.5px] truncate ${closed ? "text-muted-foreground line-through decoration-muted-foreground/40" : "text-foreground font-medium"}`}>{item.title}</span>
+          {reviewing && <Tag tone="review">Your review</Tag>}
+          {mine && !item.ownerAcknowledged && <Tag tone="warning">Acknowledge</Tag>}
+          {!item.isRequired && <Tag>Optional</Tag>}
+          {item.archivedAt && <Tag>Archived</Tag>}
         </div>
-        <span className={overdue ? "text-red-500 font-semibold" : "text-muted-foreground"}>
-          {item.dueDate ? fmtDate(item.dueDate) : ""}
-          {overdue ? " · overdue" : ""}
-        </span>
+        {item.status === "BLOCKED" && item.blockedReason ? (
+          <p className="text-[12px] text-red-600 dark:text-red-400 truncate mt-0.5">Blocked: {item.blockedReason}</p>
+        ) : (
+          <p className="text-[12px] text-muted-foreground truncate mt-0.5 sm:hidden">
+            {STATUS_LABEL[item.status as never]} · {item.assignee.displayName}
+          </p>
+        )}
       </div>
 
-      <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
-        {item.reviewer ? (
-          <span className="inline-flex items-center gap-1 min-w-0" title="Reviewer">
-            Review: <span className="font-medium text-foreground/80 truncate">{item.reviewer.displayName}</span>
+      {/* Signals */}
+      <div className="hidden md:flex items-center gap-3 text-[12px] text-muted-foreground shrink-0">
+        {bugs > 0 && (
+          <span className="inline-flex items-center gap-1 text-orange-600 dark:text-orange-400" title="Open linked bugs">
+            <Bug size={12} />
+            {bugs}
           </span>
-        ) : item.requiresReview ? (
-          <span className="text-amber-500">No reviewer</span>
-        ) : (
-          <span>No review needed</span>
         )}
-        <span className="ml-auto flex items-center gap-2.5">
-          {item._count.submissions > 0 && (
-            <span className="inline-flex items-center gap-1" title="Submissions"><Paperclip size={11} />{item._count.submissions}</span>
-          )}
-          {evidenceCount > 0 && item._count.submissions === 0 && (
-            <span className="inline-flex items-center gap-1" title="Draft evidence links"><Paperclip size={11} />{evidenceCount}</span>
-          )}
-          {item._count.comments > 0 && (
-            <span className="inline-flex items-center gap-1"><MessageSquare size={11} />{item._count.comments}</span>
-          )}
-          {devBugs > 0 && (
-            <span className="inline-flex items-center gap-1 text-orange-500" title="Open linked bugs"><Bug size={11} />{devBugs}</span>
-          )}
-          {item.ticket && (
-            <Link
-              href={`/board/${item.ticket.boardId}?ticket=${item.ticket.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 text-primary hover:underline"
-              title={`On board “${item.ticket.board.name}” (${item.ticket.column.name})`}
-            >
-              <Kanban size={11} />
-            </Link>
-          )}
-        </span>
+        {item._count.comments > 0 && (
+          <span className="inline-flex items-center gap-1" title="Comments">
+            <MessageSquare size={12} />
+            {item._count.comments}
+          </span>
+        )}
+        {item._count.submissions > 0 && (
+          <span className="inline-flex items-center gap-1" title="Submissions">
+            <Paperclip size={12} />
+            {item._count.submissions}
+          </span>
+        )}
+        {item.ticket && (
+          <Link
+            href={`/board/${item.ticket.boardId}?ticket=${item.ticket.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center hover:text-foreground"
+            title={`On board “${item.ticket.board.name}” (${item.ticket.column.name})`}
+          >
+            <Kanban size={12} />
+          </Link>
+        )}
       </div>
-    </div>
+
+      <span className="hidden lg:block w-[92px] shrink-0 text-[12px] text-muted-foreground truncate" title={item.reviewer ? `Reviewer: ${item.reviewer.displayName}` : undefined}>
+        {item.reviewer ? `→ ${item.reviewer.displayName.split(" ")[0]}` : item.requiresReview ? <span className="text-amber-600 dark:text-amber-400">No reviewer</span> : ""}
+      </span>
+
+      <span className="hidden sm:flex items-center gap-2 w-[132px] shrink-0 min-w-0" title={`Owner: ${item.assignee.displayName}`}>
+        <UserDot user={item.assignee} size={20} />
+        <span className="text-[12.5px] text-foreground/85 truncate">{item.assignee.displayName}</span>
+        {!mine && <Lock size={11} className="text-muted-foreground/50 shrink-0" />}
+      </span>
+
+      <span className={`w-[72px] shrink-0 text-right text-[12px] tabular-nums ${overdue ? "text-red-600 dark:text-red-400 font-medium" : "text-muted-foreground"}`}>
+        {item.dueDate ? new Date(item.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
+      </span>
+
+      {lead && (
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex focus-within:flex flex-col bg-surface-elevated rounded-md border border-surface-border shadow-sm">
+          <button type="button" disabled={!canMoveUp} onClick={(e) => move(e, "up")} className="h-5 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-25" aria-label="Move up">
+            <ChevronUp size={13} />
+          </button>
+          <button type="button" disabled={!canMoveDown} onClick={(e) => move(e, "down")} className="h-5 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-25" aria-label="Move down">
+            <ChevronDown size={13} />
+          </button>
+        </div>
+      )}
+    </li>
   );
+}
+
+function Tag({ children, tone }: { children: React.ReactNode; tone?: "review" | "warning" }) {
+  const cls =
+    tone === "review"
+      ? "border-primary/30 text-primary bg-primary/[0.06]"
+      : tone === "warning"
+        ? "border-amber-500/30 text-amber-700 dark:text-amber-400 bg-amber-500/[0.06]"
+        : "border-surface-border text-muted-foreground";
+  return <span className={`inline-flex items-center h-5 px-1.5 rounded-md border text-[11px] font-medium whitespace-nowrap ${cls}`}>{children}</span>;
 }
 
 // ── Create work item ────────────────────────────────────────────────────────
@@ -733,7 +817,7 @@ function PageSettingsModal({
     onSaved();
   };
 
-  const Check = ({ k, label }: { k: keyof typeof f; label: string }) => (
+  const check = (k: keyof typeof f, label: string) => (
     <label className="flex items-center gap-2.5 text-[12.5px] cursor-pointer">
       <input type="checkbox" className="accent-[hsl(var(--primary))]" checked={f[k] as boolean} onChange={(e) => set(k, e.target.checked as never)} />
       {label}
@@ -793,11 +877,11 @@ function PageSettingsModal({
         </div>
         <div className="rounded-xl border border-surface-border bg-surface-base p-3.5 space-y-2">
           <p className="text-[12px] font-medium text-muted-foreground">Completion rules</p>
-          <Check k="designRequired" label="Design is required" />
-          <Check k="developmentRequired" label="Development is required" />
-          <Check k="testingRequired" label="Testing is required" />
-          <Check k="requireFinalApproval" label="Require final release approval" />
-          <Check k="membersCanCreate" label="Team members can add work items (assigned to themselves)" />
+          {check("designRequired", "Design is required")}
+          {check("developmentRequired", "Development is required")}
+          {check("testingRequired", "Testing is required")}
+          {check("requireFinalApproval", "Require final release approval")}
+          {check("membersCanCreate", "Team members can add work items (assigned to themselves)")}
         </div>
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" className={btnGhost} onClick={onClose}>Cancel</button>

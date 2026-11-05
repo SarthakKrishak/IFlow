@@ -18,12 +18,12 @@ export function WorkloadClient({ rows }: { rows: Rows }) {
   return (
     <div className="h-full overflow-y-auto custom-scrollbar px-4 sm:px-6 lg:px-10 py-6 space-y-5">
       <div>
-        <h1 className="text-[18px] font-semibold text-foreground tracking-tight">Team workload</h1>
-        <p className="text-[12.5px] text-muted-foreground mt-0.5">
+        <h1 className="text-[22px] font-semibold text-foreground tracking-[-0.02em]">Team workload</h1>
+        <p className="text-[13px] text-muted-foreground mt-1">
           Where open work sits right now. Item counts show distribution, not productivity — items differ a lot in size and complexity.
         </p>
       </div>
-      <div className={`${cardCls} overflow-x-auto`}>
+      <div className={`${cardCls} overflow-x-auto max-w-[1100px]`}>
         <table className="w-full text-[13px] min-w-[640px]">
           <thead>
             <tr className="text-left text-[12px] font-medium text-muted-foreground border-b border-surface-border">

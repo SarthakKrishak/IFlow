@@ -275,7 +275,7 @@ export function Sidebar({ isAdmin, isManager, projects, activeProject, boards, u
             <img src="/imaginum_logo.png" alt="Imaginum" className="h-4 w-4 rounded-full object-cover opacity-80" />
             <span className="text-[12px]">Imaginum</span>
           </a>
-          <span className="text-[11px] font-mono text-muted-foreground/50 select-none">v2.1</span>
+          <span className="text-[11px] font-mono text-muted-foreground/50 select-none">v3.0</span>
         </div>
       )}
     </nav>

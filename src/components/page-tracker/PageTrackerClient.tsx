@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { Plus, Search, Layers, AlertTriangle, ClipboardCheck, Clock } from "lucide-react";
+import { Plus, Search, Layers, ChevronRight } from "lucide-react";
+import { PriorityIcon } from "@/components/shared/StatusGlyphs";
 import type { getTrackerOverview } from "@/lib/page-tracker/queries";
 import {
   ACTION_LABEL,
@@ -23,7 +24,7 @@ import {
   type WorkItemStatus,
 } from "@/lib/page-tracker/constants";
 import { createPage } from "@/server/actions/tracker-page.actions";
-import { Button, EmptyState, StatCard, StatGroup, type Tone } from "@/components/ui";
+import { Button, EmptyState } from "@/components/ui";
 import {
   EmptyBlock,
   Meter,
@@ -46,7 +47,56 @@ import {
 type Overview = Awaited<ReturnType<typeof getTrackerOverview>>;
 
 // Page · priority · design · development · testing · owner (+ target) · status
-const PAGE_GRID = "grid-cols-[minmax(220px,1.6fr)_84px_repeat(3,minmax(120px,1fr))_150px_168px]";
+const PAGE_GRID = "grid-cols-[minmax(220px,1.7fr)_repeat(3,minmax(110px,1fr))_160px_minmax(150px,190px)]";
+
+function PageName({ p }: { p: Overview["pages"][number] }) {
+  return (
+    <span className="min-w-0">
+      <span className="flex items-center gap-2 min-w-0">
+        <PriorityIcon priority={p.priority as Priority} size={13} />
+        <span className="text-[14px] font-medium text-foreground truncate">{p.name}</span>
+        <span className="shrink-0 text-[11px] text-muted-foreground">{p.type === "MODULE" ? "Module" : "Page"}</span>
+      </span>
+      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-muted-foreground tabular-nums whitespace-nowrap" title={`Last activity ${formatDistanceToNow(new Date(p.lastActivity), { addSuffix: true })}`}>
+        <span>{p.openItems} open</span>
+        {p.pendingReviews > 0 && <span className="text-primary">{p.pendingReviews} in review</span>}
+        {p.overdue > 0 && <span className="text-red-600 dark:text-red-400">{p.overdue} overdue</span>}
+        {p.openBugs > 0 && (
+          <span className="text-orange-600 dark:text-orange-400">
+            {p.openBugs} bug{p.openBugs > 1 ? "s" : ""}
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
+/** One workstream: state word + done/total + thin bar. */
+function StreamCell({ s, color, compact }: { s: Overview["pages"][number]["streams"][Workstream]; color: string; compact?: boolean }) {
+  const state = streamState(s);
+  return (
+    <span className="min-w-0 block">
+      <span className="flex items-center justify-between gap-2 text-[12px]">
+        <span className="truncate" style={{ color: state.color === "#9AA1AE" ? undefined : state.color }}>
+          <span className={state.color === "#9AA1AE" ? "text-muted-foreground" : ""}>{state.label}</span>
+        </span>
+        {!compact && s.total > 0 && <span className="text-muted-foreground tabular-nums shrink-0">{s.done}/{s.total}</span>}
+      </span>
+      <span className="block mt-1.5">
+        <Meter done={s.done} total={s.total} color={color} />
+      </span>
+    </span>
+  );
+}
+
+function LifecycleTag({ lifecycle }: { lifecycle: PageLifecycle }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[12px] text-foreground/85 whitespace-nowrap max-w-full">
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: LIFECYCLE_COLOR[lifecycle] }} />
+      <span className="truncate">{LIFECYCLE_LABEL[lifecycle]}</span>
+    </span>
+  );
+}
 
 function streamState(s: Overview["pages"][number]["streams"][Workstream]) {
   if (s.total === 0) return { label: s.required ? "No items" : "Not required", color: "#9AA1AE" };
@@ -94,295 +144,298 @@ export function PageTrackerClient({
   );
 
   const s = overview.summary;
-  const tiles: { label: string; value: number; tone: Tone; icon: React.ReactNode }[] = [
-    { label: "Pages / modules", value: s.total, tone: "primary", icon: <Layers size={15} /> },
-    { label: "In progress", value: s.inProgress, tone: "info", icon: <Clock size={15} /> },
-    { label: "Completed", value: s.completed, tone: "success", icon: <ClipboardCheck size={15} /> },
-    { label: "Blocked", value: s.blocked, tone: "danger", icon: <AlertTriangle size={15} /> },
-    { label: "Pending reviews", value: s.pendingReviews, tone: "purple", icon: <ClipboardCheck size={15} /> },
-    { label: "Overdue items", value: s.overdue, tone: "warning", icon: <AlertTriangle size={15} /> },
+  const tiles: { label: string; value: number; alert?: boolean }[] = [
+    { label: "Pages", value: s.total },
+    { label: "In progress", value: s.inProgress },
+    { label: "Completed", value: s.completed },
+    { label: "Blocked", value: s.blocked, alert: true },
+    { label: "Reviews waiting", value: s.pendingReviews },
+    { label: "Overdue items", value: s.overdue, alert: true },
   ];
 
   const statusTotal = Object.values(overview.byStatus).reduce((a, b) => a + b, 0);
   const bugTotal = Object.values(overview.bugsBySeverity).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar px-4 sm:px-6 lg:px-10 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[12.5px] text-muted-foreground">{projectName}</p>
-          <h1 className="text-[20px] font-semibold text-foreground tracking-[-0.015em] mt-0.5">Pages &amp; modules</h1>
-          <p className="text-[13px] text-muted-foreground mt-1 max-w-xl">
-            Design, development and testing for every page — with a named owner and a reviewer on every item.
-          </p>
+    <div className="h-full overflow-y-auto custom-scrollbar">
+      <div className="px-4 sm:px-6 lg:px-10 py-6 space-y-6 max-w-[1440px]">
+        {/* Header */}
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-[22px] font-semibold text-foreground tracking-[-0.02em]">Pages &amp; modules</h1>
+            <p className="text-[13px] text-muted-foreground mt-1">
+              {projectName} · design, development and testing tracked separately for every page.
+            </p>
+          </div>
+          {lead && (
+            <Button variant="primary" onClick={() => setCreating(true)}>
+              <Plus size={14} /> New page
+            </Button>
+          )}
         </div>
-        {lead && (
-          <button className={btnPrimary} onClick={() => setCreating(true)}>
-            <Plus size={14} /> New page / module
-          </button>
-        )}
-      </div>
 
-      {/* Summary */}
-      <StatGroup className="grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-        {tiles.map((t) => (
-          <StatCard key={t.label} label={t.label} value={t.value} tone={t.tone} icon={t.icon} />
-        ))}
-      </StatGroup>
-
-      {/* Dashboard */}
-      {s.total > 0 && (
-        <section className="grid grid-cols-1 xl:grid-cols-3 border-y border-surface-border divide-y xl:divide-y-0 xl:divide-x divide-surface-border">
-          <div className="py-5 xl:pr-8">
-            <p className="text-[13px] font-semibold text-foreground mb-4">Work items by status</p>
-            {statusTotal === 0 ? (
-              <p className="text-[12px] text-muted-foreground">No work items yet.</p>
-            ) : (
-              <>
-                <div className="flex h-2 gap-0.5 rounded-full overflow-hidden bg-foreground/[0.06]">
-                  {(Object.keys(STATUS_LABEL) as WorkItemStatus[])
-                    .filter((k) => overview.byStatus[k])
-                    .map((k) => (
-                      <div
-                        key={k}
-                        title={`${STATUS_LABEL[k]}: ${overview.byStatus[k]}`}
-                        style={{ width: `${(overview.byStatus[k] / statusTotal) * 100}%`, background: STATUS_COLOR[k] }}
-                      />
-                    ))}
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
-                  {(Object.keys(STATUS_LABEL) as WorkItemStatus[])
-                    .filter((k) => overview.byStatus[k])
-                    .map((k) => (
-                      <span key={k} className="text-[11.5px] text-muted-foreground flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR[k] }} />
-                        {STATUS_LABEL[k]} <span className="text-foreground tabular-nums">{overview.byStatus[k]}</span>
-                      </span>
-                    ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="py-5 xl:px-8">
-            <p className="text-[13px] font-semibold text-foreground mb-4">Workstream progress</p>
-            <div className="space-y-3">
-              {WORKSTREAMS.map((w) => {
-                const d = overview.workstreams[w];
-                return (
-                  <div key={w}>
-                    <div className="flex justify-between text-[12px] mb-1">
-                      <span className="font-medium text-foreground">{WORKSTREAM_LABEL[w]}</span>
-                      <span className="text-muted-foreground tabular-nums">
-                        {d.done}/{d.total} done
-                      </span>
-                    </div>
-                    <Meter done={d.done} total={d.total} color={WORKSTREAM_COLOR[w]} />
-                  </div>
-                );
-              })}
+        {/* Summary: one slim row */}
+        <dl className="grid grid-cols-3 gap-x-4 gap-y-4 sm:flex sm:flex-wrap sm:gap-x-0 border-y border-surface-border py-3.5">
+          {tiles.map((t, i) => (
+            <div key={t.label} className={`sm:px-5 sm:first:pl-0 ${i > 0 ? "sm:border-l sm:border-surface-border" : ""}`}>
+              <dt className="text-[12px] text-muted-foreground whitespace-nowrap">{t.label}</dt>
+              <dd className={`text-[20px] leading-none font-semibold tabular-nums mt-1.5 ${t.alert && t.value > 0 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>{t.value}</dd>
             </div>
-            <p className="text-[11.5px] text-muted-foreground mt-4">
-              Progress is informational — a page is complete only when every required item is approved.
-            </p>
-          </div>
+          ))}
+        </dl>
 
-          <div className="py-5 xl:pl-8">
-            <p className="text-[13px] font-semibold text-foreground mb-4">
-              Open bugs by severity
-            </p>
-            {bugTotal === 0 ? (
-              <p className="text-[12px] text-muted-foreground">No open bugs.</p>
-            ) : (
-              <div className="space-y-2">
-                {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((sev) => (
-                  <div key={sev} className="flex items-center gap-3">
-                    <span className="text-[11.5px] w-16 text-muted-foreground">{sev[0] + sev.slice(1).toLowerCase()}</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-foreground/[0.06] overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${((overview.bugsBySeverity[sev] ?? 0) / bugTotal) * 100}%`,
-                          background: SEVERITY_COLOR[sev],
-                        }}
-                      />
-                    </div>
-                    <span className="text-[12px] font-semibold tabular-nums w-5 text-right">
-                      {overview.bugsBySeverity[sev] ?? 0}
-                    </span>
+        {/* Insights: folded away by default */}
+        {s.total > 0 && (
+          <details className="group">
+            <summary className="list-none cursor-pointer inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground select-none">
+              <ChevronRight size={14} className="transition-transform group-open:rotate-90" />
+              Insights
+              <span className="font-normal text-[12.5px]">— work items by status, workstream progress, open bugs</span>
+            </summary>
+            <div className="mt-4">
+          <section className="grid grid-cols-1 xl:grid-cols-3 border-y border-surface-border divide-y xl:divide-y-0 xl:divide-x divide-surface-border">
+            <div className="py-5 xl:pr-8">
+              <p className="text-[13px] font-semibold text-foreground mb-4">Work items by status</p>
+              {statusTotal === 0 ? (
+                <p className="text-[12px] text-muted-foreground">No work items yet.</p>
+              ) : (
+                <>
+                  <div className="flex h-2 gap-0.5 rounded-full overflow-hidden bg-foreground/[0.06]">
+                    {(Object.keys(STATUS_LABEL) as WorkItemStatus[])
+                      .filter((k) => overview.byStatus[k])
+                      .map((k) => (
+                        <div
+                          key={k}
+                          title={`${STATUS_LABEL[k]}: ${overview.byStatus[k]}`}
+                          style={{ width: `${(overview.byStatus[k] / statusTotal) * 100}%`, background: STATUS_COLOR[k] }}
+                        />
+                      ))}
                   </div>
-                ))}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
+                    {(Object.keys(STATUS_LABEL) as WorkItemStatus[])
+                      .filter((k) => overview.byStatus[k])
+                      .map((k) => (
+                        <span key={k} className="text-[11.5px] text-muted-foreground flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR[k] }} />
+                          {STATUS_LABEL[k]} <span className="text-foreground tabular-nums">{overview.byStatus[k]}</span>
+                        </span>
+                      ))}
+                  </div>
+                </>
+              )}
+            </div>
+  
+            <div className="py-5 xl:px-8">
+              <p className="text-[13px] font-semibold text-foreground mb-4">Workstream progress</p>
+              <div className="space-y-3">
+                {WORKSTREAMS.map((w) => {
+                  const d = overview.workstreams[w];
+                  return (
+                    <div key={w}>
+                      <div className="flex justify-between text-[12px] mb-1">
+                        <span className="font-medium text-foreground">{WORKSTREAM_LABEL[w]}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {d.done}/{d.total} done
+                        </span>
+                      </div>
+                      <Meter done={d.done} total={d.total} color={WORKSTREAM_COLOR[w]} />
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            className={`${inputCls} pl-8`}
-            placeholder="Search pages and modules…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-        <select className={`${inputCls} flex-1 sm:flex-none sm:!w-auto`} value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="all">All statuses</option>
-          {(Object.keys(LIFECYCLE_LABEL) as PageLifecycle[]).map((k) => (
-            <option key={k} value={k}>
-              {LIFECYCLE_LABEL[k]}
-            </option>
-          ))}
-        </select>
-        <select className={`${inputCls} flex-1 sm:flex-none sm:!w-auto`} value={workstream} onChange={(e) => setWorkstream(e.target.value)}>
-          <option value="all">Any workstream</option>
-          {WORKSTREAMS.map((w) => (
-            <option key={w} value={w}>
-              Open {WORKSTREAM_LABEL[w]} work
-            </option>
-          ))}
-        </select>
-        <select className={`${inputCls} flex-1 sm:flex-none sm:!w-auto`} value={owner} onChange={(e) => setOwner(e.target.value)}>
-          <option value="all">Any owner</option>
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.displayName}
-            </option>
-          ))}
-        </select>
-        <select className={`${inputCls} flex-1 sm:flex-none sm:!w-auto`} value={priority} onChange={(e) => setPriority(e.target.value)}>
-          <option value="all">Any priority</option>
-          {(["URGENT", "HIGH", "MEDIUM", "LOW"] as Priority[]).map((p) => (
-            <option key={p} value={p}>
-              {p[0] + p.slice(1).toLowerCase()}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Page cards */}
-      {overview.pages.length === 0 ? (
-        <EmptyState
-          icon={<Layers size={22} />}
-          title="No pages tracked yet"
-          description={
-            lead
-              ? "Create a page or module (e.g. “Login” or “Payments”), then add Design, Development and Testing work items to it."
-              : "A lead or admin will create the pages the team works on."
-          }
-          action={
-            lead ? (
-              <Button variant="primary" onClick={() => setCreating(true)}>
-                <Plus size={15} /> New page / module
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : pages.length === 0 ? (
-        <EmptyBlock>No pages match these filters.</EmptyBlock>
-      ) : (
-        <div className="rounded-xl border border-surface-border overflow-x-auto">
-          <div className="min-w-[1080px]">
-            <div className={`grid ${PAGE_GRID} gap-4 px-4 h-9 items-center text-[12px] text-muted-foreground border-b border-surface-border`}>
-              <span>Page</span>
-              <span>Priority</span>
-              {WORKSTREAMS.map((w) => (
-                <span key={w}>{WORKSTREAM_LABEL[w]}</span>
-              ))}
-              <span>Owner · target</span>
-              <span className="text-right">Status</span>
+              <p className="text-[11.5px] text-muted-foreground mt-4">
+                Progress is informational — a page is complete only when every required item is approved.
+              </p>
             </div>
-            <ul className="divide-y divide-surface-border">
+  
+            <div className="py-5 xl:pl-8">
+              <p className="text-[13px] font-semibold text-foreground mb-4">
+                Open bugs by severity
+              </p>
+              {bugTotal === 0 ? (
+                <p className="text-[12px] text-muted-foreground">No open bugs.</p>
+              ) : (
+                <div className="space-y-2">
+                  {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((sev) => (
+                    <div key={sev} className="flex items-center gap-3">
+                      <span className="text-[11.5px] w-16 text-muted-foreground">{sev[0] + sev.slice(1).toLowerCase()}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-foreground/[0.06] overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${((overview.bugsBySeverity[sev] ?? 0) / bugTotal) * 100}%`,
+                            background: SEVERITY_COLOR[sev],
+                          }}
+                        />
+                      </div>
+                      <span className="text-[12px] font-semibold tabular-nums w-5 text-right">
+                        {overview.bugsBySeverity[sev] ?? 0}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+  
+            </div>
+          </details>
+        )}
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              className={`${inputCls} pl-8`}
+              placeholder="Search pages and modules…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+          <select className={`${inputCls} !w-[calc(50%-4px)] sm:!w-auto`} value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="all">All statuses</option>
+            {(Object.keys(LIFECYCLE_LABEL) as PageLifecycle[]).map((k) => (
+              <option key={k} value={k}>
+                {LIFECYCLE_LABEL[k]}
+              </option>
+            ))}
+          </select>
+          <select className={`${inputCls} !w-[calc(50%-4px)] sm:!w-auto`} value={workstream} onChange={(e) => setWorkstream(e.target.value)}>
+            <option value="all">Any workstream</option>
+            {WORKSTREAMS.map((w) => (
+              <option key={w} value={w}>
+                Open {WORKSTREAM_LABEL[w]} work
+              </option>
+            ))}
+          </select>
+          <select className={`${inputCls} !w-[calc(50%-4px)] sm:!w-auto`} value={owner} onChange={(e) => setOwner(e.target.value)}>
+            <option value="all">Any owner</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.displayName}
+              </option>
+            ))}
+          </select>
+          <select className={`${inputCls} !w-[calc(50%-4px)] sm:!w-auto`} value={priority} onChange={(e) => setPriority(e.target.value)}>
+            <option value="all">Any priority</option>
+            {(["URGENT", "HIGH", "MEDIUM", "LOW"] as Priority[]).map((p) => (
+              <option key={p} value={p}>
+                {p[0] + p.slice(1).toLowerCase()}
+              </option>
+            ))}
+          </select>
+        </div>
+  
+  
+        {/* Pages */}
+        {overview.pages.length === 0 ? (
+          <EmptyState
+            icon={<Layers size={22} />}
+            title="No pages tracked yet"
+            description={
+              lead
+                ? "Create a page or module (e.g. “Login” or “Payments”), then add Design, Development and Testing work items to it."
+                : "A lead or admin will create the pages the team works on."
+            }
+            action={
+              lead ? (
+                <Button variant="primary" onClick={() => setCreating(true)}>
+                  <Plus size={15} /> New page
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : pages.length === 0 ? (
+          <EmptyBlock>No pages match these filters.</EmptyBlock>
+        ) : (
+          <>
+            {/* Desktop: table */}
+            <div className="hidden md:block rounded-xl border border-surface-border overflow-x-auto bg-surface-elevated">
+              <div className="min-w-[900px]">
+                <div className={`grid ${PAGE_GRID} gap-5 px-4 h-9 items-center text-[12px] text-muted-foreground border-b border-surface-border`}>
+                  <span>Page</span>
+                  {WORKSTREAMS.map((w) => (
+                    <span key={w}>{WORKSTREAM_LABEL[w]}</span>
+                  ))}
+                  <span>Owner</span>
+                  <span className="text-right">Status</span>
+                </div>
+                <ul className="divide-y divide-surface-border">
+                  {pages.map((p) => (
+                    <li key={p.id}>
+                      <Link href={`/page-tracker/${p.id}`} className={`grid ${PAGE_GRID} gap-5 px-4 py-3.5 items-center hover:bg-surface-hover/60 transition-colors`}>
+                        <PageName p={p} />
+                        {WORKSTREAMS.map((w) => (
+                          <StreamCell key={w} s={p.streams[w]} color={WORKSTREAM_COLOR[w]} />
+                        ))}
+                        <span className="min-w-0">
+                          <UserChip user={p.owner} empty="No owner" />
+                          <span className="block text-[12px] text-muted-foreground tabular-nums mt-1">{p.targetDate ? `Target ${fmtDate(p.targetDate)}` : "No target date"}</span>
+                        </span>
+                        <span className="flex justify-end">
+                          <LifecycleTag lifecycle={p.lifecycle as PageLifecycle} />
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Phones: cards */}
+            <ul className="md:hidden space-y-3">
               {pages.map((p) => (
                 <li key={p.id}>
-                  <Link href={`/page-tracker/${p.id}`} className={`grid ${PAGE_GRID} gap-4 px-4 py-3 items-center hover:bg-surface-hover/60 transition-colors`}>
-                    {/* Name + signals */}
-                    <span className="min-w-0">
-                      <span className="flex items-center gap-2 min-w-0">
-                        <span className="shrink-0 text-[11px] text-muted-foreground border border-surface-border rounded px-1 h-[18px] inline-flex items-center">
-                          {p.type === "MODULE" ? "Module" : "Page"}
-                        </span>
-                        <span className="text-[13.5px] font-medium text-foreground truncate">{p.name}</span>
-                      </span>
-                      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-muted-foreground tabular-nums whitespace-nowrap" title={`Last activity ${formatDistanceToNow(new Date(p.lastActivity), { addSuffix: true })}`}>
-                        <span>{p.openItems} open</span>
-                        {p.pendingReviews > 0 && <span className="text-purple-600 dark:text-purple-400">{p.pendingReviews} in review</span>}
-                        {p.overdue > 0 && <span className="text-red-600 dark:text-red-400">{p.overdue} overdue</span>}
-                        {p.openBugs > 0 && (
-                          <span className="text-orange-600 dark:text-orange-400">
-                            {p.openBugs} bug{p.openBugs > 1 ? "s" : ""}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-
-                    <span>
-                      <PriorityBadge priority={p.priority as Priority} />
-                    </span>
-
-                    {/* Three separate workstream states — never one blended percentage */}
-                    {WORKSTREAMS.map((w) => {
-                      const st = p.streams[w];
-                      const state = streamState(st);
-                      return (
-                        <span key={w} className="min-w-0">
-                          <span className="flex items-center justify-between gap-2 text-[12px]">
-                            <span className="flex items-center gap-1.5 min-w-0">
-                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: state.color }} />
-                              <span className="truncate text-foreground/85">{state.label}</span>
-                            </span>
-                            {st.total > 0 && <span className="text-muted-foreground tabular-nums shrink-0">{st.done}/{st.total}</span>}
-                          </span>
-                          <span className="block mt-1.5">
-                            <Meter done={st.done} total={st.total} color={WORKSTREAM_COLOR[w]} />
-                          </span>
-                        </span>
-                      );
-                    })}
-
-                    <span className="min-w-0">
+                  <Link href={`/page-tracker/${p.id}`} className="block rounded-xl border border-surface-border bg-surface-elevated p-4 active:bg-surface-hover">
+                    <div className="flex items-start justify-between gap-3">
+                      <PageName p={p} />
+                      <LifecycleTag lifecycle={p.lifecycle as PageLifecycle} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mt-4">
+                      {WORKSTREAMS.map((w) => (
+                        <div key={w} className="min-w-0">
+                          <p className="text-[11.5px] text-muted-foreground mb-1">{WORKSTREAM_LABEL[w]}</p>
+                          <StreamCell s={p.streams[w]} color={WORKSTREAM_COLOR[w]} compact />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-surface-border">
                       <UserChip user={p.owner} empty="No owner" />
-                      <span className="block text-[12px] text-muted-foreground tabular-nums mt-1">{p.targetDate ? `Target ${fmtDate(p.targetDate)}` : "No target date"}</span>
-                    </span>
-                    <span className="flex justify-end min-w-0 [&>span]:max-w-full [&>span]:truncate">
-                      <Pill color={LIFECYCLE_COLOR[p.lifecycle as PageLifecycle]}>{LIFECYCLE_LABEL[p.lifecycle as PageLifecycle]}</Pill>
-                    </span>
+                      <span className="text-[12px] text-muted-foreground tabular-nums">{p.targetDate ? fmtDate(p.targetDate) : ""}</span>
+                    </div>
                   </Link>
                 </li>
               ))}
             </ul>
-          </div>
+          </>
+        )}
+
+        {/* Recent activity */}
+        {overview.recent.length > 0 && (
+          <section>
+            <h3 className="text-[14px] font-semibold text-foreground mb-3">Recent activity</h3>
+            <ul className="rounded-xl border border-surface-border divide-y divide-surface-border">
+              {overview.recent.map((a) => (
+                <li key={a.id} className="px-4 py-2.5 text-[13px] text-muted-foreground flex flex-wrap items-baseline gap-x-1.5">
+                  <span className="font-medium text-foreground">{a.actor.displayName}</span>
+                  <span>{ACTION_LABEL[a.action] ?? a.action.toLowerCase().replace(/_/g, " ")}</span>
+                  {a.page && (
+                    <Link href={`/page-tracker/${a.page.id}`} className="text-primary hover:underline">
+                      {a.page.name}
+                    </Link>
+                  )}
+                  {a.isOverride && <Pill color="#D1495B">admin override</Pill>}
+                  <span className="text-[12px] ml-auto">
+                    {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+  
         </div>
-      )}
-
-      {/* Recent activity */}
-      {overview.recent.length > 0 && (
-        <section>
-          <h3 className="text-[14px] font-semibold text-foreground mb-3">Recent activity</h3>
-          <ul className="rounded-xl border border-surface-border divide-y divide-surface-border">
-            {overview.recent.map((a) => (
-              <li key={a.id} className="px-4 py-2.5 text-[13px] text-muted-foreground flex flex-wrap items-baseline gap-x-1.5">
-                <span className="font-medium text-foreground">{a.actor.displayName}</span>
-                <span>{ACTION_LABEL[a.action] ?? a.action.toLowerCase().replace(/_/g, " ")}</span>
-                {a.page && (
-                  <Link href={`/page-tracker/${a.page.id}`} className="text-primary hover:underline">
-                    {a.page.name}
-                  </Link>
-                )}
-                {a.isOverride && <Pill color="#D1495B">admin override</Pill>}
-                <span className="text-[12px] ml-auto">
-                  {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {creating && <CreatePageModal members={members} onClose={() => setCreating(false)} />}
     </div>
   );

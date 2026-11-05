@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Bug, Plus } from "lucide-react";
+import { Button, Segmented } from "@/components/ui";
 import {
   BUG_RESOLVED,
   BUG_STATUS_LABEL,
@@ -101,27 +102,24 @@ export function BugsPanel({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-1 p-1 rounded-xl bg-surface-elevated border border-surface-border">
-          {(["open", "all"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-lg text-[12px] font-semibold ${filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-            >
-              {f === "open" ? "Open" : "All"}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: "open", label: `Open ${bugs.filter((b) => !BUG_RESOLVED.includes(b.status as BugStatus)).length}` },
+            { value: "all", label: `All ${bugs.length}` },
+          ]}
+        />
         {!archived && (
-          <button className={btnGhost} onClick={() => setReporting(true)}>
+          <Button onClick={() => setReporting(true)}>
             <Plus size={14} /> Report a bug
-          </button>
+          </Button>
         )}
       </div>
       {shown.length === 0 ? (
-        <EmptyBlock>{filter === "open" ? "No open bugs. 🎉" : "No bugs recorded."}</EmptyBlock>
+        <EmptyBlock>{filter === "open" ? "No open bugs." : "No bugs recorded."}</EmptyBlock>
       ) : (
-        <div className="space-y-3">
+        <div className="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-elevated">
           {shown.map((b) => (
             <BugCard key={b.id} bug={b} viewer={viewer} members={members} devItems={devItems} onChanged={onChanged} onOpenItem={onOpenItem} />
           ))}
@@ -178,85 +176,103 @@ export function BugCard({
   };
 
   return (
-    <div className={`${cardCls} p-4`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-            <Pill color={SEVERITY_COLOR[bug.severity as BugSeverity]}>{bug.severity[0] + bug.severity.slice(1).toLowerCase()}</Pill>
-            <Pill color={BUG_STATUS_COLOR[status]}>{BUG_STATUS_LABEL[status]}</Pill>
-            {bug.releaseBlocking && !resolved && <Pill color="#D1495B">Release-blocking</Pill>}
+    <div className="px-4 py-3.5">
+      <div className="flex items-start gap-3">
+        <span
+          className="mt-[5px] w-2 h-2 rounded-full shrink-0"
+          style={{ background: SEVERITY_COLOR[bug.severity as BugSeverity] }}
+          title={`${bug.severity[0] + bug.severity.slice(1).toLowerCase()} severity`}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p className={`text-[14px] font-medium ${resolved ? "text-muted-foreground" : "text-foreground"}`}>{bug.title}</p>
+            <span className="flex items-center gap-2 text-[12.5px] whitespace-nowrap">
+              {bug.releaseBlocking && !resolved && <span className="text-red-600 dark:text-red-400 font-medium">Release-blocking</span>}
+              <span className="inline-flex items-center gap-1.5 text-foreground/85">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: BUG_STATUS_COLOR[status] }} />
+                {BUG_STATUS_LABEL[status]}
+              </span>
+            </span>
           </div>
-          <p className="text-[14px] font-semibold text-foreground">{bug.title}</p>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
+            {bug.severity[0] + bug.severity.slice(1).toLowerCase()} · Dev: <span className="text-foreground/85">{bug.assignee?.displayName ?? "unassigned"}</span> · Reported by{" "}
+            <span className="text-foreground/85">{bug.reporter.displayName}</span> · {fmtDate(bug.createdAt)}
+            {bug.testCase && (
+              <>
+                {" "}
+                · Test case <span className="text-foreground/85">{bug.testCase.title}</span>
+              </>
+            )}
+          </p>
+          {onOpenItem && (bug.devWorkItem || bug.testWorkItem) && (
+            <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px]">
+              {bug.devWorkItem && (
+                <button type="button" className="text-muted-foreground hover:text-foreground hover:underline underline-offset-2" onClick={() => onOpenItem(bug.devWorkItem!.id)}>
+                  Fix in: {bug.devWorkItem.title}
+                </button>
+              )}
+              {bug.testWorkItem && (
+                <button type="button" className="text-muted-foreground hover:text-foreground hover:underline underline-offset-2" onClick={() => onOpenItem(bug.testWorkItem!.id)}>
+                  Found in: {bug.testWorkItem.title}
+                </button>
+              )}
+            </p>
+          )}
+
+          {expanded && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 text-[13px] rounded-lg bg-surface-base border border-surface-border p-3">
+              {([
+                ["Description", bug.description],
+                ["Steps to reproduce", bug.stepsToReproduce],
+                ["Expected", bug.expectedResult],
+                ["Actual", bug.actualResult],
+                ["Environment", [bug.environment, bug.buildVersion].filter(Boolean).join(" · ")],
+              ] as [string, string | null][])
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <div key={k} className={k === "Description" || k === "Steps to reproduce" ? "sm:col-span-2" : ""}>
+                    <p className="text-[12px] text-muted-foreground">{k}</p>
+                    <p className="whitespace-pre-wrap text-foreground/90 mt-0.5">{v}</p>
+                  </div>
+                ))}
+              {bug.evidenceUrl && (
+                <SafeLink href={bug.evidenceUrl} className="text-foreground hover:underline underline-offset-2">
+                  Evidence ↗
+                </SafeLink>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 mt-2.5">
+            <button type="button" className="text-[12.5px] text-muted-foreground hover:text-foreground" onClick={() => setExpanded((v) => !v)}>
+              {expanded ? "Hide details" : "Show details"}
+            </button>
+            {((isAssignee && ["OPEN", "TRIAGED", "ASSIGNED", "RETEST_FAILED", "IN_PROGRESS"].includes(status)) || (isTester && status === "READY_FOR_RETEST") || (lead && (!resolved || status === "VERIFIED"))) && (
+              <span className="ml-auto flex flex-wrap gap-2">
+                {isAssignee && ["OPEN", "TRIAGED", "ASSIGNED", "RETEST_FAILED"].includes(status) && (
+                  <Button size="sm" variant="primary" loading={busy} onClick={() => run(() => startBugFix({ bugId: bug.id }), "Bug in progress")}>
+                    Start fix
+                  </Button>
+                )}
+                {isAssignee && status === "IN_PROGRESS" && (
+                  <Button size="sm" variant="primary" loading={busy} onClick={() => run(() => submitBugForRetest({ bugId: bug.id }), "Sent for retest")}>
+                    Ready for retest
+                  </Button>
+                )}
+                {isTester && status === "READY_FOR_RETEST" && (
+                  <Button size="sm" variant="primary" disabled={busy} onClick={() => setRetest(true)}>
+                    Record retest
+                  </Button>
+                )}
+                {lead && (!resolved || status === "VERIFIED") && (
+                  <Button size="sm" disabled={busy} onClick={() => setTriage(true)}>
+                    Triage
+                  </Button>
+                )}
+              </span>
+            )}
+          </div>
         </div>
-        <span className="text-[11px] text-muted-foreground">{fmtDate(bug.createdAt)}</span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-3 text-[12px] text-muted-foreground">
-        <span className="flex items-center gap-1.5">Dev: <UserChip user={bug.assignee} empty="unassigned" /></span>
-        <span className="flex items-center gap-1.5">Reporter: <UserChip user={bug.reporter} /></span>
-        {bug.testCase && <span>Test case: <b className="text-foreground/80">{bug.testCase.title}</b></span>}
-        {bug.devWorkItem && onOpenItem && (
-          <button className="text-primary hover:underline" onClick={() => onOpenItem(bug.devWorkItem!.id)}>
-            Dev item: {bug.devWorkItem.title}
-          </button>
-        )}
-        {bug.testWorkItem && onOpenItem && (
-          <button className="text-primary hover:underline" onClick={() => onOpenItem(bug.testWorkItem!.id)}>
-            Test item: {bug.testWorkItem.title}
-          </button>
-        )}
-      </div>
-
-      {expanded && (
-        <div className="mt-3 space-y-2 text-[12.5px] border-t border-surface-border pt-3">
-          {([
-            ["Description", bug.description],
-            ["Steps to reproduce", bug.stepsToReproduce],
-            ["Expected", bug.expectedResult],
-            ["Actual", bug.actualResult],
-            ["Environment", [bug.environment, bug.buildVersion].filter(Boolean).join(" · ")],
-          ] as [string, string | null][])
-            .filter(([, v]) => v)
-            .map(([k, v]) => (
-              <div key={k}>
-                <p className="text-[12px] font-medium text-muted-foreground">{k}</p>
-                <p className="whitespace-pre-wrap text-foreground/90">{v}</p>
-              </div>
-            ))}
-          {bug.evidenceUrl && (
-            <SafeLink href={bug.evidenceUrl} className="text-primary hover:underline">
-              Evidence ↗
-            </SafeLink>
-          )}
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-2 mt-3">
-        <button className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => setExpanded((v) => !v)}>
-          {expanded ? "Hide details" : "Details"}
-        </button>
-        <span className="ml-auto flex flex-wrap gap-2">
-          {isAssignee && ["OPEN", "TRIAGED", "ASSIGNED", "RETEST_FAILED"].includes(status) && (
-            <button className={btnPrimary} disabled={busy} onClick={() => run(() => startBugFix({ bugId: bug.id }), "Bug in progress")}>
-              Start fix
-            </button>
-          )}
-          {isAssignee && status === "IN_PROGRESS" && (
-            <button className={btnPrimary} disabled={busy} onClick={() => run(() => submitBugForRetest({ bugId: bug.id }), "Sent for retest")}>
-              Ready for retest
-            </button>
-          )}
-          {isTester && status === "READY_FOR_RETEST" && (
-            <button className={btnPrimary} disabled={busy} onClick={() => setRetest(true)}>
-              Record retest
-            </button>
-          )}
-          {lead && (!resolved || status === "VERIFIED") && (
-            <button className={btnGhost} disabled={busy} onClick={() => setTriage(true)}>
-              Triage
-            </button>
-          )}
-        </span>
       </div>
 
       {triage && (
