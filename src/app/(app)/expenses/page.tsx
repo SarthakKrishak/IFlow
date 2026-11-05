@@ -30,7 +30,7 @@ export default async function ExpensesPage() {
   });
 
   return (
-    <div className="w-full h-full p-8 overflow-y-auto custom-scrollbar bg-background">
+    <div className="w-full h-full px-4 sm:px-6 lg:px-10 py-6 overflow-y-auto custom-scrollbar">
       <ExpensesClient
         expenses={expenses}
         allUsers={allUsers}

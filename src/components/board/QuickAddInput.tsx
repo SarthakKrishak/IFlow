@@ -56,7 +56,7 @@ export function QuickAddInput({ boardId, columnId, onClose }: QuickAddInputProps
   };
 
   return (
-    <div className="shrink-0 rounded-2xl p-2 bg-surface-base border border-[#5B5FEF]/40">
+    <div className="shrink-0 rounded-lg px-3 py-2.5 bg-surface-elevated border border-primary/50 shadow-ring">
       <input
         ref={inputRef}
         value={title}
@@ -65,14 +65,14 @@ export function QuickAddInput({ boardId, columnId, onClose }: QuickAddInputProps
         onBlur={() => {
           if (!title.trim()) onClose();
         }}
-        placeholder="Ticket title… press Enter to create"
-        className="w-full bg-transparent text-sm text-text-primary placeholder-muted-foreground outline-none"
+        placeholder="Issue title — Enter to create, Esc to cancel"
+        className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/70 outline-none"
         disabled={isSubmitting}
         aria-label="New ticket title"
       />
       {isSubmitting && (
         <div className="flex justify-end mt-1">
-          <Loader2 size={12} className="animate-spin text-[#5B5FEF]" />
+          <Loader2 size={12} className="animate-spin text-muted-foreground" />
         </div>
       )}
     </div>

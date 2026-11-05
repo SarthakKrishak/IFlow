@@ -10,7 +10,7 @@ export function ThemeProvider({ children, ...props }: React.ComponentProps<typeo
   return (
     <NextThemesProvider {...props}>
       {children}
-      <Toaster position="bottom-right" richColors closeButton />
+      <Toaster position="bottom-right" richColors closeButton mobileOffset={{ bottom: "calc(4.25rem + env(safe-area-inset-bottom))" }} />
     </NextThemesProvider>
   );
 }

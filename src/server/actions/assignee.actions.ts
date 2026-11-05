@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity";
 import { z } from "zod";
 import type { Ticket } from "@prisma/client";
+import { TRACKER_MANAGED_MESSAGE, isTrackerManaged } from "@/lib/page-tracker/server";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -31,6 +32,7 @@ export async function setTicketAssignees(input: {
       return { success: false, error: parsed.error.errors[0].message };
 
     const { ticketId, assigneeIds } = parsed.data;
+    if (await isTrackerManaged(ticketId)) return { success: false, error: TRACKER_MANAGED_MESSAGE };
     const uniqueIds = Array.from(new Set(assigneeIds));
 
     const ticket = await prisma.ticket.findUnique({

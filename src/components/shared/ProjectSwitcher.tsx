@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Folder, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Folder, Plus, Trash2 } from "lucide-react";
 import type { Project } from "@prisma/client";
 import { setProjectCookie } from "@/app/(app)/actions";
 import { useRouter } from "next/navigation";
 import { createProject } from "@/server/actions/project.actions";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-
 import { deleteProject } from "@/server/actions/project";
-import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button, Dialog, Field, Input, Textarea } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 export function ProjectSwitcher({
   projects,
@@ -41,7 +40,6 @@ export function ProjectSwitcher({
       const res = await deleteProject(projectId);
       if (res.success) {
         if (activeProject.id === projectId) {
-          // Just let it refresh, or explicitly navigate away
           router.push("/overview");
         } else {
           router.refresh();
@@ -59,45 +57,45 @@ export function ProjectSwitcher({
   }
 
   return (
-    <div className="relative mb-4 px-3">
+    <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center justify-between p-2 rounded-2xl bg-surface-elevated border border-surface-border hover:border-surface-border/80 transition-all ${
-          collapsed ? "justify-center" : ""
-        }`}
+        className={cn(
+          "w-full flex items-center justify-between gap-2 h-9 px-2 rounded-lg bg-surface-elevated border border-surface-border hover:border-foreground/20 transition-colors",
+          collapsed && "justify-center px-0"
+        )}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        title={collapsed ? activeProject.name : undefined}
       >
         <div className="flex items-center gap-2 overflow-hidden">
-          <div className="w-6 h-6 rounded bg-[#5B5FEF]/10 text-[#5B5FEF] flex items-center justify-center flex-shrink-0">
-            <Folder size={14} />
+          <div className="w-5 h-5 rounded bg-foreground text-background flex items-center justify-center flex-shrink-0 text-[10.5px] font-semibold uppercase">
+            {activeProject.name.trim().charAt(0) || <Folder size={11} />}
           </div>
-          {!collapsed && (
-            <span className="text-sm font-medium text-text-primary truncate">
-              {activeProject.name}
-            </span>
-          )}
+          {!collapsed && <span className="text-[13px] font-medium text-foreground truncate">{activeProject.name}</span>}
         </div>
-        {!collapsed && <ChevronDown size={14} className="text-text-secondary" />}
+        {!collapsed && <ChevronsUpDown size={13} className="text-muted-foreground shrink-0" />}
       </button>
 
       {open && !collapsed && (
         <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute top-full left-3 right-3 mt-1 bg-surface-elevated border border-surface-border rounded-2xl shadow-xl overflow-hidden z-20">
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 right-0 mt-1 bg-popover rounded-lg shadow-pop overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-150">
+            <p className="px-3 pt-2.5 pb-1 text-[11.5px] font-medium text-muted-foreground">Projects</p>
             <div className="max-h-60 overflow-y-auto p-1">
               {projects.map((p) => (
                 <div key={p.id} className="flex items-center justify-between group">
                   <button
                     onClick={() => handleSwitch(p.id)}
-                    className={`flex-1 text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                    className={cn(
+                      "flex-1 flex items-center justify-between gap-2 text-left px-2 h-8 rounded-md text-[13px] transition-colors",
                       p.id === activeProject.id
-                        ? "bg-[#5B5FEF]/15 text-[#5B5FEF] font-medium"
-                        : "text-text-secondary hover:text-text-primary hover:bg-surface-border"
-                    }`}
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-surface-hover"
+                    )}
                   >
-                    <span className="truncate block max-w-[150px]">{p.name}</span>
+                    <span className="truncate">{p.name}</span>
+                    {p.id === activeProject.id && <Check size={13} className="shrink-0" />}
                   </button>
                   {isAdmin && (
                     <button
@@ -105,10 +103,11 @@ export function ProjectSwitcher({
                         e.stopPropagation();
                         setIsDeleting(p.id);
                       }}
-                      className="p-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
-                      title="Delete Project"
+                      className="p-1.5 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete project"
+                      aria-label={`Delete project ${p.name}`}
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={13} />
                     </button>
                   )}
                 </div>
@@ -121,10 +120,10 @@ export function ProjectSwitcher({
                     setOpen(false);
                     setIsCreating(true);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-[#5B5FEF] hover:bg-[#5B5FEF]/15 transition-colors"
+                  className="w-full flex items-center gap-2 px-2.5 h-8 rounded-lg text-[13px] font-medium text-primary hover:bg-primary/10 transition-colors"
                 >
                   <Plus size={14} />
-                  Create Project
+                  Create project
                 </button>
               </div>
             )}
@@ -132,110 +131,78 @@ export function ProjectSwitcher({
         </>
       )}
 
-      {/* Delete Confirmation Modal */}
       {isDeleting && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-surface-elevated border border-surface-border rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-4">
-              <Trash2 size={24} />
-            </div>
-            <h2 className="text-xl font-bold text-center text-text-primary mb-2">Delete Project?</h2>
-            <p className="text-center text-sm text-text-secondary mb-6">
-              Are you sure you want to delete this project? This action cannot be undone and all associated boards and tickets will be lost.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setIsDeleting(null)}
-                className="flex-1 px-4 py-2 text-sm font-medium text-text-secondary bg-surface-base border border-surface-border rounded-2xl hover:bg-surface-border transition-colors"
-                disabled={isSubmitting}
-              >
+        <Dialog
+          size="sm"
+          title="Delete project?"
+          description="This can’t be undone. All boards and tickets in it will be lost."
+          onClose={() => setIsDeleting(null)}
+          footer={
+            <>
+              <Button onClick={() => setIsDeleting(null)} disabled={isSubmitting}>
                 Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDelete(isDeleting)}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2 text-sm font-bold text-white bg-destructive rounded-2xl hover:bg-destructive/90 transition-colors flex items-center justify-center gap-2"
-              >
-                {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-                Confirm Delete
-              </button>
+              </Button>
+              <Button variant="primary" className="!bg-red-600 hover:!bg-red-700 !text-white" loading={isSubmitting} onClick={() => handleDelete(isDeleting)}>
+                Delete project
+              </Button>
+            </>
+          }
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">
+              <Trash2 size={18} />
             </div>
+            <p className="text-[13px] text-muted-foreground leading-relaxed pt-1">
+              You are about to permanently delete <b className="text-foreground">{projects.find((p) => p.id === isDeleting)?.name}</b>.
+            </p>
           </div>
-        </div>
+        </Dialog>
       )}
 
-      {/* Create Modal */}
       {isCreating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 w-full max-w-md shadow-2xl">
-            <h2 className="text-lg font-semibold text-text-primary mb-4">Create New Project</h2>
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setIsSubmitting(true);
-                try {
-                  const formData = new FormData(e.currentTarget);
-                  const result = await createProject({
-                    name: formData.get("name") as string,
-                    description: formData.get("description") as string,
-                  });
-                  setIsSubmitting(false);
-                  if (result.success) {
-                    setIsCreating(false);
-                    handleSwitch(result.data.id);
-                  } else {
-                    toast.error(result.error || "Failed to create project");
-                  }
-                } catch (error) {
-                  console.error("Create project failed:", error);
-                  setIsSubmitting(false);
-                  toast.error("Network error — couldn't create project");
+        <Dialog title="Create project" description="Projects group boards, wiki notebooks and the Page Tracker." onClose={() => setIsCreating(false)}>
+          <form
+            id="create-project-form"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setIsSubmitting(true);
+              try {
+                const formData = new FormData(e.currentTarget);
+                const result = await createProject({
+                  name: formData.get("name") as string,
+                  description: formData.get("description") as string,
+                });
+                setIsSubmitting(false);
+                if (result.success) {
+                  setIsCreating(false);
+                  handleSwitch(result.data.id);
+                } else {
+                  toast.error(result.error || "Failed to create project");
                 }
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">Name</label>
-                <input
-                  name="name"
-                  required
-                  autoFocus
-                  className="w-full px-3 py-2 rounded-2xl bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF]"
-                  placeholder="e.g. Acme Website"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1">Description</label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-2xl bg-surface-base border border-surface-border text-sm text-text-primary outline-none focus:border-[#5B5FEF] resize-none"
-                  placeholder="Optional description"
-                />
-              </div>
-              <div className="flex gap-3 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreating(false)}
-                  className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 text-sm bg-[#5B5FEF] text-white rounded-2xl hover:bg-[#4B4FE0] transition-colors disabled:opacity-50 flex items-center gap-2"
-                >
-                  {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+              } catch (error) {
+                console.error("Create project failed:", error);
+                setIsSubmitting(false);
+                toast.error("Network error — couldn't create project");
+              }
+            }}
+            className="space-y-4"
+          >
+            <Field label="Name">
+              <Input name="name" required autoFocus placeholder="e.g. Acme Website" />
+            </Field>
+            <Field label="Description" hint="Optional">
+              <Textarea name="description" rows={3} placeholder="What is this project about?" />
+            </Field>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" onClick={() => setIsCreating(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" loading={isSubmitting}>
+                Create project
+              </Button>
+            </div>
+          </form>
+        </Dialog>
       )}
     </div>
   );

@@ -185,7 +185,7 @@ export default function WikiEditor({
   }
 
   return (
-    <div className="h-full flex flex-col relative bg-surface-base">
+    <div className="h-full flex flex-col relative">
       <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8 custom-scrollbar">
         {activeEditor && <Toolbar editor={activeEditor} />}
         
@@ -207,7 +207,7 @@ export default function WikiEditor({
             ))
           ) : (
             // Loading skeleton
-            <div className="bg-surface-elevated shadow-md rounded-xl p-8 sm:p-12 md:p-16 min-h-[800px] border border-surface-border animate-pulse flex flex-col gap-4 w-full max-w-4xl mx-auto">
+            <div className="bg-surface-elevated shadow-card rounded-xl p-8 sm:p-12 md:p-16 min-h-[800px] border border-surface-border animate-pulse flex flex-col gap-4 w-full max-w-4xl mx-auto">
               <div className="h-10 bg-surface-base rounded w-1/3"></div>
               <div className="h-4 bg-surface-base rounded w-full"></div>
               <div className="h-4 bg-surface-base rounded w-5/6"></div>
@@ -222,7 +222,7 @@ export default function WikiEditor({
               className={`mt-4 flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-dashed border-surface-border font-medium transition-all w-full max-w-4xl ${
                 pageIds.length >= 5 
                   ? "text-muted-foreground opacity-50 cursor-not-allowed" 
-                  : "text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 bg-surface-elevated"
+                  : "text-muted-foreground hover:text-foreground hover:border-foreground/20 hover:bg-primary/5 bg-surface-elevated"
               }`}
             >
               <Plus size={18} />

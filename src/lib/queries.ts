@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getActiveProject } from "@/lib/project";
 import { getExtraAssigneesMap } from "@/lib/assignees";
+import { getTrackerLinksForTickets } from "@/lib/page-tracker/server";
 import { getHeavyCachedUsers, getHeavyCachedLabels } from "@/lib/cached";
 
 // Deduplicate auth() calls within a single render tree (layout + page both call auth)
@@ -45,7 +46,11 @@ export const getCachedBoard = cache(async (boardId: string) => {
 
   // Attach multi-assignees additively (fail-soft until migration is applied).
   const ticketIds = board.columns.flatMap((c) => c.tickets.map((t) => t.id));
-  const extrasMap = await getExtraAssigneesMap(ticketIds);
+  const [extrasMap, trackerMap] = await Promise.all([
+    getExtraAssigneesMap(ticketIds),
+    // Page Tracker breadcrumbs — additive and fail-soft like the line above.
+    getTrackerLinksForTickets(ticketIds),
+  ]);
 
   return {
     ...board,
@@ -54,6 +59,7 @@ export const getCachedBoard = cache(async (boardId: string) => {
       tickets: col.tickets.map((t) => ({
         ...t,
         extraAssignees: (extrasMap.get(t.id) ?? []).map((user) => ({ user })),
+        trackerLink: trackerMap.get(t.id) ?? null,
       })),
     })),
   };

@@ -12,6 +12,8 @@ export interface NotificationItem {
   body: string | null;
   ticketId: string | null;
   commentId: string | null;
+  /** In-app deep link (Page Tracker notifications). */
+  link: string | null;
   isRead: boolean;
   createdAt: Date;
   actor: { id: string; displayName: string; avatarColor: string } | null;
@@ -27,15 +29,33 @@ export async function getNotifications(input?: {
 
     const limit = Math.min(Math.max(input?.limit ?? 30, 1), 100);
 
+    const actorSelect = { select: { id: true, displayName: true, avatarColor: true } } as const;
+    const loadItems = async (): Promise<NotificationItem[]> => {
+      try {
+        return await prisma.notification.findMany({
+          where: { userId: session.user.id },
+          include: { actor: actorSelect },
+          orderBy: { createdAt: "desc" },
+          take: limit,
+        });
+      } catch (e) {
+        // Page Tracker migration (Notification.link) not applied yet: keep @mentions working.
+        if ((e as { code?: string })?.code !== "P2022") throw e;
+        const rows = await prisma.notification.findMany({
+          where: { userId: session.user.id },
+          select: {
+            id: true, type: true, title: true, body: true, ticketId: true, commentId: true,
+            isRead: true, createdAt: true, actor: actorSelect,
+          },
+          orderBy: { createdAt: "desc" },
+          take: limit,
+        });
+        return rows.map((r) => ({ ...r, link: null }));
+      }
+    };
+
     const [items, unreadCount] = await Promise.all([
-      prisma.notification.findMany({
-        where: { userId: session.user.id },
-        include: {
-          actor: { select: { id: true, displayName: true, avatarColor: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        take: limit,
-      }),
+      loadItems(),
       prisma.notification.count({
         where: { userId: session.user.id, isRead: false },
       }),

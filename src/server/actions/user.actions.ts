@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/lib/auth";
+import { auth, invalidateProfile } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   createUserSchema,
@@ -92,6 +92,7 @@ export async function deactivateUser(input: {
       where: { id: userId },
       data: { isActive: false },
     });
+    invalidateProfile(userId);
 
     revalidateUsersCache();
     return { success: true, data: undefined };
@@ -125,6 +126,7 @@ export async function resetPassword(input: {
         mustChangePassword: true,
       },
     });
+    invalidateProfile(userId);
 
     return { success: true, data: undefined };
   } catch (error) {
@@ -174,6 +176,7 @@ export async function updateUserRole(input: {
       where: { id: userId },
       data: { role: newRole },
     });
+    invalidateProfile(userId);
 
     revalidateUsersCache();
     return { success: true, data: undefined };
@@ -214,6 +217,7 @@ export async function updateOwnPassword(input: {
         mustChangePassword: false,
       },
     });
+    invalidateProfile(session.user.id);
 
     return { success: true, data: undefined };
   } catch (error) {

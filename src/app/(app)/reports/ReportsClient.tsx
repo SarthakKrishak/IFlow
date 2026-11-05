@@ -18,6 +18,7 @@ import {
   Legend
 } from "recharts";
 import { PriorityChip, Avatar } from "@/components/shared";
+import { Badge, Card, SectionLabel, Segmented } from "@/components/ui";
 import type { Ticket, User } from "@prisma/client";
 import { FileText, CheckSquare, Clock, Timer, ChevronDown, ChevronLeft, ChevronRight, MessageSquare, LayoutTemplate } from "lucide-react";
 
@@ -121,47 +122,31 @@ export function ReportsClient({
   ];
 
   return (
-    <div className="p-8 max-w-[1500px] mx-auto animate-fade-in pb-24">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 max-w-[1440px] mx-auto animate-fade-in pb-24">
       
       {/* Controls */}
-      <div className="flex mb-8">
-        <div className="flex bg-surface-elevated/50 p-1.5 rounded-full border border-surface-border">
-          {[
-            { label: "Last 7 Days", value: "week" },
-            { label: "Last 4 Weeks", value: "30d" },
-          ].map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => updateParam("range", opt.value)}
-              className={`px-5 py-2 text-[13px] font-bold rounded-full transition-all ${
-                currentRange === opt.value
-                  ? "bg-primary text-white shadow-md"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <Segmented
+          value={currentRange as "week" | "30d"}
+          onChange={(v) => updateParam("range", v)}
+          options={[
+            { value: "week", label: "Last 7 days" },
+            { value: "30d", label: "Last 4 weeks" },
+          ]}
+        />
+        <p className="text-[12.5px] text-muted-foreground">Team throughput, workload and spend for the selected period</p>
       </div>
 
       {/* Summary tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-xl border border-surface-border bg-surface-border shadow-card mb-6">
         {statCards.map((card) => (
-          <div
-            key={card.id}
-            className="rounded-3xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex items-center gap-5 hover:border-surface-border/80 transition-colors"
-          >
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border flex-shrink-0 ${card.iconBg} ${card.iconBorder}`}>
+          <div key={card.id} className="bg-surface-elevated px-5 py-4 min-w-0">
+            <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground [&_svg]:w-[13px] [&_svg]:h-[13px]">
               {card.icon}
-            </div>
-            <div>
-              <p className="text-[11px] text-muted-foreground font-bold tracking-wider mb-1 uppercase">{card.title}</p>
-              <p className={`text-3xl font-bold font-mono tracking-tight ${card.valueColor || "text-foreground"}`}>
-                {card.value}
-              </p>
-              <p className="text-[12px] text-muted-foreground mt-1">{card.subtext}</p>
-            </div>
+              {card.title}
+            </p>
+            <p className={`text-[26px] leading-none font-semibold tracking-[-0.02em] tabular-nums mt-2.5 ${card.valueColor || "text-foreground"}`}>{card.value}</p>
+            <p className="text-[12px] text-muted-foreground mt-2 truncate">{card.subtext}</p>
           </div>
         ))}
       </div>
@@ -169,16 +154,13 @@ export function ReportsClient({
       {/* --- CHARTS GRID --- */}
       
       {/* 1. Team Velocity (Full Width Stacked Bar) */}
-      <div className="rounded-3xl p-6 mb-6 bg-surface-elevated border border-surface-border shadow-sm">
-        <div className="flex items-center justify-between mb-8">
+      <div className="rounded-xl p-5 mb-6 bg-surface-elevated border border-surface-border shadow-card">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-bold text-foreground tracking-tight mb-1">Team Velocity</h2>
+            <h2 className="text-[14px] font-semibold text-foreground mb-0.5">Team Velocity</h2>
             <p className="text-sm text-muted-foreground">Tickets completed per interval</p>
           </div>
-          <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-surface-border bg-surface-base text-foreground text-[12px] font-bold hover:border-primary/50 transition-colors">
-            {currentRange === "week" ? "Last 7 Days" : "Last 4 Weeks"}
-            <ChevronDown size={14} className="text-muted-foreground ml-1" />
-          </button>
+          <Badge tone="primary">{currentRange === "week" ? "Last 7 days" : "Last 4 weeks"}</Badge>
         </div>
         
         {velocityData.length === 0 ? (
@@ -236,9 +218,9 @@ export function ReportsClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         
         {/* Workload Distribution (Pie Chart) */}
-        <div className="rounded-3xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex flex-col">
+        <div className="rounded-xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex flex-col">
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-foreground tracking-tight mb-1">Workload Distribution</h2>
+            <h2 className="text-[14px] font-semibold text-foreground mb-0.5">Workload Distribution</h2>
             <p className="text-sm text-muted-foreground">Active tickets currently assigned</p>
           </div>
           <div className="h-[280px] w-full flex-grow flex items-center justify-center">
@@ -279,9 +261,9 @@ export function ReportsClient({
         </div>
 
         {/* Budget Burn Rate (Area Chart) */}
-        <div className="rounded-3xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex flex-col">
+        <div className="rounded-xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex flex-col">
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-foreground tracking-tight mb-1">Budget Burn Rate</h2>
+            <h2 className="text-[14px] font-semibold text-foreground mb-0.5">Budget Burn Rate</h2>
             <p className="text-sm text-muted-foreground">Cumulative expenses over time</p>
           </div>
           <div className="h-[280px] w-full flex-grow">
@@ -332,41 +314,39 @@ export function ReportsClient({
       </div>
 
       {/* Overdue tickets */}
-      <div className="rounded-3xl border border-surface-border shadow-sm overflow-hidden flex flex-col bg-surface-elevated">
+      <div className="rounded-xl border border-surface-border shadow-sm overflow-hidden flex flex-col bg-surface-elevated">
         <div className="px-6 py-5 border-b border-surface-border flex items-center gap-3">
-          <h2 className="text-[15px] font-bold text-foreground tracking-tight">
+          <h2 className="text-[15px] font-semibold text-foreground tracking-tight">
             Overdue tickets
           </h2>
           {overdueTickets.length > 0 && (
-            <span className="text-[13px] text-red-500 font-bold">{overdueTickets.length}</span>
+            <span className="text-[13px] text-red-500 font-semibold">{overdueTickets.length}</span>
           )}
         </div>
         
         {overdueTickets.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm font-medium text-muted-foreground">
-            No overdue tickets — nice work! 🎉
+            No overdue tickets — the team is on track.
           </div>
         ) : (
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-surface-border bg-surface-elevated">
-                  <th className="px-6 py-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Title</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Assignee</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Days overdue</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Priority</th>
+                  <th className="px-6 py-4 text-[12px] font-medium text-muted-foreground">Title</th>
+                  <th className="px-6 py-4 text-[12px] font-medium text-muted-foreground hidden sm:table-cell">Assignee</th>
+                  <th className="px-6 py-4 text-[12px] font-medium text-muted-foreground">Days overdue</th>
+                  <th className="px-6 py-4 text-[12px] font-medium text-muted-foreground hidden md:table-cell">Priority</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-border">
                 {pagedOverdue
-                  .map((ticket, i) => (
-                    <tr key={ticket.id} className="hover:bg-surface-base transition-colors group">
+                  .map((ticket) => (
+                    <tr key={ticket.id} className="hover:bg-surface-hover transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center border flex-shrink-0 ${i % 2 === 0 ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-teal-500/10 border-teal-500/20 text-teal-400'}`}>
-                              {i % 2 === 0 ? <MessageSquare size={18} /> : <LayoutTemplate size={18} />}
-                           </div>
-                           <p className="text-[14px] text-foreground font-bold line-clamp-1">{ticket.title}</p>
+                          <span className="w-1.5 h-8 rounded-full bg-red-500/70 flex-shrink-0" aria-hidden="true" />
+                          <p className="text-[13.5px] text-foreground font-semibold line-clamp-1">{ticket.title}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4 hidden sm:table-cell">
@@ -384,7 +364,7 @@ export function ReportsClient({
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-bold text-[13px] text-red-500">
+                        <span className="font-semibold text-[13px] text-red-500">
                           {daysOverdue(ticket.dueDate)}d
                         </span>
                       </td>
@@ -409,18 +389,18 @@ export function ReportsClient({
                 onClick={() => setOverduePage((p) => Math.max(1, p - 1))}
                 disabled={safeOverduePage === 1}
                 aria-label="Previous overdue page"
-                className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border text-muted-foreground hover:bg-surface-base hover:text-foreground transition-colors disabled:opacity-40"
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors disabled:opacity-40"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border bg-primary/10 text-primary text-[12px] font-bold transition-colors">
+              <span className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border bg-primary/10 text-primary text-[12px] font-semibold transition-colors">
                 {safeOverduePage}
               </span>
               <button
                 onClick={() => setOverduePage((p) => Math.min(overdueTotalPages, p + 1))}
                 disabled={safeOverduePage === overdueTotalPages}
                 aria-label="Next overdue page"
-                className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border text-muted-foreground hover:bg-surface-base hover:text-foreground transition-colors disabled:opacity-40"
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-surface-border text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors disabled:opacity-40"
               >
                 <ChevronRight size={16} />
               </button>

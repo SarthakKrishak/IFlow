@@ -1,32 +1,26 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Folder,
-  CheckCircle2,
-  Clock,
-  Calendar,
-  MessageSquare,
-  CheckCircle,
-  Tag,
-  ArrowRightLeft,
-  Loader2,
-  Trophy
-} from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend
-} from "recharts";
 import Link from "next/link";
+import { ArrowRight, ArrowRightLeft, CheckCircle, Loader2, MessageSquare, Tag, Trophy } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Avatar } from "@/components/shared/Avatar";
 import { DeploymentDashboardWidget } from "@/components/shared/DeploymentDashboardWidget";
+import { PriorityIcon, StageIcon, stageOf } from "@/components/shared/StatusGlyphs";
+import { Segmented, Select } from "@/components/ui";
+
+type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+
+interface FocusTicket {
+  id: string;
+  title: string;
+  dueDate: Date | string | null;
+  priority: Priority;
+  boardId: string;
+  board: { name: string };
+  column: { name: string };
+}
 
 interface OverviewProps {
   stats: {
@@ -34,13 +28,8 @@ interface OverviewProps {
     openTasks: number;
     inProgress: number;
     completed: number;
-    sparklines: { created: number; inProg: number; done: number; }[];
-    trends: {
-      projects: number;
-      open: number;
-      inProgress: number;
-      completed: number;
-    };
+    sparklines: { created: number; inProg: number; done: number }[];
+    trends: { projects: number; open: number; inProgress: number; completed: number };
   };
   projects: any[];
   activityLogs: any[];
@@ -54,9 +43,53 @@ interface OverviewProps {
     trend: number;
     balanceScore: number;
     balanceText: string;
+    workload?: { id: string; displayName: string; avatarColor: string; open: number }[];
   };
   range: number;
   projectId?: string;
+  /** Signed-in user's display name, for the greeting. */
+  viewerName?: string;
+  /** The viewer's own open tickets, soonest due first. */
+  myFocus?: FocusTicket[];
+}
+
+// Chart series — muted, distinguishable on light and dark, consistent across the page.
+const SERIES = { Created: "#6E70E8", Completed: "#2E9E74", "In Progress": "#C8912D", Overdue: "#D9534F" } as const;
+type SeriesKey = keyof typeof SERIES;
+// Hairline layout for the 4 figures: 2×2 on small screens, 1×4 from lg.
+const FIGURE_CELL = [
+  "pr-5 border-r border-b lg:border-b-0",
+  "pl-5 border-b lg:border-b-0 lg:border-r lg:pr-5",
+  "pr-5 border-r lg:pl-5",
+  "pl-5",
+];
+const MEDAL = ["text-amber-500", "text-zinc-400", "text-orange-700 dark:text-orange-500"];
+
+const DAY = 86400000;
+const startOfDay = (d: Date) => {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+};
+
+function timeAgo(date: Date | string) {
+  const diff = Date.now() - new Date(date).getTime();
+  if (diff < 60000) return "just now";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
+  if (diff < DAY) return `${Math.floor(diff / 3600000)}h`;
+  return `${Math.floor(diff / DAY)}d`;
+}
+
+/** "Today", "Tomorrow", "Fri", or "Nov 14" — plus an urgency tone. */
+function dueLabel(due: Date | string | null): { text: string; tone: string } | null {
+  if (!due) return null;
+  const d = startOfDay(new Date(due));
+  const days = Math.round((d.getTime() - startOfDay(new Date()).getTime()) / DAY);
+  if (days < 0) return { text: `${-days}d overdue`, tone: "text-red-600 dark:text-red-400" };
+  if (days === 0) return { text: "Today", tone: "text-amber-600 dark:text-amber-400" };
+  if (days === 1) return { text: "Tomorrow", tone: "text-foreground" };
+  if (days < 7) return { text: d.toLocaleDateString("en-US", { weekday: "short" }), tone: "text-muted-foreground" };
+  return { text: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }), tone: "text-muted-foreground" };
 }
 
 export function OverviewDashboard({
@@ -69,39 +102,34 @@ export function OverviewDashboard({
   teamStats,
   range,
   projectId,
+  viewerName,
+  myFocus = [],
 }: OverviewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [visibleActivities, setVisibleActivities] = useState(6);
-  const activityScrollRef = useRef<HTMLDivElement>(null);
-  
-  // Format Chart Data
+  const [visibleActivities, setVisibleActivities] = useState(8);
+
+  // ── Chart data (unchanged semantics) ──
   const chartDays = Array.from({ length: range }, (_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - ((range - 1) - i));
+    d.setDate(d.getDate() - (range - 1 - i));
     d.setHours(0, 0, 0, 0);
     return d;
   });
-
-  const chartData = chartDays.map(date => {
+  const chartData = chartDays.map((date) => {
     const nextDay = new Date(date);
     nextDay.setDate(nextDay.getDate() + 1);
-    
-    let created = 0;
-    let completed = 0;
-    let inProgress = 0;
-    let overdue = 0;
-
-    chartTickets.forEach(t => {
+    let created = 0, completed = 0, inProgress = 0, overdue = 0;
+    chartTickets.forEach((t) => {
+      const col = t.column?.name.toLowerCase() ?? "";
       if (t.createdAt >= date && t.createdAt < nextDay) created++;
-      if (t.column?.name.toLowerCase().includes("done") && t.updatedAt >= date && t.updatedAt < nextDay) completed++;
-      if ((t.column?.name.toLowerCase().includes("progress") || t.column?.name.toLowerCase().includes("review")) && t.updatedAt >= date && t.updatedAt < nextDay) inProgress++;
-      if (t.dueDate && new Date(t.dueDate) < new Date() && !t.column?.name.toLowerCase().includes("done") && t.updatedAt >= date && t.updatedAt < nextDay) overdue++;
+      if (col.includes("done") && t.updatedAt >= date && t.updatedAt < nextDay) completed++;
+      if ((col.includes("progress") || col.includes("review")) && t.updatedAt >= date && t.updatedAt < nextDay) inProgress++;
+      if (t.dueDate && new Date(t.dueDate) < new Date() && !col.includes("done") && t.updatedAt >= date && t.updatedAt < nextDay) overdue++;
     });
-
     return {
-      fullDate: date.toLocaleDateString("en-US", { weekday: 'short', day: 'numeric', month: 'short' }),
-      name: date.toLocaleDateString("en-US", { weekday: "short" }),
+      fullDate: date.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" }),
+      name: range > 7 ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : date.toLocaleDateString("en-US", { weekday: "short" }),
       Created: created,
       Completed: completed,
       "In Progress": inProgress,
@@ -109,477 +137,422 @@ export function OverviewDashboard({
     };
   });
 
-  const updateRange = (r: string) => {
+  const navigate = (mutate: (u: URL) => void) =>
     startTransition(() => {
       const url = new URL(window.location.href);
-      url.searchParams.set("range", r);
+      mutate(url);
       router.push(url.pathname + url.search);
     });
-  };
+  const updateRange = (r: string) => navigate((u) => u.searchParams.set("range", r));
+  const updateProject = (pid: string) => navigate((u) => (pid ? u.searchParams.set("projectId", pid) : u.searchParams.delete("projectId")));
 
-  const updateProject = (pid: string) => {
-    startTransition(() => {
-      const url = new URL(window.location.href);
-      if (pid) url.searchParams.set("projectId", pid);
-      else url.searchParams.delete("projectId");
-      router.push(url.pathname + url.search);
-    });
-  };
-
-  const handleActivityScroll = () => {
-    if (activityScrollRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = activityScrollRef.current;
-      if (scrollTop + clientHeight >= scrollHeight - 20) {
-        // load more if available
-        if (visibleActivities < activityLogs.length) {
-          setVisibleActivities(prev => Math.min(prev + 6, activityLogs.length));
-        }
-      }
-    }
-  };
-
-  const formatTimeAgo = (date: Date) => {
-    const diff = Date.now() - new Date(date).getTime();
-    if (diff < 0) return "Just now";
-    if (diff < 60000) return "Just now";
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    return `${Math.floor(diff / 86400000)}d ago`;
-  };
-
-  // Pre-calculate sparklines for each card from the 7-day stats
-  const projectsSparkData = stats.sparklines.map(s => s.created);
-  const openTasksSparkData = stats.sparklines.map(s => s.created - s.done);
-  const inProgressSparkData = stats.sparklines.map(s => s.inProg);
-  const completedSparkData = stats.sparklines.map(s => s.done);
-
+  // ── Header copy ──
+  const firstName = (viewerName ?? "").trim().split(/\s+/)[0];
+  const hour = new Date().getHours();
+  const greeting = hour < 5 ? "Working late" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const rangeText = range === 7 ? "week" : range === 30 ? "month" : "quarter";
-  const formatTrend = (val: number) => ({
-    text: `${val >= 0 ? "+" : "-"} ${Math.abs(Math.round(val))}% vs last ${rangeText}`,
-    isUp: val >= 0
-  });
 
-  const tProj = formatTrend(stats.trends.projects);
-  const tOpen = formatTrend(stats.trends.open);
-  const tProg = formatTrend(stats.trends.inProgress);
-  const tComp = formatTrend(stats.trends.completed);
+  const overdueMine = myFocus.filter((t) => t.dueDate && startOfDay(new Date(t.dueDate)) < startOfDay(new Date())).length;
+  const dueThisWeek = upcomingDeadlines.filter((t) => new Date(t.dueDate).getTime() - Date.now() < 7 * DAY).length;
+  const summary = [
+    myFocus.length > 0 ? `${myFocus.length}${myFocus.length === 6 ? "+" : ""} open task${myFocus.length === 1 ? "" : "s"} on your plate` : "Nothing assigned to you right now",
+    overdueMine > 0 ? `${overdueMine} overdue` : null,
+    dueThisWeek > 0 ? `${dueThisWeek} team deadline${dueThisWeek === 1 ? "" : "s"} this week` : null,
+  ].filter(Boolean);
+
+  const figures: { label: string; value: number; trend: number; spark: number[]; color: string }[] = [
+    { label: "Projects", value: stats.totalProjects, trend: stats.trends.projects, spark: stats.sparklines.map((s) => s.created), color: SERIES.Created },
+    { label: "Open tasks", value: stats.openTasks, trend: stats.trends.open, spark: stats.sparklines.map((s) => s.created - s.done), color: SERIES.Created },
+    { label: "In progress", value: stats.inProgress, trend: stats.trends.inProgress, spark: stats.sparklines.map((s) => s.inProg), color: SERIES["In Progress"] },
+    { label: "Completed", value: stats.completed, trend: stats.trends.completed, spark: stats.sparklines.map((s) => s.done), color: SERIES.Completed },
+  ];
+
+  const workload = (teamStats.workload ?? []).slice(0, 6);
+  const maxLoad = Math.max(1, ...workload.map((w) => w.open));
+  const onlineIds = new Set(teamStats.online.map((u: any) => u.id));
 
   return (
-    <div id="dashboard-content" className="px-4 sm:px-6 lg:px-8 pt-4 pb-20 max-w-[1500px] mx-auto space-y-6 animate-fade-in">
-      
-      {/* Header & Filters */}
-      <div className="flex items-center justify-between gap-3">
-        {/* Top-3 most active (same row height as the dropdown — no layout shift) */}
-        {topActive.length > 0 ? (
-          <div className="hidden md:flex items-center rounded-xl border border-surface-border bg-surface-elevated pl-3 pr-1 py-1 overflow-hidden">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-2 whitespace-nowrap">
-              Most active
-            </span>
-            {topActive.map((u, i) => {
-              const trophyColor =
-                i === 0 ? "text-amber-400" : i === 1 ? "text-slate-300" : "text-amber-600";
-              return (
-                <div key={u.id} className="flex items-center">
-                  {i > 0 && <span className="w-px h-6 bg-surface-border mx-2" aria-hidden="true" />}
-                  <div className="flex items-center gap-1.5 px-1.5 py-1" title={`${u.displayName} — ${u.count} actions`}>
-                    <Trophy size={14} className={trophyColor} strokeWidth={2.5} />
+    <div id="dashboard-content" className="px-4 sm:px-6 lg:px-10 pt-6 sm:pt-8 pb-12 sm:pb-20 max-w-[1440px] mx-auto animate-fade-in">
+      {/* ── Masthead ─────────────────────────────────────────────────────── */}
+      <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
+        <div className="min-w-0">
+          <p className="text-[12.5px] text-muted-foreground">{today}</p>
+          <h2 className="text-display text-[34px] sm:text-[46px] text-foreground mt-1">
+            {greeting}
+            {firstName && (
+              <>
+                , <em className="text-muted-foreground">{firstName}</em>
+              </>
+            )}
+          </h2>
+          <p className="text-[14px] text-muted-foreground mt-2.5">{summary.join(" · ")}.</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {isPending && <Loader2 size={15} className="animate-spin text-muted-foreground" />}
+          <Select value={projectId || ""} onChange={(e) => updateProject(e.target.value)} className="flex-1 sm:flex-none sm:!w-auto min-w-[140px]" aria-label="Filter by project">
+            <option value="">All projects</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+          <Segmented
+            value={String(range)}
+            onChange={(v) => updateRange(v === "7" ? "7d" : v === "30" ? "30d" : "90d")}
+            options={[
+              { value: "7", label: "Week" },
+              { value: "30", label: "Month" },
+              { value: "90", label: "Quarter" },
+            ]}
+          />
+        </div>
+      </header>
+
+      {/* ── Figures band: open, between two rules — no boxes ─────────────── */}
+      <section className="mt-8 grid grid-cols-2 lg:grid-cols-4 border-y border-surface-border" aria-label="Key numbers">
+        {figures.map((f, i) => (
+          <div key={f.label} className={`py-5 border-surface-border ${FIGURE_CELL[i]}`}>
+            <p className="text-[12.5px] text-muted-foreground">{f.label}</p>
+            <div className="flex items-end justify-between gap-3 mt-2">
+              <p className="text-[26px] sm:text-[32px] leading-none font-semibold tracking-[-0.03em] text-foreground tabular-nums">{f.value}</p>
+              <span className="hidden min-[400px]:block"><Sparkline color={f.color} points={f.spark} /></span>
+            </div>
+            <p className={`text-[12px] mt-2 tabular-nums ${f.trend >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+              {f.trend >= 0 ? "+" : "−"}
+              {Math.abs(Math.round(f.trend))}% <span className="text-muted-foreground">vs last {rangeText}</span>
+            </p>
+          </div>
+        ))}
+      </section>
+
+      {/* ── Body: main column + rail ─────────────────────────────────────── */}
+      <div className="mt-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-x-12 gap-y-12">
+        <div className="space-y-12 min-w-0">
+          {/* Your focus */}
+          <Section
+            title="Your focus"
+            hint="Your open tasks, soonest due first"
+            action={<SectionLink href="/my-tasks">All my tasks</SectionLink>}
+          >
+            {myFocus.length === 0 ? (
+              <Quiet>You have no open tasks. Pick something up from a board, or enjoy the calm.</Quiet>
+            ) : (
+              <ul className="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden">
+                {myFocus.map((t) => {
+                  const due = dueLabel(t.dueDate);
+                  return (
+                    <li key={t.id}>
+                      <Link
+                        href={`/board/${t.boardId}?ticket=${t.id}`}
+                        className="flex items-center gap-3 px-4 h-11 hover:bg-surface-hover/60 transition-colors"
+                      >
+                        <StageIcon stage={stageOf(t.column.name)} />
+                        <span className="text-[13px] text-foreground font-medium truncate flex-1 min-w-0">{t.title}</span>
+                        <span className="hidden sm:inline text-[12px] text-muted-foreground truncate max-w-[140px]">{t.board.name}</span>
+                        <span title={`Priority: ${t.priority.toLowerCase()}`}>
+                          <PriorityIcon priority={t.priority} size={13} />
+                        </span>
+                        <span className={`w-[78px] text-right text-[12px] tabular-nums ${due?.tone ?? "text-muted-foreground/60"}`}>{due?.text ?? "No date"}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Section>
+
+          {/* Throughput */}
+          <Section
+            title="Throughput"
+            hint={`Last ${range} days`}
+            action={
+              <ul className="hidden sm:flex items-center gap-4 text-[12px] text-muted-foreground">
+                {(Object.keys(SERIES) as SeriesKey[]).map((k) => (
+                  <li key={k} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-[3px] rounded-full" style={{ background: SERIES[k] }} />
+                    {k}
+                  </li>
+                ))}
+              </ul>
+            }
+          >
+            <div className="relative h-[260px] -ml-2">
+              {isPending && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60">
+                  <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                </div>
+              )}
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="hsl(var(--surface-border))" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11.5 }} axisLine={false} tickLine={false} tickMargin={10} minTickGap={20} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11.5 }} axisLine={false} tickLine={false} tickMargin={6} allowDecimals={false} width={36} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ stroke: "hsl(var(--muted-foreground) / 0.4)", strokeWidth: 1 }} />
+                  {(Object.keys(SERIES) as SeriesKey[]).map((k) => (
+                    <Line
+                      key={k}
+                      type="monotone"
+                      dataKey={k}
+                      stroke={SERIES[k]}
+                      strokeWidth={1.75}
+                      dot={false}
+                      isAnimationActive={false}
+                      activeDot={{ r: 3.5, strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Section>
+
+          {/* Projects */}
+          <Section title="Projects" hint={`${projects.length} in this workspace`}>
+            {projects.length === 0 ? (
+              <Quiet>No projects yet. Create one from the project switcher in the sidebar.</Quiet>
+            ) : (
+              <div className="rounded-xl border border-surface-border overflow-hidden">
+                <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_72px_72px_200px] gap-4 px-4 h-9 items-center text-[12px] text-muted-foreground border-b border-surface-border">
+                  <span>Name</span>
+                  <span className="text-right">Boards</span>
+                  <span className="text-right">Open</span>
+                  <span>Completion</span>
+                </div>
+                <ul className="divide-y divide-surface-border">
+                  {projects.map((p) => (
+                    <li key={p.id} className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_72px_72px_200px] gap-4 px-4 h-12 items-center">
+                      <span className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-5 h-5 rounded bg-foreground text-background flex items-center justify-center text-[10.5px] font-semibold shrink-0">
+                          {p.name.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="text-[13px] font-medium text-foreground truncate">{p.name}</span>
+                      </span>
+                      <span className="hidden sm:block text-right text-[13px] text-muted-foreground tabular-nums">{p.boardsCount || 0}</span>
+                      <span className="hidden sm:block text-right text-[13px] text-muted-foreground tabular-nums">{p.openTasks || 0}</span>
+                      <span className="flex items-center gap-3">
+                        <span className="hidden sm:block flex-1 h-1 rounded-full bg-foreground/[0.07] overflow-hidden">
+                          <span className="block h-full rounded-full bg-foreground/70" style={{ width: `${Math.min(100, p.progress)}%` }} />
+                        </span>
+                        <span className="w-9 text-right text-[12.5px] text-muted-foreground tabular-nums">{p.progress}%</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Section>
+
+          {/* Activity */}
+          <Section title="Activity" hint="Latest changes across your boards">
+            {activityLogs.length === 0 ? (
+              <Quiet>No activity yet — moves, comments and assignments will appear here.</Quiet>
+            ) : (
+              <>
+                <ol className="relative">
+                  {activityLogs.slice(0, visibleActivities).map((log, i, arr) => (
+                    <li key={log.id} className="relative flex gap-3 pb-5 last:pb-0">
+                      {i < arr.length - 1 && <span className="absolute left-[11px] top-7 bottom-1 w-px bg-surface-border" aria-hidden="true" />}
+                      <span className="relative w-6 h-6 rounded-full bg-surface-elevated ring-1 ring-surface-border flex items-center justify-center text-muted-foreground shrink-0">
+                        {activityIcon(log.action)}
+                      </span>
+                      <div className="min-w-0 flex-1 pt-0.5">
+                        <p className="text-[13px] text-muted-foreground leading-snug">
+                          <span className="font-medium text-foreground">{log.user.displayName}</span> {log.action.toLowerCase().replace(/_/g, " ")}{" "}
+                          <span className="text-foreground">{log.ticket.title}</span>
+                        </p>
+                        <p className="text-[12px] text-muted-foreground/80 mt-0.5">
+                          {log.ticket.board.name} · {timeAgo(log.createdAt)}
+                          {timeAgo(log.createdAt) !== "just now" && " ago"}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                {visibleActivities < activityLogs.length && (
+                  <button
+                    onClick={() => setVisibleActivities((v) => v + 8)}
+                    className="mt-4 text-[12.5px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Show more
+                  </button>
+                )}
+              </>
+            )}
+          </Section>
+        </div>
+
+        {/* ── Rail ── */}
+        <aside className="space-y-10 lg:border-l lg:border-surface-border lg:pl-10 min-w-0">
+          <Section title="Coming up" action={<SectionLink href="/calendar">Calendar</SectionLink>}>
+            {upcomingDeadlines.length === 0 ? (
+              <Quiet>No upcoming deadlines.</Quiet>
+            ) : (
+              <ol className="space-y-1">
+                {upcomingDeadlines.map((t) => {
+                  const d = new Date(t.dueDate);
+                  const due = dueLabel(t.dueDate);
+                  return (
+                    <li key={t.id}>
+                      <Link
+                        href={`/board/${t.boardId}?ticket=${t.id}`}
+                        className="flex gap-3 -mx-2 px-2 py-2 rounded-lg hover:bg-surface-hover/60 transition-colors"
+                      >
+                        <span className="w-9 shrink-0 text-center leading-none pt-0.5">
+                          <span className="block text-[10.5px] text-muted-foreground">{d.toLocaleDateString("en-US", { month: "short" })}</span>
+                          <span className="block text-[17px] font-semibold text-foreground tabular-nums mt-1">{d.getDate()}</span>
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[13px] font-medium text-foreground truncate">{t.title}</span>
+                          <span className="block text-[12px] text-muted-foreground truncate mt-0.5">
+                            <span className={due?.tone}>{due?.text}</span> · {t.board.name}
+                          </span>
+                        </span>
+                        {t.assignee && (
+                          <span className="pt-0.5">
+                            <Avatar name={t.assignee.displayName} color={t.assignee.avatarColor} size="xs" />
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </Section>
+
+          {topActive.length > 0 && (
+            <Section title={`Most active this ${rangeText}`}>
+              <ol className="space-y-2.5">
+                {topActive.map((u, i) => (
+                  <li key={u.id} className="flex items-center gap-3">
+                    <Trophy size={14} strokeWidth={2.25} className={MEDAL[i] ?? "text-muted-foreground"} />
                     <span
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10.5px] font-semibold shrink-0"
                       style={{ background: u.avatarColor }}
                     >
                       {u.displayName.charAt(0).toUpperCase()}
                     </span>
-                    <span className="text-[12.5px] font-semibold text-foreground whitespace-nowrap max-w-[110px] truncate">
-                      {u.displayName}
-                    </span>
-                    <span className="text-[11px] font-bold text-muted-foreground font-mono">
-                      {u.count}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div />
-        )}
-        <div className="flex items-center gap-3 ml-auto">
-          <select 
-            value={projectId || ""}
-            onChange={(e) => updateProject(e.target.value)}
-            className="bg-surface-elevated border border-surface-border text-foreground text-[13px] font-semibold rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
-          >
-            <option value="">All Projects</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Top Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <StatCard 
-          title="Total Projects" 
-          value={stats.totalProjects} 
-          trend={tProj.text} 
-          trendUp={tProj.isUp} 
-          icon={<Folder size={24} className="text-blue-500" />} 
-          sparklineColor="#3B82F6"
-          dataPoints={projectsSparkData}
-        />
-        <StatCard 
-          title="Open Tasks" 
-          value={stats.openTasks} 
-          trend={tOpen.text} 
-          trendUp={tOpen.isUp} 
-          icon={<CheckCircle2 size={24} className="text-emerald-500" />} 
-          sparklineColor="#10B981"
-          dataPoints={openTasksSparkData}
-        />
-        <StatCard 
-          title="In Progress" 
-          value={stats.inProgress} 
-          trend={tProg.text} 
-          trendUp={tProg.isUp} 
-          icon={<Clock size={24} className="text-orange-500" />} 
-          sparklineColor="#F59E0B"
-          dataPoints={inProgressSparkData}
-        />
-        <StatCard 
-          title="Completed" 
-          value={stats.completed} 
-          trend={tComp.text} 
-          trendUp={tComp.isUp} 
-          icon={<CheckCircle size={24} className="text-purple-500" />} 
-          sparklineColor="#8B5CF6"
-          dataPoints={completedSparkData}
-        />
-      </div>
-
-      {/* Middle Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Activity Overview Chart */}
-        <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 shadow-sm xl:col-span-2 flex flex-col relative">
-          {isPending && (
-            <div className="absolute inset-0 bg-surface-base/50 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-3xl">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            </div>
-          )}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <h2 className="text-[17px] font-bold text-foreground">Activity Overview</h2>
-            
-            <div className="flex items-center self-start sm:self-auto bg-surface-base border border-surface-border rounded-xl p-1">
-              {[
-                { label: "7D", value: "7d", active: range === 7 },
-                { label: "30D", value: "30d", active: range === 30 },
-                { label: "90D", value: "90d", active: range === 90 }
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => updateRange(opt.value)}
-                  className={`px-4 py-1.5 text-[12px] font-semibold rounded-lg transition-colors ${
-                    opt.active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          <div className="flex-1 min-h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-surface-border" vertical={false} opacity={0.4} />
-                <XAxis dataKey="name" tick={{ fill: "currentColor", className: "text-muted-foreground", fontSize: 12 }} axisLine={false} tickLine={false} tickMargin={15} />
-                <YAxis tick={{ fill: "currentColor", className: "text-muted-foreground", fontSize: 12 }} axisLine={false} tickLine={false} tickMargin={15} />
-                <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', paddingTop: '20px' }} />
-                
-                <Line type="monotone" dataKey="Created" stroke="#3B82F6" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                <Line type="monotone" dataKey="Completed" stroke="#10B981" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                <Line type="monotone" dataKey="In Progress" stroke="#F59E0B" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                <Line type="monotone" dataKey="Overdue" stroke="#EF4444" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Projects List */}
-        <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 shadow-sm flex flex-col">
-          <h2 className="text-[17px] font-bold text-foreground mb-6">Projects</h2>
-          
-          <div className="grid grid-cols-12 text-[12px] font-semibold text-muted-foreground mb-4 px-2">
-            <div className="col-span-5">Project</div>
-            <div className="col-span-2 text-center">Boards</div>
-            <div className="col-span-2 text-center">Open</div>
-            <div className="col-span-3 text-right">Completed</div>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4 max-h-[380px]">
-            {projects.map((p, i) => {
-              const colors = ["bg-indigo-600", "bg-blue-600", "bg-emerald-500"];
-              return (
-                <div key={p.id} className="grid grid-cols-12 items-center text-[13px] hover:bg-surface-base p-2 rounded-xl transition-colors cursor-pointer group">
-                  <div className="col-span-5 flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold shadow-sm ${colors[i % colors.length]}`}>
-                      {p.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="font-semibold text-foreground line-clamp-1">{p.name}</span>
-                  </div>
-                  <div className="col-span-2 text-center text-muted-foreground font-medium">{p.boardsCount || 0}</div>
-                  <div className="col-span-2 text-center text-muted-foreground font-medium">{p.openTasks || 0}</div>
-                  <div className="col-span-3 flex items-center justify-end gap-3">
-                    <span className="font-medium text-foreground">{p.progress}%</span>
-                    <div className="w-16 h-1.5 rounded-full bg-surface-border">
-                      <div className="h-full rounded-full" style={{ width: `${p.progress}%`, backgroundColor: p.progress > 50 ? '#8B5CF6' : (p.progress > 30 ? '#3B82F6' : '#EF4444') }}></div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-4 sm:gap-6">
-        
-        {/* System Health / Deployments */}
-        <DeploymentDashboardWidget />
-        
-        {/* Recent Activity */}
-        <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 shadow-sm flex flex-col">
-          <h2 className="text-[17px] font-bold text-foreground mb-6">Recent Activity</h2>
-          
-          <div 
-            className="flex-1 overflow-y-auto custom-scrollbar relative pl-2 max-h-[350px] -mr-4 pr-4" 
-            ref={activityScrollRef}
-            onScroll={handleActivityScroll}
-          >
-             <div className="absolute top-2 bottom-2 left-[19px] w-px bg-surface-border"></div>
-             <div className="space-y-6 pb-4">
-                {activityLogs.slice(0, visibleActivities).map((log) => (
-                  <div key={log.id} className="flex gap-4 relative z-10">
-                    <div className="flex-shrink-0 relative">
-                       <Avatar
-                         name={log.user.displayName}
-                         color={log.user.avatarColor}
-                         size="md"
-                       />
-                       <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-surface-elevated border-2 border-surface-elevated flex items-center justify-center text-muted-foreground">
-                         <div className="w-full h-full rounded-full bg-primary flex items-center justify-center text-white">
-                           {getTimelineIcon(log.action)}
-                         </div>
-                       </div>
-                    </div>
-                    
-                    <div className="flex-1 min-w-0 pt-1 flex justify-between gap-2">
-                       <p className="text-[13px] text-muted-foreground leading-snug truncate">
-                         <span className="font-bold text-foreground">{log.user.displayName}</span> {log.action.toLowerCase().replace('_', ' ')} <span className="text-foreground">"{log.ticket.title}"</span>
-                         <br />
-                         <span className="text-[11px] mt-0.5 inline-block opacity-70">{log.ticket.board.name}</span>
-                       </p>
-                       <span className="text-[11px] text-muted-foreground whitespace-nowrap">{formatTimeAgo(log.createdAt)}</span>
-                    </div>
-                  </div>
+                    <span className="text-[13px] font-medium text-foreground truncate flex-1">{u.displayName}</span>
+                    <span className="text-[12.5px] text-muted-foreground tabular-nums">{u.count} actions</span>
+                  </li>
                 ))}
-             </div>
-          </div>
-        </div>
+              </ol>
+            </Section>
+          )}
 
-        {/* Upcoming Deadlines */}
-        <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 shadow-sm flex flex-col">
-          <h2 className="text-[17px] font-bold text-foreground mb-6">Upcoming Deadlines</h2>
-          <div className="flex-1 space-y-4">
-            {upcomingDeadlines.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No upcoming deadlines.</p>
-            ) : upcomingDeadlines.map((ticket, i) => {
-              const d = new Date(ticket.dueDate);
-              const month = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase();
-              const day = d.toLocaleDateString("en-US", { day: "2-digit" });
-              const diffDays = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-              const isToday = diffDays <= 0;
-              const colors = ["bg-indigo-600", "bg-blue-600", "bg-emerald-500", "bg-purple-600"];
+          <Section
+            title="Team load"
+            hint={`${teamStats.online.length} of ${teamStats.total} online`}
+            action={<SectionLink href="/people">People</SectionLink>}
+          >
+            {workload.length === 0 ? (
+              <Quiet>{teamStats.balanceText}.</Quiet>
+            ) : (
+              <>
+                <ul className="space-y-3">
+                  {workload.map((w) => (
+                    <li key={w.id}>
+                      <div className="flex items-center gap-2 text-[12.5px]">
+                        <span className="relative">
+                          <Avatar name={w.displayName} color={w.avatarColor} size="xs" />
+                          {onlineIds.has(w.id) && (
+                            <span className="absolute -bottom-px -right-px w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-background" />
+                          )}
+                        </span>
+                        <span className="text-foreground truncate flex-1">{w.displayName}</span>
+                        <span className="text-muted-foreground tabular-nums">{w.open} open</span>
+                      </div>
+                      <div className="mt-1.5 h-1 rounded-full bg-foreground/[0.07] overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${w.open === maxLoad && workload.length > 1 && teamStats.balanceScore < 80 ? "bg-amber-500" : "bg-foreground/60"}`}
+                          style={{ width: `${(w.open / maxLoad) * 100}%` }}
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[12px] text-muted-foreground mt-3.5">{teamStats.balanceText}.</p>
+              </>
+            )}
+          </Section>
 
-              return (
-                <div key={ticket.id} className="flex items-center gap-4">
-                  <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-surface-base border border-surface-border flex-shrink-0">
-                    <span className="text-[10px] font-bold text-muted-foreground">{month}</span>
-                    <span className="text-[16px] font-bold text-foreground leading-none">{day}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-bold text-foreground truncate">{ticket.title}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{ticket.board.name} • {ticket.board.project.name}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-[12px] font-bold ${isToday ? 'text-emerald-500' : 'text-orange-500'}`}>
-                      {isToday ? 'Today' : `In ${diffDays} days`}
-                    </span>
-                    <div className={`w-6 h-6 rounded-md flex items-center justify-center text-white text-[10px] font-bold shadow-sm ${colors[i % colors.length]}`}>
-                      {ticket.board.project.name.charAt(0).toUpperCase()}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <Link href="/calendar" className="text-[13px] font-semibold text-primary mt-6 inline-block hover:underline">
-            + View calendar
-          </Link>
-        </div>
-
-        {/* Team Overview */}
-        <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 shadow-sm flex flex-col">
-          <h2 className="text-[17px] font-bold text-foreground mb-6">Team Overview</h2>
-          
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-[12px] font-semibold text-muted-foreground mb-1">Total Members</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-foreground">{teamStats.total}</span>
-                {teamStats.trend !== 0 && (
-                  <span className={`text-[11px] font-bold ${teamStats.trend > 0 ? "text-emerald-500" : "text-red-500"}`}>
-                    {teamStats.trend > 0 ? "↑" : "↓"} {Math.abs(Math.round(teamStats.trend))}% vs last {rangeText}
-                  </span>
-                )}
-              </div>
-            </div>
-            {/* Avatar Pile using real Avatars */}
-            <div className="flex -space-x-3 relative">
-              {teamStats.all.slice(0, 5).map(u => (
-                <div key={u.id} className="ring-4 ring-surface-elevated rounded-full">
-                  <Avatar name={u.displayName} color={u.avatarColor} size="sm" />
-                </div>
-              ))}
-              {teamStats.all.length > 5 && (
-                <div className="w-8 h-8 rounded-full ring-4 ring-surface-elevated flex items-center justify-center bg-surface-border text-foreground text-[11px] font-bold shadow-sm z-10">
-                  +{teamStats.all.length - 5}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                <p className="text-[13px] font-bold text-foreground">Active Now</p>
-              </div>
-              <p className="text-[12px] text-muted-foreground">{teamStats.online.length} members online</p>
-            </div>
-            <div className="flex -space-x-3">
-              {teamStats.online.slice(0, 4).map(u => (
-                <div key={u.id} className="relative ring-4 ring-surface-elevated rounded-full group">
-                  <Avatar name={u.displayName} color={u.avatarColor} size="sm" />
-                  <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 rounded-full ring-1 ring-surface-base"></div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-auto flex items-center justify-between border-t border-surface-border pt-6">
-             <div>
-               <p className="text-[14px] font-bold text-foreground mb-1">Workload Balance</p>
-               <p className="text-[12px] text-muted-foreground">{teamStats.balanceText}</p>
-             </div>
-             {/* Circular Progress */}
-             <div className="relative w-16 h-16 flex items-center justify-center">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                  <path className="text-surface-border" strokeWidth="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  <path className={`${teamStats.balanceScore > 80 ? 'text-emerald-500' : teamStats.balanceScore > 50 ? 'text-orange-500' : 'text-red-500'} drop-shadow-md`} strokeDasharray={`${Math.round(teamStats.balanceScore)}, 100`} strokeWidth="4" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                </svg>
-                <span className="absolute text-[14px] font-bold text-foreground">{Math.round(teamStats.balanceScore)}%</span>
-             </div>
-          </div>
-
-        </div>
+          <DeploymentDashboardWidget />
+        </aside>
       </div>
     </div>
   );
 }
 
-// Map real data array into a polyline sparkline
-function Sparkline({ color, dataPoints = [] }: { color: string, dataPoints?: number[] }) {
-  const max = Math.max(...dataPoints, 5); // at least 5 for scale
-  
-  // Create 7 points distributed horizontally across 80px
-  let pathString = "M0 25";
-  if (dataPoints.length > 0) {
-    pathString = dataPoints.map((val, i) => {
-      const x = i * (80 / Math.max(dataPoints.length - 1, 1));
-      const y = 25 - (val / max) * 20; // 5 to 25 range
-      if (i === 0) return `M0 ${y}`;
-      return `L ${x} ${y}`;
-    }).join(" ");
-  }
+/* ── Building blocks ─────────────────────────────────────────────────────── */
 
+function Section({ title, hint, action, children }: { title: string; hint?: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="w-[80px] h-[30px] flex items-end justify-end flex-shrink-0 opacity-80">
-      <svg width="80" height="30" viewBox="0 0 80 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d={pathString} stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d={`${pathString} L 80 30 L 0 30 Z`} fill={`url(#gradient-${color.replace('#','')})`} opacity="0.2" />
-        <defs>
-          <linearGradient id={`gradient-${color.replace('#','')}`} x1="40" y1="0" x2="40" y2="30" gradientUnits="userSpaceOnUse">
-            <stop stopColor={color} />
-            <stop offset="1" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
+    <section>
+      <div className="flex items-baseline justify-between gap-4 mb-3">
+        <h3 className="text-[14px] font-semibold text-foreground">
+          {title}
+          {hint && <span className="hidden sm:inline ml-2 text-[12.5px] font-normal text-muted-foreground">{hint}</span>}
+        </h3>
+        {action}
+      </div>
+      {children}
+    </section>
   );
 }
 
-function StatCard({ title, value, trend, trendUp, icon, sparklineColor, dataPoints }: { title: string, value: number, trend: string, trendUp: boolean, icon: React.ReactNode, sparklineColor: string, dataPoints: number[] }) {
+function SectionLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 shadow-sm flex flex-col justify-between transition-all duration-300 hover:shadow-md hover:border-primary/30 group">
-      <div className="flex items-start justify-between mb-2">
-        <div className="w-12 h-12 rounded-2xl bg-surface-base border border-surface-border flex items-center justify-center flex-shrink-0">
-          {icon}
-        </div>
-        <Sparkline color={sparklineColor} dataPoints={dataPoints} />
-      </div>
-      <div>
-        <p className="text-[13px] font-semibold text-muted-foreground mb-1">{title}</p>
-        <div className="flex items-baseline gap-3">
-          <span className="text-3xl font-bold text-foreground">{value}</span>
-        </div>
-        <p className={`text-[12px] font-bold mt-2 ${trendUp ? 'text-emerald-500' : 'text-red-500'}`}>
-          {trendUp ? '↑' : '↓'} {trend} <span className="text-muted-foreground font-medium">vs last week</span>
-        </p>
+    <Link href={href} className="group inline-flex items-center gap-1 text-[12.5px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">
+      {children}
+      <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+    </Link>
+  );
+}
+
+function Quiet({ children }: { children: React.ReactNode }) {
+  return <p className="text-[13px] text-muted-foreground py-6 px-4 rounded-xl border border-dashed border-surface-border">{children}</p>;
+}
+
+function Sparkline({ color, points = [] }: { color: string; points?: number[] }) {
+  const W = 76, H = 26;
+  const max = Math.max(...points, 4);
+  const d =
+    points.length > 1
+      ? points.map((v, i) => `${i ? "L" : "M"}${((i * W) / (points.length - 1)).toFixed(1)} ${(H - 2 - (v / max) * (H - 4)).toFixed(1)}`).join(" ")
+      : `M0 ${H - 2} L${W} ${H - 2}`;
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none" className="shrink-0" aria-hidden="true">
+      <path d={d} stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ChartTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-popover rounded-lg shadow-pop px-3 py-2.5 min-w-[160px]">
+      <p className="text-[12px] font-medium text-foreground mb-2">{payload[0].payload.fullDate}</p>
+      <div className="space-y-1.5">
+        {payload.map((e: any) => (
+          <div key={e.name} className="flex items-center justify-between gap-6 text-[12px]">
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <span className="w-2.5 h-[3px] rounded-full" style={{ background: e.color }} />
+              {e.name}
+            </span>
+            <span className="text-foreground font-medium tabular-nums">{e.value}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-function CustomTooltip({ active, payload, label }: any) {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-surface-elevated border border-surface-border p-4 rounded-xl shadow-2xl backdrop-blur-md">
-        <p className="text-[13px] font-bold text-foreground mb-3">{payload[0].payload.fullDate}</p>
-        <div className="space-y-2">
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center justify-between gap-6 text-[12px] font-semibold">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                <span className="text-muted-foreground">{entry.name}</span>
-              </div>
-              <span className="text-foreground">{entry.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  return null;
-}
-
-const getTimelineIcon = (action: string) => {
+function activityIcon(action: string) {
   const a = action.toLowerCase();
-  if (a.includes("comment")) return <MessageSquare size={10} />;
-  if (a.includes("move")) return <ArrowRightLeft size={10} />;
-  if (a.includes("complete") || a.includes("done")) return <CheckCircle size={10} />;
-  if (a.includes("label")) return <Tag size={10} />;
-  return <CheckCircle size={10} />;
-};
+  if (a.includes("comment")) return <MessageSquare size={11} />;
+  if (a.includes("move")) return <ArrowRightLeft size={11} />;
+  if (a.includes("label")) return <Tag size={11} />;
+  return <CheckCircle size={11} />;
+}

@@ -17,6 +17,9 @@ export const authConfig: NextAuthConfig = {
       const isLoggedIn = !!auth?.user;
       const pathname = nextUrl.pathname;
 
+      // Legal pages are always reachable — Google's OAuth consent screen links to /privacy.
+      if (pathname === "/privacy") return true;
+
       const isPublic = pathname === "/login";
       const isChangePassword = pathname === "/change-password";
 

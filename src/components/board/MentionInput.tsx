@@ -141,7 +141,7 @@ export function MentionInput({
           role="listbox"
           aria-label="Mention someone"
         >
-          <p className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sticky top-0 bg-surface-elevated">
+          <p className="px-3 pt-2 pb-1 text-[11.5px] font-medium text-muted-foreground sticky top-0 bg-surface-elevated">
             {token ? `Matching “${token}”` : "Team members"}
           </p>
           {suggestions.map((m, i) => (
@@ -157,7 +157,7 @@ export function MentionInput({
               aria-selected={i === highlight}
             >
               <span
-                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
                 style={{ background: m.avatarColor }}
               >
                 {initialsOf(m.displayName)}
@@ -172,7 +172,7 @@ export function MentionInput({
       )}
 
       <p className="text-[10.5px] text-muted-foreground/70 mt-1.5 px-0.5">
-        Type <span className="font-mono font-bold text-primary">@</span> to tag a teammate — they get a notification.{" "}
+        Type <span className="font-mono font-semibold text-primary">@</span> to tag a teammate — they get a notification.{" "}
         <span className="font-mono">Enter</span> selects, <span className="font-mono">Esc</span> closes, <span className="font-mono">Ctrl+Enter</span> sends.
       </p>
     </div>

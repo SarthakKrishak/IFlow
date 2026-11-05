@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
+import { RotateCw } from "lucide-react";
+import { Button, buttonStyles } from "@/components/ui";
 
 export default function ErrorPage({
   error,
@@ -14,52 +17,21 @@ export default function ErrorPage({
   }, [error]);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#0f1117",
-        color: "#e2e8f0",
-        fontFamily: "system-ui, sans-serif",
-        gap: "1rem",
-      }}
-    >
-      <h1 style={{ fontSize: "2rem", fontWeight: 700, margin: 0 }}>Something went wrong</h1>
-      <p style={{ color: "#94a3b8", margin: 0 }}>An error occurred while rendering this page.</p>
-      <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
-        <button
-          onClick={reset}
-          style={{
-            padding: "0.5rem 1.25rem",
-            background: "#5B5FEF",
-            color: "#fff",
-            borderRadius: "0.5rem",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "0.875rem",
-            fontWeight: 500,
-          }}
-        >
-          Try again
-        </button>
-        <a
-          href="/overview"
-          style={{
-            padding: "0.5rem 1.25rem",
-            background: "transparent",
-            color: "#94a3b8",
-            borderRadius: "0.5rem",
-            border: "1px solid #2d3748",
-            textDecoration: "none",
-            fontSize: "0.875rem",
-            fontWeight: 500,
-          }}
-        >
+    <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-background text-foreground p-6 text-center">
+      <div>
+        <h1 className="text-display text-[48px]">Something <em className="text-muted-foreground">broke.</em></h1>
+        <p className="text-[14px] text-muted-foreground mt-2 max-w-sm">
+          An error occurred while loading this page. You can try again, or head back to the overview.
+        </p>
+        {error.digest && <p className="text-[11px] font-mono text-muted-foreground/70 mt-3">Ref: {error.digest}</p>}
+      </div>
+      <div className="flex gap-2">
+        <Button variant="primary" size="lg" onClick={reset}>
+          <RotateCw size={15} /> Try again
+        </Button>
+        <Link href="/overview" className={buttonStyles("secondary", "lg")}>
           Go to Overview
-        </a>
+        </Link>
       </div>
     </div>
   );

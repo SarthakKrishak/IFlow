@@ -72,8 +72,12 @@ export function DeploymentIndicator() {
   // Determine overall status for the top indicator
   let overallColor = 'bg-zinc-500';
   let isBuilding = false;
+  // A service we could not reach is "unavailable", never silently "healthy".
+  const unavailable = !!health && (!!health.errors || (health.configured && !health.frontend && !health.backend));
   if (health) {
-    if (health.frontend?.status === 'ERROR' || health.backend?.status === 'ERROR') {
+    if (unavailable && health.frontend?.status !== 'ERROR' && health.backend?.status !== 'ERROR') {
+      overallColor = 'bg-amber-500';
+    } else if (health.frontend?.status === 'ERROR' || health.backend?.status === 'ERROR') {
       overallColor = 'bg-red-500';
     } else if (health.frontend?.status === 'BUILDING' || health.backend?.status === 'BUILDING') {
       overallColor = 'bg-orange-500';
@@ -87,11 +91,11 @@ export function DeploymentIndicator() {
     <div className="relative" ref={popoverRef}>
       <button 
         onClick={() => setOpen(!open)}
-        className="relative px-3 h-9 flex items-center justify-center gap-2 rounded-xl border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground transition-colors group"
+        className="relative px-2 h-8 flex items-center justify-center gap-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors group"
       >
-        <Server size={14} strokeWidth={2} className={isBuilding ? "animate-pulse" : "group-hover:scale-110 transition-transform"} />
-        <span className="text-[12px] font-bold">
-           {!health ? "Checking" : isBuilding ? "Building" : overallColor === 'bg-red-500' ? "Failing" : "Healthy"}
+        <Server size={14} strokeWidth={2} className={isBuilding ? "animate-pulse" : ""} />
+        <span className="text-[12.5px] font-medium hidden xl:inline">
+           {!health ? "Checking" : isBuilding ? "Building" : overallColor === 'bg-red-500' ? "Failing" : unavailable ? "Unavailable" : "Healthy"}
         </span>
         {health && (
           <span className={`w-2 h-2 rounded-full ${overallColor} ${isBuilding ? 'animate-pulse' : ''}`} />
@@ -99,9 +103,9 @@ export function DeploymentIndicator() {
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-surface-elevated border border-surface-border rounded-2xl shadow-xl overflow-hidden flex flex-col z-50 animate-in fade-in slide-in-from-top-2">
-          <div className="px-5 py-4 border-b border-surface-border bg-surface-base flex items-center justify-between">
-            <h3 className="text-[14px] font-bold text-foreground flex items-center gap-2">
+        <div className="absolute top-full right-0 mt-2 w-80 bg-popover rounded-xl shadow-pop overflow-hidden flex flex-col z-50 animate-in fade-in slide-in-from-top-2">
+          <div className="px-4 py-3 border-b border-surface-border flex items-center justify-between">
+            <h3 className="text-[13px] font-semibold text-foreground flex items-center gap-2">
               System Health
               {loading && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
             </h3>

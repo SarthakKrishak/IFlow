@@ -36,11 +36,11 @@ export default async function NotebookPage({ params }: { params: Promise<{ noteb
   const userColor = colors[colorIndex];
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-surface-base overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full overflow-hidden relative">
       {/* Top Nav */}
       <div className="h-14 border-b border-surface-border bg-surface-elevated flex items-center justify-between px-6 flex-shrink-0 z-10 relative">
         <div className="flex items-center gap-4">
-          <Link href={`/wiki`} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-surface-base">
+          <Link href={`/wiki`} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-surface-hover">
             <ArrowLeft size={18} />
           </Link>
           <div className="flex items-center gap-2 text-sm font-medium">

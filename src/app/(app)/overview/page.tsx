@@ -45,6 +45,7 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
     chartTickets,
     upcomingDeadlines,
     allUsers,
+    myFocus,
   ] = await Promise.all([
     prisma.project.findMany({
       where: projectId ? { id: projectId } : {},
@@ -109,13 +110,42 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
         id: true,
         title: true,
         dueDate: true,
+        boardId: true,
         board: { select: { name: true, project: { select: { name: true } } } },
         assignee: { select: { id: true, displayName: true, avatarColor: true } }
       },
       orderBy: { dueDate: "asc" },
-      take: 4
+      take: 6
     }),
-    getCachedUsers()
+    getCachedUsers(),
+    // The viewer's own open work, soonest due first — the "Your focus" list.
+    prisma.ticket.findMany({
+      where: {
+        board: boardWhere,
+        OR: [
+          { assigneeId: session.user.id },
+          { extraAssignees: { some: { userId: session.user.id } } },
+        ],
+        NOT: [
+          { column: { name: { contains: "done", mode: "insensitive" } } },
+          { column: { name: { contains: "complet", mode: "insensitive" } } },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        dueDate: true,
+        priority: true,
+        boardId: true,
+        board: { select: { name: true } },
+        column: { select: { name: true } },
+      },
+      orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { updatedAt: "desc" }],
+      take: 6,
+    }).catch((e) => {
+      console.error("myFocus query failed (non-blocking):", e);
+      return [];
+    }),
   ]);
 
   const allColumnIds = statusGroups.map(g => g.columnId);
@@ -289,6 +319,16 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
     balanceText = "No assigned tasks right now";
   }
 
+  // Per-person open load, heaviest first — concrete, unlike a single balance score.
+  const userById = new Map(allUsers.map((u) => [u.id, u]));
+  const workload = Object.entries(workloadCounts)
+    .map(([id, open]) => {
+      const u = userById.get(id);
+      return u ? { id, displayName: u.displayName, avatarColor: u.avatarColor, open } : null;
+    })
+    .filter((w): w is { id: string; displayName: string; avatarColor: string; open: number } => w !== null)
+    .sort((a, b) => b.open - a.open);
+
   const teamStats = {
     total: allUsers.length,
     online: onlineUsers,
@@ -296,10 +336,11 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
     trend: userTrend,
     balanceScore,
     balanceText,
+    workload,
   };
 
   return (
-    <div className="w-full h-full bg-surface-base text-foreground"> 
+    <div className="w-full h-full text-foreground">
       {/* We pass all the computed data down to the Client Component which will handle interactivity */}
       <OverviewDashboardLoader 
         stats={topStats}
@@ -311,6 +352,8 @@ export default async function OverviewPage(props: { searchParams: Promise<{ rang
         teamStats={teamStats}
         range={range}
         projectId={projectId}
+        viewerName={session.user.displayName}
+        myFocus={myFocus}
       />
     </div>
   );

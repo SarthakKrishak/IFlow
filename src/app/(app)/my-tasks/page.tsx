@@ -48,7 +48,7 @@ export default async function MyTasksPage() {
   }
 
   return (
-    <div className="w-full h-full bg-surface-base text-foreground">
+    <div className="w-full h-full text-foreground">
       <MyTasksClient initialTickets={tickets} />
     </div>
   );

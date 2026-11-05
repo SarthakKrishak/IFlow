@@ -15,6 +15,9 @@ interface UIState {
   filterAssigneeId: string;
   filterPriority: string;
   filterLabel: string;
+  /** Free-text board filter (title / description). */
+  boardQuery: string;
+  setBoardQuery: (q: string) => void;
   setFilter: (key: keyof Pick<UIState, "filterDepartment" | "filterAssigneeId" | "filterPriority" | "filterLabel">, value: string) => void;
   clearFilters: () => void;
 
@@ -39,6 +42,8 @@ export const useUIStore = create<UIState>((set) => ({
   filterAssigneeId: "all",
   filterPriority: "all",
   filterLabel: "all",
+  boardQuery: "",
+  setBoardQuery: (q) => set({ boardQuery: q }),
   setFilter: (key, value) => set({ [key]: value }),
   clearFilters: () =>
     set({
@@ -46,6 +51,7 @@ export const useUIStore = create<UIState>((set) => ({
       filterAssigneeId: "all",
       filterPriority: "all",
       filterLabel: "all",
+      boardQuery: "",
     }),
 
   createBoardOpen: false,

@@ -44,7 +44,7 @@ export function IFlowLoader() {
 
         {/* Text and bouncing dots */}
         <div className="flex flex-col items-center gap-3">
-          <h3 className="text-sm font-bold tracking-[0.4em] uppercase text-text-primary ml-2 animate-pulse">
+          <h3 className="text-sm font-medium tracking-[0.4em] text-text-primary ml-2 animate-pulse">
             IFlow
           </h3>
 

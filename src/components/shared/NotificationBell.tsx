@@ -13,6 +13,20 @@ import {
   type NotificationItem,
 } from "@/server/actions/notification.actions";
 
+// Page Tracker events that need the person's attention pop up like @mentions.
+const POPUP_TYPES = new Set([
+  "WORK_ASSIGNED",
+  "WORK_REASSIGNED",
+  "REVIEW_REQUESTED",
+  "REVIEW_APPROVED",
+  "REVIEW_CHANGES",
+  "WORK_BLOCKED",
+  "BUG_ASSIGNED",
+  "BUG_RETEST",
+  "BUG_RETEST_RESULT",
+  "MEETING",
+]);
+
 function timeAgoSafe(date: string | Date): string {
   try {
     const d = new Date(date);
@@ -75,7 +89,7 @@ export function NotificationBell() {
   const popupUnreadMentions = (all: NotificationItem[]) => {
     const seen = getPoppedIds();
     const fresh = all
-      .filter((n) => !n.isRead && n.type === "MENTION" && !seen.has(n.id))
+      .filter((n) => !n.isRead && (n.type === "MENTION" || POPUP_TYPES.has(n.type)) && !seen.has(n.id))
       .slice(0, 3);
     if (fresh.length === 0) return;
     rememberPopped(fresh.map((n) => n.id));
@@ -83,9 +97,10 @@ export function NotificationBell() {
       toast.message(item.title, {
         description: item.body ?? undefined,
         duration: 10000,
-        action: item.ticketId
-          ? { label: "View", onClick: () => handleItemClick(item) }
-          : undefined,
+        action:
+          item.ticketId || item.link
+            ? { label: "View", onClick: () => handleItemClick(item) }
+            : undefined,
       });
     });
   };
@@ -124,6 +139,12 @@ export function NotificationBell() {
       setUnreadCount((c) => Math.max(0, c - 1));
       const res = await markNotificationRead({ notificationId: item.id });
       if (!res.success) fetchData(); // roll back to server truth on failure
+    }
+    // Page Tracker notifications carry their own in-app link.
+    if (item.link) {
+      setOpen(false);
+      router.push(item.link);
+      return;
     }
     if (!item.ticketId) {
       setOpen(false);
@@ -166,22 +187,22 @@ export function NotificationBell() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => handleOpen(!open)}
-        className="relative w-9 h-9 flex items-center justify-center rounded-xl border border-surface-border bg-surface-elevated text-muted-foreground hover:text-foreground transition-colors"
+        className="relative w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
         aria-expanded={open}
       >
         <Bell size={16} strokeWidth={2} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-4 h-4 px-0.5 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-surface-base">
+          <span className="absolute top-0.5 right-0.5 min-w-4 h-4 px-1 bg-primary text-primary-foreground text-[9.5px] font-semibold flex items-center justify-center rounded-full ring-2 ring-background tabular-nums">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-2 w-[360px] max-w-[90vw] bg-surface-elevated border border-surface-border rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 flex flex-col">
+        <div className="absolute top-full right-0 mt-2 w-[360px] max-w-[90vw] bg-popover rounded-xl shadow-pop overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 flex flex-col">
           <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border">
-            <p className="text-[13px] font-bold text-foreground">
+            <p className="text-[13px] font-semibold text-foreground">
               Notifications
               {unreadCount > 0 && (
                 <span className="ml-2 text-[10px] font-bold bg-primary/15 text-primary px-1.5 py-0.5 rounded-full">

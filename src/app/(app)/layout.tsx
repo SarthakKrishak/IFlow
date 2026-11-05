@@ -4,9 +4,12 @@ import { Sidebar } from "@/components/shared/Sidebar";
 import { TopNav } from "@/components/shared/TopNav";
 import { getCachedSession, getCachedActiveProject, getCachedUsers } from "@/lib/queries";
 import { getHeavyCachedProjects, getHeavyCachedBoards } from "@/lib/cached";
+import { getPendingReviewCount } from "@/lib/page-tracker/queries";
 
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { TopLoader } from "@/components/shared/TopLoader";
+import { MobileTabBar } from "@/components/shared/MobileTabBar";
+import { AppBootLoader, BOOT_SCRIPT } from "@/components/shared/AppBootLoader";
 
 
 
@@ -48,6 +51,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Matches my-tasks page semantics: primary OR multi-assignee, and any
   // non-done column (case-insensitive), so the badge never undercounts.
   // Falls back to the legacy single-assignee count pre-migration.
+  // Independent of the task count — start it now so both run concurrently.
+  const pendingReviewsPromise = getPendingReviewCount(session.user.id);
   let myTasksCount = 0;
   try {
     myTasksCount = await prisma.ticket.count({
@@ -72,10 +77,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     });
   }
 
+  // Page Tracker reviews waiting on me (fail-soft before the migration).
+  const pendingReviews = await pendingReviewsPromise;
+
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange themes={['light', 'dark', 'ocean', 'dracula', 'monokai', 'onedark', 'forest', 'sunset']}>
+      <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
+      <AppBootLoader />
       <TopLoader />
-      <div className="flex h-screen overflow-hidden bg-surface-base">
+      <div className="flex h-[100dvh] overflow-hidden bg-surface-base">
         <Sidebar
           isAdmin={session.user.role === "ADMIN"}
           isManager={session.user.role === "MANAGER"}
@@ -84,8 +94,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           boards={boards}
           users={users}
           myTasksCount={myTasksCount}
+          pendingReviews={pendingReviews}
         />
-        <main className="flex-1 flex flex-col min-w-0 bg-surface-base h-screen overflow-hidden">
+        <main className="flex-1 flex flex-col min-w-0 bg-background h-[100dvh] overflow-hidden lg:h-[calc(100dvh-1rem)] lg:my-2 lg:mr-2 lg:rounded-xl lg:border lg:border-surface-border lg:shadow-card">
           <TopNav 
             displayName={session.user.displayName}
             avatarColor={session.user.avatarColor}
@@ -93,11 +104,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             projects={projects}
             activeProject={activeProject}
             teamMembersCount={users.length}
+            boards={boards.map(({ id, name }) => ({ id, name }))}
           />
-          <div className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain relative flex flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
             {children}
           </div>
         </main>
+        <MobileTabBar myTasksCount={myTasksCount} pendingReviews={pendingReviews} />
       </div>
     </ThemeProvider>
   );

@@ -118,8 +118,8 @@ export default function PageEditor({
       )}
 
       {showDeleteDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-surface-elevated border border-surface-border rounded-xl shadow-xl w-full max-w-sm p-6 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-surface-elevated border border-surface-border rounded-xl shadow-2xl w-full max-w-sm p-6 animate-in fade-in zoom-in duration-200">
             <h3 className="text-lg font-semibold text-text-primary mb-2">Delete Page?</h3>
             <p className="text-text-secondary text-sm mb-6">
               This page has content. Are you sure you want to delete it? This action cannot be undone.

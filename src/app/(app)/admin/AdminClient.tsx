@@ -1,28 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { createUserSchema } from "@/lib/validators";
-import { createUser, deactivateUser, resetPassword, updateUserRole } from "@/server/actions/user.actions";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { KeyRound, Plus, Search, ShieldCheck, UserX, Users, UserCheck, Crown } from "lucide-react";
+import { deactivateUser, resetPassword, updateUserRole } from "@/server/actions/user.actions";
 import { Avatar, DepartmentTag } from "@/components/shared";
-import type { z } from "zod";
-import {
-  Plus,
-  UserX,
-  KeyRound,
-  Loader2,
-  ShieldCheck,
-  User as UserIcon,
-} from "lucide-react";
+import { CreateUserModal } from "@/app/(app)/people/CreateUserModal";
+import { Badge, Button, Card, Dialog, EmptyState, Field, IconButton, Input, SectionLabel, Select, StatCard, StatGroup } from "@/components/ui";
 
-type CreateUserForm = z.infer<typeof createUserSchema>;
+type Role = "ADMIN" | "MANAGER" | "MEMBER";
 
 interface AdminUser {
   id: string;
   username: string;
   displayName: string;
-  role: "ADMIN" | "MANAGER" | "MEMBER";
+  role: Role;
   department: "DEV" | "DESIGN" | "MARKETING" | "GENERAL";
   avatarColor: string;
   isActive: boolean;
@@ -35,341 +28,255 @@ interface AdminClientProps {
   currentUserId: string;
 }
 
+const ROLE_TONE = { ADMIN: "primary", MANAGER: "purple", MEMBER: "neutral" } as const;
+
 export function AdminClient({ users: initialUsers, currentUserId }: AdminClientProps) {
+  const router = useRouter();
   const [users, setUsers] = useState(initialUsers);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"all" | Role>("all");
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<CreateUserForm>({
-    resolver: zodResolver(createUserSchema),
-    defaultValues: { role: "MEMBER", department: "GENERAL" },
-  });
+  // Dialog state replaces the native prompt()/confirm() calls (blocked in many browsers, inaccessible).
+  const [resetFor, setResetFor] = useState<AdminUser | null>(null);
+  const [tempPassword, setTempPassword] = useState("");
+  const [deactivateFor, setDeactivateFor] = useState<AdminUser | null>(null);
+  const [roleChange, setRoleChange] = useState<{ user: AdminUser; role: Role } | null>(null);
 
-  const onCreateUser = async (data: CreateUserForm) => {
-    setError(null);
-    const result = await createUser(data as {
-      username: string;
-      tempPassword: string;
-      displayName: string;
-      department: "DEV" | "DESIGN" | "MARKETING" | "GENERAL";
-      role: "ADMIN" | "MANAGER" | "MEMBER";
-    });
-    if (!result.success) {
-      setError(result.error);
-      return;
-    }
-    setSuccess(`User ${data.displayName} created. Temp password: ${data.tempPassword}`);
-    setShowCreateDialog(false);
-    reset();
-    setUsers((prev) => [
-      ...prev,
-      {
-        id: result.data.id,
-        username: result.data.username,
-        displayName: result.data.displayName,
-        role: result.data.role as AdminUser["role"],
-        department: result.data.department as AdminUser["department"],
-        avatarColor: result.data.avatarColor,
-        isActive: result.data.isActive,
-        mustChangePassword: result.data.mustChangePassword,
-        createdAt: new Date(result.data.createdAt),
-      } satisfies AdminUser,
-    ]);
-  };
+  // New users are created in a shared dialog and arrive via the server refresh.
+  useEffect(() => setUsers(initialUsers), [initialUsers]);
 
-  const handleDeactivate = async (userId: string, name: string) => {
-    if (!confirm(`Deactivate ${name}? They won't be able to log in.`)) return;
-    setActionLoading(userId);
-    setError(null);
-    const result = await deactivateUser({ userId });
-    if (!result.success) {
-      setError(result.error);
-    } else {
-      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, isActive: false } : u));
-      setSuccess(`${name} has been deactivated`);
-    }
-    setActionLoading(null);
-  };
-
-  const handleResetPassword = async (userId: string, name: string) => {
-    const newTempPassword = prompt(`Enter new temporary password for ${name} (min 8 chars):`);
-    if (!newTempPassword || newTempPassword.length < 8) return;
-
-    setActionLoading(userId + "-reset");
-    setError(null);
-    const result = await resetPassword({ userId, newTempPassword });
-    if (!result.success) {
-      setError(result.error);
-    } else {
-      setSuccess(`Password reset for ${name}. Temp: ${newTempPassword}`);
-    }
-    setActionLoading(null);
-  };
-
-  const handleRoleChange = async (userId: string, name: string, newRole: AdminUser["role"]) => {
-    if (!confirm(`Change role of ${name} to ${newRole}?`)) return;
-    setActionLoading(userId + "-role");
-    setError(null);
-    const result = await updateUserRole({ userId, newRole });
-    if (!result.success) {
-      setError(result.error);
-    } else {
-      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, role: newRole } : u));
-      setSuccess(`${name}'s role updated to ${newRole}`);
-    }
-    setActionLoading(null);
-  };
-
-  return (
-    <div className="p-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-text-primary">Admin</h1>
-          <p className="text-sm text-text-secondary mt-0.5">Manage team members</p>
-        </div>
-        <button
-          onClick={() => setShowCreateDialog(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-semibold text-white transition-all"
-          style={{ background: "#5B5FEF" }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#4B4FE0")}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "#5B5FEF")}
-          id="create-user-btn"
-        >
-          <Plus size={15} />
-          Add team member
-        </button>
-      </div>
-
-      {/* Feedback */}
-      {error && (
-        <div className="mb-4 px-4 py-3 rounded-2xl text-sm text-[#D1495B] bg-[#D1495B]/10 border border-[#D1495B]/30">
-          {error}
-          <button onClick={() => setError(null)} className="ml-2 underline text-xs">Dismiss</button>
-        </div>
-      )}
-      {success && (
-        <div className="mb-4 px-4 py-3 rounded-2xl text-sm text-[#1EAE7C] bg-[#1EAE7C]/10 border border-[#1EAE7C]/30">
-          {success}
-          <button onClick={() => setSuccess(null)} className="ml-2 underline text-xs">Dismiss</button>
-        </div>
-      )}
-
-      {/* User table */}
-      <div className="rounded-3xl overflow-hidden border border-surface-border">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-surface-elevated border-b border-surface-border">
-              <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">User</th>
-              <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Username</th>
-              <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Dept</th>
-              <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</th>
-              <th className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Status</th>
-              <th className="px-5 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-border bg-surface-elevated">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-surface-base transition-colors">
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar displayName={user.displayName} avatarColor={user.avatarColor} size="sm" />
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">{user.displayName}</p>
-                      {user.mustChangePassword && (
-                        <span className="text-[10px] text-[#C79A3D] font-mono">must change pw</span>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-5 py-3 hidden sm:table-cell">
-                  <span className="text-xs text-text-secondary font-mono">{user.username}</span>
-                </td>
-                <td className="px-5 py-3 hidden md:table-cell">
-                  <DepartmentTag department={user.department} />
-                </td>
-                <td className="px-5 py-3">
-                  {user.id === currentUserId ? (
-                    <span className="flex items-center gap-1 text-xs text-[#5B5FEF]">
-                      <ShieldCheck size={12} />{user.role}
-                    </span>
-                  ) : (
-                    <select
-                      value={user.role}
-                      onChange={(e) => handleRoleChange(user.id, user.displayName, e.target.value as AdminUser["role"])}
-                      disabled={actionLoading === user.id + "-role"}
-                      className="bg-surface-base border border-surface-border rounded-lg text-xs px-2 py-1 outline-none focus:border-[#5B5FEF] text-text-primary disabled:opacity-50"
-                    >
-                      <option value="MEMBER">Member</option>
-                      <option value="MANAGER">Manager</option>
-                      <option value="ADMIN">Admin</option>
-                    </select>
-                  )}
-                </td>
-                <td className="px-5 py-3 hidden sm:table-cell">
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                      user.isActive
-                        ? "bg-[#1EAE7C]/15 text-[#1EAE7C]"
-                        : "bg-[#D1495B]/15 text-[#D1495B]"
-                    }`}
-                  >
-                    {user.isActive ? "Active" : "Inactive"}
-                  </span>
-                </td>
-                <td className="px-5 py-3">
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => handleResetPassword(user.id, user.displayName)}
-                      disabled={actionLoading === user.id + "-reset"}
-                      className="p-1.5 rounded text-muted-foreground hover:text-[#C79A3D] hover:bg-[#C79A3D]/10 transition-all disabled:opacity-40"
-                      title="Reset password"
-                      aria-label={`Reset password for ${user.displayName}`}
-                    >
-                      {actionLoading === user.id + "-reset" ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : (
-                        <KeyRound size={14} />
-                      )}
-                    </button>
-                    {user.id !== currentUserId && user.isActive && (
-                      <button
-                        onClick={() => handleDeactivate(user.id, user.displayName)}
-                        disabled={actionLoading === user.id}
-                        className="p-1.5 rounded text-muted-foreground hover:text-[#D1495B] hover:bg-[#D1495B]/10 transition-all disabled:opacity-40"
-                        title="Deactivate user"
-                        aria-label={`Deactivate ${user.displayName}`}
-                      >
-                        {actionLoading === user.id ? (
-                          <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                          <UserX size={14} />
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Create user dialog */}
-      {showCreateDialog && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/60"
-            onClick={() => setShowCreateDialog(false)}
-          />
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          >
-            <div
-              className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
-              style={{ background: "hsl(var(--surface-elevated))", border: "1px solid hsl(var(--surface-border))" }}
-            >
-              <h2 className="text-lg font-semibold text-text-primary mb-5">Add team member</h2>
-
-              <form onSubmit={handleSubmit(onCreateUser)} noValidate>
-                <div className="space-y-4">
-                  <Field label="Display name" error={errors.displayName?.message}>
-                    <input
-                      {...register("displayName")}
-                      placeholder="Priya Sharma"
-                      className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground"
-                      id="create-displayName"
-                      aria-label="Display name"
-                    />
-                  </Field>
-                  <Field label="Username" error={errors.username?.message}>
-                    <input
-                      {...register("username")}
-                      placeholder="priya_s (3–20 chars, lowercase)"
-                      className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground font-mono"
-                      id="create-username"
-                      aria-label="Username"
-                    />
-                  </Field>
-                  <Field label="Temporary password" error={errors.tempPassword?.message}>
-                    <input
-                      {...register("tempPassword")}
-                      type="text"
-                      placeholder="iflow123 (min 8 chars)"
-                      className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none placeholder-muted-foreground font-mono"
-                      id="create-tempPassword"
-                      aria-label="Temporary password"
-                    />
-                  </Field>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Department" error={errors.department?.message}>
-                      <select
-                        {...register("department")}
-                        className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
-                        id="create-department"
-                        aria-label="Department"
-                      >
-                        <option value="DEV">Dev</option>
-                        <option value="DESIGN">Design</option>
-                        <option value="MARKETING">Marketing</option>
-                        <option value="GENERAL">General</option>
-                      </select>
-                    </Field>
-                    <Field label="Role" error={errors.role?.message}>
-                      <select
-                        {...register("role")}
-                        className="w-full px-3 py-2 rounded-2xl text-sm text-text-primary bg-surface-base border border-surface-border outline-none"
-                        id="create-role"
-                        aria-label="Role"
-                      >
-                        <option value="MEMBER">Member</option>
-                        <option value="MANAGER">Manager</option>
-                        <option value="ADMIN">Admin</option>
-                      </select>
-                    </Field>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 mt-5">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateDialog(false)}
-                    className="flex-1 py-2 rounded-2xl text-sm text-text-secondary bg-surface-border hover:bg-surface-border/80 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 py-2 rounded-2xl text-sm font-semibold text-white flex items-center justify-center gap-2"
-                    style={{ background: "#5B5FEF" }}
-                  >
-                    {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-                    Create user
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
+  const stats = useMemo(
+    () => ({
+      total: users.length,
+      active: users.filter((u) => u.isActive).length,
+      inactive: users.filter((u) => !u.isActive).length,
+      leads: users.filter((u) => u.role !== "MEMBER").length,
+    }),
+    [users]
   );
-}
 
-function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
+  const visible = users.filter(
+    (u) =>
+      (roleFilter === "all" || u.role === roleFilter) &&
+      (u.displayName + " " + u.username).toLowerCase().includes(query.trim().toLowerCase())
+  );
+
+  const doReset = async () => {
+    if (!resetFor) return;
+    setBusy(resetFor.id + "-reset");
+    const result = await resetPassword({ userId: resetFor.id, newTempPassword: tempPassword });
+    setBusy(null);
+    if (!result.success) return toast.error(result.error);
+    toast.success(`Password reset for ${resetFor.displayName}`, { description: "They’ll be asked to choose a new one at next sign-in." });
+    setUsers((prev) => prev.map((u) => (u.id === resetFor.id ? { ...u, mustChangePassword: true } : u)));
+    setResetFor(null);
+    setTempPassword("");
+  };
+
+  const doDeactivate = async () => {
+    if (!deactivateFor) return;
+    setBusy(deactivateFor.id);
+    const result = await deactivateUser({ userId: deactivateFor.id });
+    setBusy(null);
+    if (!result.success) return toast.error(result.error);
+    toast.success(`${deactivateFor.displayName} deactivated`);
+    setUsers((prev) => prev.map((u) => (u.id === deactivateFor.id ? { ...u, isActive: false } : u)));
+    setDeactivateFor(null);
+  };
+
+  const doRoleChange = async () => {
+    if (!roleChange) return;
+    setBusy(roleChange.user.id + "-role");
+    const result = await updateUserRole({ userId: roleChange.user.id, newRole: roleChange.role });
+    setBusy(null);
+    if (!result.success) return toast.error(result.error);
+    toast.success(`${roleChange.user.displayName} is now ${roleChange.role.toLowerCase()}`);
+    setUsers((prev) => prev.map((u) => (u.id === roleChange.user.id ? { ...u, role: roleChange.role } : u)));
+    setRoleChange(null);
+  };
+
   return (
-    <div>
-      <label className="block text-xs font-medium text-text-secondary mb-1.5">{label}</label>
-      {children}
-      {error && <p className="text-xs text-[#D1495B] mt-1">{error}</p>}
+    <div className="px-4 sm:px-6 lg:px-10 py-6 max-w-6xl mx-auto space-y-5 animate-fade-in">
+      <StatGroup className="grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Team members" value={stats.total} tone="primary" icon={<Users size={15} />} />
+        <StatCard label="Active" value={stats.active} tone="success" icon={<UserCheck size={15} />} />
+        <StatCard label="Inactive" value={stats.inactive} tone={stats.inactive ? "warning" : "neutral"} icon={<UserX size={15} />} />
+        <StatCard label="Managers & admins" value={stats.leads} tone="purple" icon={<Crown size={15} />} />
+      </StatGroup>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-72">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name or username…" className="pl-9" aria-label="Search users" />
+        </div>
+        <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as "all" | Role)} className="!w-auto min-w-[130px]" aria-label="Filter by role">
+          <option value="all">All roles</option>
+          <option value="ADMIN">Admin</option>
+          <option value="MANAGER">Manager</option>
+          <option value="MEMBER">Member</option>
+        </Select>
+        <Button variant="primary" className="ml-auto" onClick={() => setShowCreate(true)} id="create-user-btn">
+          <Plus size={15} /> Add member
+        </Button>
+      </div>
+
+      <Card className="overflow-hidden">
+        {visible.length === 0 ? (
+          <div className="p-5">
+            <EmptyState icon={<Users size={22} />} title="No users match" description="Try a different search or role filter." />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="bg-surface-base/60 border-b border-surface-border text-left">
+                  <th className="px-5 py-3"><SectionLabel>User</SectionLabel></th>
+                  <th className="px-4 py-3 hidden sm:table-cell"><SectionLabel>Username</SectionLabel></th>
+                  <th className="px-4 py-3 hidden md:table-cell"><SectionLabel>Department</SectionLabel></th>
+                  <th className="px-4 py-3"><SectionLabel>Role</SectionLabel></th>
+                  <th className="px-4 py-3 hidden sm:table-cell"><SectionLabel>Status</SectionLabel></th>
+                  <th className="px-5 py-3 text-right"><SectionLabel>Actions</SectionLabel></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-border">
+                {visible.map((user) => (
+                  <tr key={user.id} className={`hover:bg-surface-hover/60 transition-colors ${user.isActive ? "" : "opacity-60"}`}>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar displayName={user.displayName} avatarColor={user.avatarColor} size="sm" />
+                        <div className="min-w-0">
+                          <p className="text-[13.5px] font-semibold text-foreground truncate">
+                            {user.displayName} {user.id === currentUserId && <span className="text-[11px] text-muted-foreground font-normal">(you)</span>}
+                          </p>
+                          {user.mustChangePassword && <span className="text-[11px] text-amber-500">Must change password</span>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <span className="text-[12.5px] text-muted-foreground font-mono">{user.username}</span>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <DepartmentTag department={user.department} />
+                    </td>
+                    <td className="px-4 py-3">
+                      {user.id === currentUserId ? (
+                        <Badge tone={ROLE_TONE[user.role]}>
+                          <ShieldCheck size={11} /> {user.role[0] + user.role.slice(1).toLowerCase()}
+                        </Badge>
+                      ) : (
+                        <Select
+                          value={user.role}
+                          onChange={(e) => setRoleChange({ user, role: e.target.value as Role })}
+                          disabled={busy === user.id + "-role"}
+                          className="!w-auto !min-h-8 !py-1 text-[12.5px]"
+                          aria-label={`Role for ${user.displayName}`}
+                        >
+                          <option value="MEMBER">Member</option>
+                          <option value="MANAGER">Manager</option>
+                          <option value="ADMIN">Admin</option>
+                        </Select>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <Badge tone={user.isActive ? "success" : "danger"} dot>
+                        {user.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex justify-end gap-1">
+                        <IconButton label={`Reset password for ${user.displayName}`} onClick={() => { setResetFor(user); setTempPassword(""); }} className="hover:!text-amber-500">
+                          <KeyRound size={15} />
+                        </IconButton>
+                        {user.id !== currentUserId && user.isActive && (
+                          <IconButton label={`Deactivate ${user.displayName}`} onClick={() => setDeactivateFor(user)} className="hover:!text-red-500">
+                            <UserX size={15} />
+                          </IconButton>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {showCreate && (
+        <CreateUserModal
+          onClose={() => {
+            setShowCreate(false);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {resetFor && (
+        <Dialog
+          size="sm"
+          title="Reset password"
+          description={`Set a temporary password for ${resetFor.displayName}.`}
+          onClose={() => setResetFor(null)}
+          footer={
+            <>
+              <Button onClick={() => setResetFor(null)}>Cancel</Button>
+              <Button variant="primary" loading={busy === resetFor.id + "-reset"} disabled={tempPassword.length < 8} onClick={doReset}>
+                Reset password
+              </Button>
+            </>
+          }
+        >
+          <Field label="Temporary password" hint="At least 8 characters. They must change it on next sign-in.">
+            <Input autoFocus value={tempPassword} onChange={(e) => setTempPassword(e.target.value)} className="font-mono" placeholder="e.g. iflow-2026" onKeyDown={(e) => e.key === "Enter" && tempPassword.length >= 8 && doReset()} />
+          </Field>
+        </Dialog>
+      )}
+
+      {deactivateFor && (
+        <Dialog
+          size="sm"
+          title={`Deactivate ${deactivateFor.displayName}?`}
+          description="They won’t be able to sign in. Their work and history stay intact."
+          onClose={() => setDeactivateFor(null)}
+          footer={
+            <>
+              <Button onClick={() => setDeactivateFor(null)}>Cancel</Button>
+              <Button variant="primary" className="!bg-red-600 hover:!bg-red-700 !text-white" loading={busy === deactivateFor.id} onClick={doDeactivate}>
+                Deactivate
+              </Button>
+            </>
+          }
+        >
+          <p className="text-[13px] text-muted-foreground">You can’t undo this from the interface — reactivation needs a database change.</p>
+        </Dialog>
+      )}
+
+      {roleChange && (
+        <Dialog
+          size="sm"
+          title="Change role?"
+          description={`${roleChange.user.displayName} will become ${roleChange.role.toLowerCase()}.`}
+          onClose={() => setRoleChange(null)}
+          footer={
+            <>
+              <Button onClick={() => setRoleChange(null)}>Cancel</Button>
+              <Button variant="primary" loading={busy === roleChange.user.id + "-role"} onClick={doRoleChange}>
+                Change role
+              </Button>
+            </>
+          }
+        >
+          <p className="text-[13px] text-muted-foreground">
+            {roleChange.role === "ADMIN"
+              ? "Admins can manage users, environments, projects and every board."
+              : roleChange.role === "MANAGER"
+                ? "Managers can create boards and manage assignments and the Page Tracker."
+                : "Members work on tickets they can access and the work items assigned to them."}
+          </p>
+        </Dialog>
+      )}
     </div>
   );
 }

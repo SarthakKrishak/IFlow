@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "tsx --test src/lib/page-tracker/*.test.ts src/lib/meetings/*.test.ts",
     "postinstall": "prisma generate && node -e \"const fs=require('fs'); const p='./node_modules/y-supabase/package.json'; if(fs.existsSync(p)){let pkg=JSON.parse(fs.readFileSync(p)); pkg.main='dist/index.js'; fs.writeFileSync(p, JSON.stringify(pkg, null, 2));}\"",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

@@ -183,7 +183,7 @@ export function BoardCanvas({ board, columns: initialColumns, currentUserId }: B
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="board-canvas h-full p-6">
+      <div className="board-canvas h-full px-4 sm:px-6 py-4">
         {[...columns]
           .sort((a, b) => a.order - b.order)
           .map((column) => (
@@ -199,7 +199,7 @@ export function BoardCanvas({ board, columns: initialColumns, currentUserId }: B
 
       <DragOverlay>
         {activeTicket ? (
-          <div className="opacity-90 rotate-1 shadow-2xl">
+          <div className="rotate-[1.5deg] shadow-xl rounded-lg">
             <TicketCard ticket={activeTicket} isDragging />
           </div>
         ) : null}

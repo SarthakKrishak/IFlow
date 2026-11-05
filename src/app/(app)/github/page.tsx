@@ -19,7 +19,7 @@ export default async function GithubPage() {
   if (!project) return null;
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden bg-surface-base">
+    <div className="flex flex-col h-full w-full overflow-hidden">
       <GithubTrackerLoader
         projectId={project.id} 
         initialRepo={project.githubRepo || ""} 

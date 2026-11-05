@@ -53,33 +53,33 @@ export function DeploymentDashboardWidget() {
   };
 
   return (
-    <div className="bg-surface-elevated border border-surface-border rounded-3xl p-6 shadow-sm flex flex-col h-[380px] lg:h-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-[17px] font-bold text-foreground">System Health</h2>
+    <div className="surface-card flex flex-col h-[380px] lg:h-auto overflow-hidden">
+      <div className="flex items-center justify-between px-4 min-h-12 border-b border-surface-border">
+        <h2 className="text-[13px] font-semibold text-foreground">System health</h2>
         {loading && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
       </div>
       
       {!health?.configured && (
-        <div className="bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[12px] p-3 rounded-xl mb-4">
+        <div className="bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[12px] p-3 rounded-lg m-4 mb-0">
           <strong>Demo Mode:</strong> Add VERCEL_TOKEN and RAILWAY_TOKEN to .env
         </div>
       )}
 
-      <div className="flex-1 flex flex-col justify-center space-y-5">
+      <div className="flex-1 flex flex-col justify-center gap-3 p-4">
         {/* Frontend */}
-        <div className="bg-surface-base border border-surface-border rounded-2xl p-4">
+        <div className="border border-surface-border rounded-lg p-3.5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#5B5FEF]/10 text-[#5B5FEF] flex items-center justify-center">
-                <Server size={20} />
+              <div className="text-muted-foreground flex items-center">
+                <Server size={16} />
               </div>
               <div>
-                <h3 className="text-[14px] font-bold text-foreground">Frontend</h3>
+                <h3 className="text-[13px] font-semibold text-foreground">Frontend</h3>
                 <p className="text-[11px] text-muted-foreground">Vercel Edge</p>
               </div>
             </div>
             <div className="flex flex-col items-end">
-              <span className={`text-[12px] font-bold uppercase ${getStatusColor(health?.frontend?.status).split(' ')[1]}`}>
+              <span className={`text-[12px] font-medium ${getStatusColor(health?.frontend?.status).split(' ')[1]}`}>
                 {getStatusText(health?.frontend?.status)}
               </span>
               <span className="text-[11px] font-medium text-muted-foreground">
@@ -87,7 +87,7 @@ export function DeploymentDashboardWidget() {
               </span>
             </div>
           </div>
-          <div className="bg-surface-elevated rounded-xl p-3">
+          <div className="bg-surface-base rounded-md px-3 py-2.5">
             <p className="text-[12px] font-medium text-foreground line-clamp-1 mb-1">{health?.frontend?.commitMessage}</p>
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-muted-foreground">by {health?.frontend?.authorName}</span>
@@ -96,19 +96,19 @@ export function DeploymentDashboardWidget() {
         </div>
 
         {/* Backend */}
-        <div className="bg-surface-base border border-surface-border rounded-2xl p-4">
+        <div className="border border-surface-border rounded-lg p-3.5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                <Server size={20} />
+              <div className="text-muted-foreground flex items-center">
+                <Server size={16} />
               </div>
               <div>
-                <h3 className="text-[14px] font-bold text-foreground">Backend</h3>
+                <h3 className="text-[13px] font-semibold text-foreground">Backend</h3>
                 <p className="text-[11px] text-muted-foreground">Railway Container</p>
               </div>
             </div>
             <div className="flex flex-col items-end">
-              <span className={`text-[12px] font-bold uppercase ${getStatusColor(health?.backend?.status).split(' ')[1]}`}>
+              <span className={`text-[12px] font-medium ${getStatusColor(health?.backend?.status).split(' ')[1]}`}>
                 {getStatusText(health?.backend?.status)}
               </span>
               <span className="text-[11px] font-medium text-muted-foreground">
@@ -116,7 +116,7 @@ export function DeploymentDashboardWidget() {
               </span>
             </div>
           </div>
-          <div className="bg-surface-elevated rounded-xl p-3">
+          <div className="bg-surface-base rounded-md px-3 py-2.5">
             <p className="text-[12px] font-medium text-foreground line-clamp-1 mb-1">{health?.backend?.commitMessage}</p>
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-muted-foreground">by {health?.backend?.authorName}</span>

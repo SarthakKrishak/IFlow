@@ -4,64 +4,66 @@
 
 @layer base {
   :root {
-    /* Elegant Clean Light Mode (Lark/Linear inspired) */
+    /* IFlow Light — paper-neutral surfaces, ink text, brand indigo held back for actions */
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 240 8% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 240 8% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 221 83% 53%; /* Lark blue */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 221 83% 53%;
+    --popover-foreground: 240 8% 9%;
+    --primary: 238 68% 57%; /* Imaginum indigo, deepened for AA on white */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 95.5%;
+    --secondary-foreground: 240 8% 9%;
+    --muted: 240 5% 95.5%;
+    --muted-foreground: 240 4% 42%;
+    --accent: 240 5% 95.5%;
+    --accent-foreground: 240 8% 9%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 6% 87%;
+    --ring: 238 68% 57%;
     --radius: 0.5rem;
 
-    --surface-base: 240 5% 98%;
+    --surface-base: 240 10% 98%;
     --surface-elevated: 0 0% 100%;
-    --surface-border: 240 5.9% 90%;
-    --text-primary: 240 10% 3.9%;
-    --text-secondary: 240 3.8% 46.1%;
-    --editor-text: #000000;
+    --surface-border: 240 6% 90%;
+    --surface-hover: 240 6% 94.5%;
+    --text-primary: 240 8% 9%;
+    --text-secondary: 240 4% 42%;
+    --editor-text: #16161a;
   }
 
   .dark {
-    /* VSCode Dark+ — vivid blue accent so buttons pop (not monochrome) */
-    --background: 220 13% 7%; /* #0F1115-ish, softer than pure black */
-    --foreground: 0 0% 93%;
-    --card: 220 13% 9%;
-    --card-foreground: 0 0% 93%;
-    --popover: 220 13% 9%;
-    --popover-foreground: 0 0% 93%;
-    --primary: 207 90% 54%; /* VSCode blue #1F8AD6 / #007ACC brightened */
+    /* IFlow Dark — near-black graphite, no blue cast; indigo only on primary actions */
+    --background: 240 5% 6.5%;
+    --foreground: 240 6% 92%;
+    --card: 240 4% 9%;
+    --card-foreground: 240 6% 92%;
+    --popover: 240 4% 10%;
+    --popover-foreground: 240 6% 92%;
+    --primary: 238 76% 66%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 13% 14%;
-    --secondary-foreground: 0 0% 93%;
-    --muted: 220 13% 14%;
-    --muted-foreground: 220 9% 60%;
-    --accent: 220 13% 14%;
-    --accent-foreground: 0 0% 93%;
-    --destructive: 0 62.8% 45%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 220 13% 17%;
-    --input: 220 13% 17%;
-    --ring: 207 90% 54%;
+    --secondary: 240 4% 13%;
+    --secondary-foreground: 240 6% 92%;
+    --muted: 240 4% 13%;
+    --muted-foreground: 240 4% 58%;
+    --accent: 240 4% 13%;
+    --accent-foreground: 240 6% 92%;
+    --destructive: 0 68% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 4% 15%;
+    --input: 240 4% 18%;
+    --ring: 238 76% 66%;
 
-    --surface-base: 220 13% 6%;
-    --surface-elevated: 220 13% 9%;
-    --surface-border: 220 13% 16%;
-    --text-primary: 0 0% 93%;
-    --text-secondary: 220 9% 60%;
-    --editor-text: #ffffff;
+    --surface-base: 240 5% 6%;
+    --surface-elevated: 240 4% 8.5%;
+    --surface-border: 240 4% 14.5%;
+    --surface-hover: 240 4% 12%;
+    --text-primary: 240 6% 92%;
+    --text-secondary: 240 4% 58%;
+    --editor-text: #ececef;
   }
 
   .ocean {
@@ -89,6 +91,7 @@
     --surface-base: 222 47% 8%;
     --surface-elevated: 222 47% 11%;
     --surface-border: 217.2 32.6% 19%;
+    --surface-hover: var(--secondary);
     --text-primary: 210 40% 96%;
     --text-secondary: 215 20.2% 62%;
     --editor-text: #ffffff;
@@ -119,6 +122,7 @@
     --surface-base: 231 15% 9%;
     --surface-elevated: 232 14% 12%;
     --surface-border: 232 14% 20%;
+    --surface-hover: var(--secondary);
     --text-primary: 60 30% 96%;
     --text-secondary: 225 27% 68%;
     --editor-text: #F8F8F2;
@@ -149,6 +153,7 @@
     --surface-base: 0 0% 9%;
     --surface-elevated: 0 0% 12%;
     --surface-border: 0 0% 19%;
+    --surface-hover: var(--secondary);
     --text-primary: 0 0% 93%;
     --text-secondary: 0 0% 60%;
     --editor-text: #ffffff;
@@ -179,6 +184,7 @@
     --surface-base: 220 13% 11%;
     --surface-elevated: 220 13% 14%;
     --surface-border: 220 13% 21%;
+    --surface-hover: var(--secondary);
     --text-primary: 220 14% 86%;
     --text-secondary: 220 10% 55%;
     --editor-text: #ABB2BF;
@@ -208,6 +214,7 @@
     --surface-base: 231 15% 9%;
     --surface-elevated: 232 14% 12%;
     --surface-border: 232 14% 20%;
+    --surface-hover: var(--secondary);
     --text-primary: 60 30% 96%;
     --text-secondary: 225 27% 68%;
     --editor-text: #F8F8F2;
@@ -236,6 +243,7 @@
     --surface-base: 0 0% 9%;
     --surface-elevated: 0 0% 12%;
     --surface-border: 0 0% 19%;
+    --surface-hover: var(--secondary);
     --text-primary: 0 0% 93%;
     --text-secondary: 0 0% 60%;
     --editor-text: #ffffff;
@@ -253,9 +261,30 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    /* Inter: single-storey a-free, open digits, disambiguated l/I */
+    font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1, "ss01" 1, "ss03" 1;
+    letter-spacing: -0.003em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.22);
+  }
+
+  h1, h2, h3 {
+    letter-spacing: -0.015em;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Numbers line up in tables, stat tiles and counters */
+  .tabular-nums,
+  [class*="font-mono"] {
+    font-variant-numeric: tabular-nums;
   }
 
   /* Focus ring — accessible, accent-colored, offset */
@@ -274,7 +303,7 @@
   }
   ::-webkit-scrollbar-thumb {
     background: hsl(var(--border));
-    border-radius: 3px;
+    border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground));
@@ -282,6 +311,31 @@
 }
 
 @layer components {
+  /* Shared surface + skeleton primitives (used by every page and loading state) */
+  .surface-card {
+    @apply bg-surface-elevated border border-surface-border rounded-xl shadow-card;
+  }
+
+  /* Serif display face for a few page-level moments — never for UI chrome. */
+  .text-display {
+    font-family: var(--font-display), ui-serif, Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+  }
+
+  .skeleton {
+    border-radius: 0.5rem;
+    background-image: linear-gradient(
+      90deg,
+      hsl(var(--surface-border) / 0.55) 25%,
+      hsl(var(--surface-border) / 0.95) 50%,
+      hsl(var(--surface-border) / 0.55) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
   /* Override Tailwind Typography colors to use our CSS variables across all themes */
   .prose {
     --tw-prose-body: var(--editor-text) !important;
@@ -305,6 +359,11 @@
   }
 }
 
+/* Boot splash is skipped for returning visitors in the same session (no flash). */
+html[data-booted] #iflow-boot {
+  display: none;
+}
+
 @layer utilities {
   /* Monospace for timestamps, IDs, activity logs */
   .font-mono-ui {
@@ -324,7 +383,7 @@
   /* Board canvas horizontal scroll */
   .board-canvas {
     display: flex;
-    gap: 1.5rem;
+    gap: 0.75rem;
     overflow-x: auto;
     overflow-y: hidden;
     height: 100%;
@@ -334,8 +393,8 @@
   }
 
   .board-column {
-    min-width: 300px;
-    max-width: 300px;
+    min-width: 292px;
+    max-width: 292px;
     flex-shrink: 0;
     scroll-snap-align: center;
     max-height: 100%;
@@ -350,6 +409,40 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+}
+
+/* ── Mobile: behave like an app ─────────────────────────────────────────── */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  overscroll-behavior-y: none; /* no rubber-band reveal behind the shell */
+}
+@media (max-width: 1023px) {
+  /* iOS zooms into any field under 16px on focus — keep fields at 16px on touch layouts */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  /* Kanban: one column per swipe, the next one peeking in */
+  .board-canvas {
+    scroll-snap-type: x mandatory;
+    gap: 0.625rem;
+  }
+  .board-column {
+    min-width: min(292px, 84vw);
+    max-width: min(292px, 84vw);
+    scroll-snap-align: start;
+  }
+}
+@media (hover: none) {
+  /* Touch: no sticky hover states after a tap */
+  .board-canvas {
+    -webkit-overflow-scrolling: touch;
   }
 }
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Plus, Search, Calendar as CalendarIcon, CheckSquare, MoreHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search, Check } from "lucide-react";
+import { Input, SectionLabel, buttonStyles } from "@/components/ui";
 import Link from "next/link";
 
 interface Board {
@@ -39,6 +40,9 @@ const BOARD_COLORS = [
   "bg-red-500/10 text-red-500 dark:text-red-400 border border-red-500/20",
   "bg-cyan-500/10 text-cyan-500 dark:text-cyan-400 border border-cyan-500/20",
 ];
+
+// Fixed palette (data colours) — index-aligned with BOARD_COLORS so the chips and the filter dots agree.
+const BOARD_HEX = ["#3B82F6", "#A855F7", "#22C55E", "#F59E0B", "#EC4899", "#EF4444", "#06B6D4"];
 
 export default function CalendarClient({
   boards,
@@ -113,174 +117,162 @@ export default function CalendarClient({
   const totalCells = Math.ceil((firstDayOfMonth + daysInMonth) / 7) * 7;
   const gridRows = totalCells / 7;
 
+  const prevHref = `/calendar?month=${prevMonthDate.getMonth() + 1}&year=${prevMonthDate.getFullYear()}`;
+  const nextHref = `/calendar?month=${nextMonthDate.getMonth() + 1}&year=${nextMonthDate.getFullYear()}`;
+  const isThisMonth = month === todayMonth && year === todayYear;
+  const eventsThisMonth = calendarEvents.length;
+
   return (
-    <div className="flex flex-col lg:flex-row h-full w-full bg-surface-base overflow-hidden text-sm animate-fade-in">
-      {/* Sidebar */}
-      <div className="hidden lg:flex flex-col w-[280px] border-r border-surface-border bg-surface-base p-6 overflow-y-auto">
-        {boards.length > 0 ? (
-          <Link
-            href={`/board/${boards[0].id}`}
-            className="w-full bg-[#5B5FEF] hover:bg-[#4B4FE0] text-white rounded-xl py-3 px-4 flex items-center justify-center gap-2 font-medium transition-colors mb-8 shadow-[0_0_20px_rgba(91,95,239,0.25)]"
-          >
-            <Plus size={18} />
-            New Event
+    <div className="flex flex-col lg:flex-row h-full w-full overflow-hidden animate-fade-in">
+      {/* Left rail: mini month + board filters */}
+      <aside className="hidden lg:flex flex-col w-[264px] shrink-0 border-r border-surface-border bg-surface-base/50 p-5 overflow-y-auto custom-scrollbar gap-7">
+        {boards.length > 0 && (
+          <Link href={`/board/${boards[0].id}`} className={buttonStyles("primary", "md", "w-full")}>
+            <Plus size={15} /> New task
           </Link>
-        ) : (
-          <button disabled className="w-full bg-surface-elevated text-muted-foreground rounded-xl py-3 px-4 flex items-center justify-center gap-2 font-medium mb-8 opacity-60 cursor-not-allowed">
-            <Plus size={18} />
-            New Event
-          </button>
         )}
-        
-        <div className="mb-10">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-text-primary font-semibold text-base">{monthName} {year}</h3>
-            <div className="flex gap-1">
-              <Link href={`/calendar?month=${prevMonthDate.getMonth() + 1}&year=${prevMonthDate.getFullYear()}`} className="p-1.5 hover:bg-surface-elevated rounded-lg text-muted-foreground hover:text-text-primary transition-colors"><ChevronLeft size={16} /></Link>
-              <Link href={`/calendar?month=${nextMonthDate.getMonth() + 1}&year=${nextMonthDate.getFullYear()}`} className="p-1.5 hover:bg-surface-elevated rounded-lg text-muted-foreground hover:text-text-primary transition-colors"><ChevronRight size={16} /></Link>
+
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[13.5px] font-semibold text-foreground">
+              {monthName} {year}
+            </h3>
+            <div className="flex gap-0.5">
+              <Link href={prevHref} aria-label="Previous month" className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors">
+                <ChevronLeft size={15} />
+              </Link>
+              <Link href={nextHref} aria-label="Next month" className="h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors">
+                <ChevronRight size={15} />
+              </Link>
             </div>
           </div>
-          {/* Mini Calendar */}
-          <div className="grid grid-cols-7 gap-1 text-center text-xs mb-2">
-            {["S","M","T","W","T","F","S"].map((d, i) => (
-              <div key={i} className="text-muted-foreground font-medium py-1">{d}</div>
+          <div className="grid grid-cols-7 text-center text-[10.5px] mb-1">
+            {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+              <div key={i} className="text-muted-foreground/80 font-semibold py-1">{d}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1 text-center text-xs">
-            {Array.from({length: totalCells}).map((_, i) => {
+          <div className="grid grid-cols-7 gap-y-0.5 text-center text-[12px]">
+            {Array.from({ length: totalCells }).map((_, i) => {
               const date = i - firstDayOfMonth + 1;
-              const isCurrentMonth = date > 0 && date <= daysInMonth;
-              const isToday = date === todayDate && month === todayMonth && year === todayYear;
+              const inMonth = date > 0 && date <= daysInMonth;
+              const isToday = date === todayDate && isThisMonth;
+              const hasEvents = inMonth && calendarEvents.some((e) => e.date === date);
               return (
-                <div key={i} className={`p-1.5 rounded-full flex items-center justify-center w-8 h-8 mx-auto ${
-                  isToday 
-                    ? 'bg-[#5B5FEF] text-white font-bold shadow-sm' 
-                    : isCurrentMonth 
-                      ? 'text-text-primary hover:bg-surface-elevated cursor-pointer transition-colors' 
-                      : 'text-muted-foreground/40'
-                }`}>
-                  {isCurrentMonth ? date : (date <= 0 ? new Date(year, month - 1, 0).getDate() + date : date - daysInMonth)}
+                <div
+                  key={i}
+                  className={`relative mx-auto w-8 h-8 flex items-center justify-center rounded-full ${
+                    isToday ? "bg-primary text-primary-foreground font-semibold" : inMonth ? "text-foreground" : "text-muted-foreground/30"
+                  }`}
+                >
+                  {inMonth ? date : date <= 0 ? new Date(year, month - 1, 0).getDate() + date : date - daysInMonth}
+                  {hasEvents && !isToday && <span className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />}
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="space-y-8">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">My Calendars</h4>
-              <button className="text-muted-foreground hover:text-text-primary transition-colors"><Plus size={14}/></button>
-            </div>
-            <div className="space-y-3">
-              {boards.map((board) => {
+        <div>
+          <SectionLabel className="mb-3">Boards</SectionLabel>
+          {boards.length === 0 ? (
+            <p className="text-[12.5px] text-muted-foreground">No boards yet.</p>
+          ) : (
+            <div className="space-y-1">
+              {boards.map((board, idx) => {
                 const isChecked = checkedBoards[board.id];
-                const colorClass = boardColorMap[board.id].split(" ")[1]; // extract e.g. text-blue-500
-                const hexColor = colorClass.includes('blue') ? '#3B82F6' : colorClass.includes('purple') ? '#A855F7' : colorClass.includes('green') ? '#22C55E' : colorClass.includes('amber') ? '#F59E0B' : colorClass.includes('pink') ? '#EC4899' : colorClass.includes('red') ? '#EF4444' : '#06B6D4';
-                
+                const hex = BOARD_HEX[idx % BOARD_HEX.length];
                 return (
-                <label key={board.id} className="flex items-center gap-3 cursor-pointer group select-none" onClick={() => toggleBoard(board.id)}>
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors group-hover:border-opacity-100 ${isChecked ? '' : 'bg-transparent border-surface-border'}`} style={isChecked ? { backgroundColor: `${hexColor}33`, borderColor: `${hexColor}80` } : {}}>
-                    {isChecked && <CheckSquare size={12} style={{ color: hexColor }} />}
-                  </div>
-                  <span className={`transition-colors truncate max-w-[200px] ${isChecked ? 'text-text-primary' : 'text-text-secondary group-hover:text-text-primary'}`}>{board.name}</span>
-                </label>
-              );
-            })}
+                  <button
+                    key={board.id}
+                    onClick={() => toggleBoard(board.id)}
+                    aria-pressed={isChecked}
+                    className="w-full flex items-center gap-3 h-8 px-2 rounded-lg text-left hover:bg-surface-hover transition-colors"
+                  >
+                    <span
+                      className="w-4 h-4 rounded-[5px] border flex items-center justify-center transition-colors"
+                      style={isChecked ? { backgroundColor: hex, borderColor: hex } : { borderColor: "hsl(var(--border))" }}
+                    >
+                      {isChecked && <Check size={11} strokeWidth={3.5} className="text-white" />}
+                    </span>
+                    <span className={`text-[13px] truncate ${isChecked ? "text-foreground font-medium" : "text-muted-foreground"}`}>{board.name}</span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
+          )}
         </div>
-      </div>
+      </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 bg-surface-base">
-        {/* Header */}
-        <header className="h-auto md:h-[72px] py-4 md:py-0 border-b border-surface-border flex flex-col md:flex-row items-start md:items-center justify-between px-4 md:px-8 shrink-0 bg-surface-base gap-4 md:gap-0">
-          <div className="flex items-center justify-between w-full md:w-auto gap-4 md:gap-6">
-            <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight flex items-center gap-2 shrink-0">
-              <CalendarIcon size={24} className="text-[#5B5FEF]" />
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="flex flex-wrap items-center gap-3 px-4 md:px-6 py-3 border-b border-surface-border shrink-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-[20px] font-semibold text-foreground tracking-[-0.02em]">
               <span className="hidden sm:inline">{monthName} {year}</span>
-              <span className="sm:hidden">{shortMonthName} '{year.toString().slice(2)}</span>
-            </h1>
-            <div className="flex items-center gap-1 bg-surface-elevated p-1 rounded-lg border border-surface-border shadow-sm shrink-0">
-              <Link href={`/calendar`} className="px-2 md:px-3 py-1.5 text-text-secondary hover:text-text-primary font-medium rounded-md hover:bg-surface-base transition-colors text-xs md:text-sm">Today</Link>
-              <div className="w-px h-4 bg-surface-border mx-1" />
-              <Link href={`/calendar?month=${prevMonthDate.getMonth() + 1}&year=${prevMonthDate.getFullYear()}`} className="p-1.5 text-text-secondary hover:text-text-primary rounded-md hover:bg-surface-base transition-colors"><ChevronLeft className="w-4 h-4 md:w-5 md:h-5" /></Link>
-              <Link href={`/calendar?month=${nextMonthDate.getMonth() + 1}&year=${nextMonthDate.getFullYear()}`} className="p-1.5 text-text-secondary hover:text-text-primary rounded-md hover:bg-surface-base transition-colors"><ChevronRight className="w-4 h-4 md:w-5 md:h-5" /></Link>
-            </div>
+              <span className="sm:hidden">{shortMonthName} {year}</span>
+            </h2>
+            <span className="text-[12.5px] text-muted-foreground tabular-nums">· {eventsThisMonth} due</span>
           </div>
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <div className="relative w-full md:w-auto">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search events..."
-                aria-label="Search events"
-                className="w-full md:w-64 bg-surface-elevated border border-surface-border rounded-xl pl-9 pr-4 py-2 text-text-primary placeholder-muted-foreground focus:outline-none focus:border-[#5B5FEF] transition-colors shadow-sm text-sm"
-              />
-            </div>
+          <div className="flex items-center gap-0.5 rounded-lg border border-surface-border bg-surface-elevated p-0.5">
+            <Link href="/calendar" className={`h-8 px-3 flex items-center text-[12.5px] font-semibold rounded-md transition-colors ${isThisMonth ? "text-muted-foreground" : "text-foreground hover:bg-surface-base"}`}>
+              Today
+            </Link>
+            <span className="w-px h-4 bg-surface-border" />
+            <Link href={prevHref} aria-label="Previous month" className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-hover transition-colors">
+              <ChevronLeft size={16} />
+            </Link>
+            <Link href={nextHref} aria-label="Next month" className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-md hover:bg-surface-hover transition-colors">
+              <ChevronRight size={16} />
+            </Link>
+          </div>
+          <div className="relative w-full md:w-64 md:ml-auto">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search tasks…" aria-label="Search tasks" className="pl-9" />
           </div>
         </header>
 
-        {/* Calendar Grid */}
-        <div className="flex-1 flex flex-col p-2 md:p-6 overflow-hidden bg-surface-base/50">
-          <div className="grid grid-cols-7 gap-[1px] bg-surface-border border border-surface-border rounded-xl md:rounded-2xl overflow-hidden flex-1 shadow-lg relative" style={{ gridTemplateRows: `auto repeat(${gridRows}, minmax(0, 1fr))` }}>
-            
-            {/* Days header */}
+        <div className="flex-1 flex flex-col p-3 md:p-5 overflow-hidden">
+          <div
+            className="grid grid-cols-7 gap-px bg-surface-border border border-surface-border rounded-xl overflow-hidden flex-1 shadow-card"
+            style={{ gridTemplateRows: `auto repeat(${gridRows}, minmax(0, 1fr))` }}
+          >
             {daysOfWeek.map((day) => (
-              <div key={day} className="bg-surface-elevated py-2 md:py-3 text-center text-[10px] md:text-xs font-bold tracking-wider text-muted-foreground uppercase">
+              <div key={day} className="bg-surface-elevated py-2 text-center text-[12px] font-medium text-muted-foreground">
                 <span className="hidden md:inline">{day}</span>
                 <span className="md:hidden">{day.charAt(0)}</span>
               </div>
             ))}
-            
-            {/* Grid Cells */}
+
             {Array.from({ length: totalCells }).map((_, i) => {
               const date = i - firstDayOfMonth + 1;
               const isCurrentMonth = date > 0 && date <= daysInMonth;
-              const isToday = date === todayDate && month === todayMonth && year === todayYear;
-              const cellEvents = calendarEvents.filter(e => e.date === date && isCurrentMonth);
+              const isToday = date === todayDate && isThisMonth;
+              const cellEvents = calendarEvents.filter((e) => e.date === date && isCurrentMonth);
 
               return (
-                <div key={i} className={`bg-surface-base p-1 md:p-2.5 flex flex-col hover:bg-surface-elevated/50 transition-colors group relative overflow-hidden ${!isCurrentMonth ? 'bg-surface-base/50 text-muted-foreground/30' : 'text-text-secondary'}`}>
-                  <div className="flex justify-between items-start mb-1 md:mb-2">
-                    <span className={`w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-full text-[10px] md:text-sm font-semibold transition-all ${
-                      isToday
-                        ? 'bg-[#5B5FEF] text-white shadow-[0_0_12px_rgba(91,95,239,0.6)]'
-                        : isCurrentMonth
-                          ? 'group-hover:text-text-primary'
-                          : ''
-                    }`}>
-                      {isCurrentMonth ? date : (date <= 0 ? new Date(year, month - 1, 0).getDate() + date : date - daysInMonth)}
-                    </span>
-                  </div>
-                  
-                  <div className="flex-1 overflow-y-auto space-y-1 md:space-y-1.5 pr-0 md:pr-1 custom-scrollbar">
-                    {cellEvents.slice(0, 4).map(event => (
+                <div key={i} className={`p-1 md:p-2 flex flex-col overflow-hidden transition-colors ${isCurrentMonth ? "bg-surface-base hover:bg-surface-elevated/60" : "bg-surface-base/50"}`}>
+                  <span
+                    className={`w-6 h-6 md:w-7 md:h-7 mb-1 flex items-center justify-center rounded-full text-[11px] md:text-[12.5px] font-semibold ${
+                      isToday ? "bg-primary text-primary-foreground" : isCurrentMonth ? "text-foreground" : "text-muted-foreground/30"
+                    }`}
+                  >
+                    {isCurrentMonth ? date : date <= 0 ? new Date(year, month - 1, 0).getDate() + date : date - daysInMonth}
+                  </span>
+
+                  <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar min-h-0">
+                    {cellEvents.slice(0, 3).map((event) => (
                       <Link
                         href={`/board/${event.boardId}?ticket=${event.id}`}
-                        key={event.id} 
-                        className={`block px-1.5 py-1 md:px-2 md:py-1.5 rounded-md md:rounded-lg text-[9px] md:text-xs font-medium cursor-pointer hover:shadow-md transition-all flex flex-col gap-0.5 relative overflow-hidden group/event ${event.color}`}
+                        key={event.id}
+                        title={event.title}
+                        className={`block px-1.5 py-1 rounded-md text-[10px] md:text-[11.5px] font-semibold truncate hover:shadow-md transition-shadow ${event.color}`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="truncate pr-0 font-semibold leading-tight">{event.title}</span>
-                        </div>
-                        
-                        {/* Hover Actions */}
-                        <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/event:opacity-100 transition-opacity bg-inherit pl-1 hidden md:block">
-                          <MoreHorizontal size={14} className="opacity-70 hover:opacity-100" />
-                        </div>
+                        {event.title}
                       </Link>
                     ))}
                   </div>
-                  
-                  {cellEvents.length > 4 && (
-                    <div className="mt-0.5 md:mt-1 text-[8px] md:text-[10px] text-muted-foreground font-medium text-center hover:text-text-primary cursor-pointer transition-colors">
-                      +{cellEvents.length - 4} more
-                    </div>
-                  )}
+
+                  {cellEvents.length > 3 && <p className="mt-0.5 text-[10px] text-muted-foreground font-medium text-center">+{cellEvents.length - 3} more</p>}
                 </div>
               );
             })}

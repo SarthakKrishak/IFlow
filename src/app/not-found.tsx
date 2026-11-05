@@ -1,37 +1,19 @@
+import Link from "next/link";
+import { buttonStyles } from "@/components/ui/styles";
+
 export default function NotFound() {
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#0f1117",
-        color: "#e2e8f0",
-        fontFamily: "system-ui, sans-serif",
-        gap: "1rem",
-      }}
-    >
-      <h1 style={{ fontSize: "4rem", fontWeight: 700, margin: 0, color: "#5B5FEF" }}>404</h1>
-      <p style={{ fontSize: "1.125rem", color: "#94a3b8", margin: 0 }}>
-        This page could not be found.
-      </p>
-      <a
-        href="/overview"
-        style={{
-          display: "inline-block",
-          padding: "0.75rem 1.5rem",
-          background: "#5B5FEF",
-          color: "#fff",
-          borderRadius: "0.5rem",
-          textDecoration: "none",
-          fontWeight: 500,
-          fontSize: "0.875rem",
-        }}
-      >
+    <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-background text-foreground p-6 text-center">
+      <div>
+        <p className="text-[13px] font-mono text-muted-foreground">Error 404</p>
+        <h1 className="text-display text-[48px] mt-2">Nothing <em className="text-muted-foreground">here.</em></h1>
+        <p className="text-[14px] text-muted-foreground mt-2 max-w-sm">
+          The link may be out of date, or you may not have access to it.
+        </p>
+      </div>
+      <Link href="/overview" className={buttonStyles("primary", "lg")}>
         Go to Overview
-      </a>
+      </Link>
     </div>
   );
 }

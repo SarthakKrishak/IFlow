@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ["y-supabase", "@supabase/realtime-js"],
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000", "iflow-imag.vercel.app"],
+      allowedOrigins: ["localhost:3000", "iflow-imag.vercel.app", "iflow.unideals.in"],
     },
     optimizePackageImports: ["lucide-react", "date-fns", "framer-motion", "recharts"],
     // Keep dynamic pages in the client router cache for 30s: back/forward
@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
       static: 180,
     },
   },
+  // Lets CI / verification builds run without touching a running `next dev` (.next).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   // Skip type checking during build (types are checked separately)
   typescript: {

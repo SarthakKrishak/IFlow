@@ -13,6 +13,12 @@ import {
 } from "@/lib/validators";
 import type { Ticket } from "@prisma/client";
 import { Role } from "@prisma/client";
+import {
+  ActionError,
+  TRACKER_MANAGED_MESSAGE,
+  applyLinkedMove,
+  isTrackerManaged,
+} from "@/lib/page-tracker/server";
 
 type Result<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -95,6 +101,11 @@ export async function updateTicket(input: {
     if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };
 
     const { ticketId, changes } = parsed.data;
+
+    // Cards mirrored from Page Tracker are edited there (owner-only rules).
+    if (Object.keys(changes).length > 0 && (await isTrackerManaged(ticketId))) {
+      return { success: false, error: TRACKER_MANAGED_MESSAGE };
+    }
 
     if (Object.keys(changes).length === 0) {
       const current = await prisma.ticket.findUnique({ where: { id: ticketId } });
@@ -183,12 +194,26 @@ export async function moveTicket(input: {
       return { success: false, error: "Cannot move a ticket to another board" };
     }
 
+    // Checked OUTSIDE the transaction so an unmigrated DB can't abort it.
+    const managed = await isTrackerManaged(ticketId);
+
     const fromColumnName = existingTicket.column.name;
     const toColumnName = toColumn.name;
     const isDone = /done|complet/i.test(toColumnName);
     const wasInDone = /done|complet/i.test(fromColumnName);
 
     const ticket = await prisma.$transaction(async (tx) => {
+      // Mirrored Page Tracker cards: assignee-only, owner-legal transitions only.
+      if (managed) {
+        await applyLinkedMove(
+          tx,
+          { id: session.user.id, role: session.user.role },
+          ticketId,
+          existingTicket.columnId,
+          { id: toColumn.id, name: toColumn.name }
+        );
+      }
+
       const updated = await tx.ticket.update({
         where: { id: ticketId },
         data: {
@@ -222,6 +247,7 @@ export async function moveTicket(input: {
 
     return { success: true, data: ticket };
   } catch (error) {
+    if (error instanceof ActionError) return { success: false, error: error.message };
     console.error("moveTicket error:", error);
     return { success: false, error: "Failed to move ticket" };
   }
@@ -237,6 +263,8 @@ export async function assignTicket(input: {
     if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };
 
     const { ticketId, assigneeId } = parsed.data;
+
+    if (await isTrackerManaged(ticketId)) return { success: false, error: TRACKER_MANAGED_MESSAGE };
 
     // Parallelise: fetch existing ticket and new assignee simultaneously
     const [existingTicket, newAssignee] = await Promise.all([
@@ -362,6 +390,8 @@ export async function deleteTicket(input: {
     if (!parsed.success) return { success: false, error: parsed.error.errors[0].message };
 
     const { ticketId } = parsed.data;
+
+    if (await isTrackerManaged(ticketId)) return { success: false, error: TRACKER_MANAGED_MESSAGE };
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },

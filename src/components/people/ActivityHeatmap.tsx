@@ -10,11 +10,12 @@ const DAYS = ["", "Mon", "", "Wed",  "", "Fri", ""];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function getColor(count: number): string {
-  if (count === 0) return "#1A1F2B";
-  if (count === 1) return "#2D3A6B";
-  if (count <= 3) return "#3D52B0";
-  if (count <= 6) return "#5B5FEF";
-  return "#8B8FF5";
+  // Theme-aware: intensity steps of the current primary colour on a neutral base.
+  if (count === 0) return "hsl(var(--surface-border) / 0.55)";
+  if (count === 1) return "hsl(var(--primary) / 0.28)";
+  if (count <= 3) return "hsl(var(--primary) / 0.5)";
+  if (count <= 6) return "hsl(var(--primary) / 0.75)";
+  return "hsl(var(--primary))";
 }
 
 export function ActivityHeatmap({ data }: ActivityHeatmapProps) {

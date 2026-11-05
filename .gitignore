@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-check/
 /out/
 
 # production
@@ -44,3 +45,7 @@ test-vercel.js
 test-env-vars.ts
 test-envs.ts
 /scratch/
+/.prisma-check/
+/tsconfig.check.json
+*.stackdump
+

@@ -207,9 +207,9 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-[#0B0F19] border border-white/10 p-3 rounded-lg shadow-xl">
+        <div className="bg-surface-elevated border border-surface-border p-3 rounded-lg shadow-pop">
           <p className="text-muted-foreground text-xs mb-1">{label}</p>
-          <p className="text-white font-bold text-sm">
+          <p className="text-foreground font-semibold text-sm">
             {payload[0].value} <span className="font-normal text-muted-foreground">commits</span>
           </p>
         </div>
@@ -219,16 +219,16 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
   };
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8 animate-fade-in bg-surface-base">
+    <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-6 lg:px-10 py-6 animate-fade-in">
       <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header & Search */}
         <div>
           {isAdmin ? (
-            <div className="bg-[#0B0F19] border border-white/5 rounded-2xl p-6 shadow-lg mb-8 relative overflow-hidden">
+            <div className="bg-surface-elevated border border-surface-border rounded-xl p-4 shadow-card mb-6 relative">
               <form onSubmit={handleSubmit} className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                 <div className="relative flex-1">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
                     <Github size={20} />
                   </div>
                   <input
@@ -236,13 +236,13 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="https://github.com/facebook/react"
-                    className="w-full bg-[#131825] border border-white/10 rounded-xl py-3.5 pl-12 pr-4 text-sm text-white placeholder-muted-foreground focus:outline-none focus:border-[#5B5FEF] focus:ring-1 focus:ring-[#5B5FEF] transition-all"
+                    className="w-full bg-surface-base border border-surface-border rounded-lg h-10 pl-10 pr-3 text-[13px] text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                   />
                 </div>
                 <button 
                   type="submit" 
                   disabled={loading || !url.trim()}
-                  className="bg-[#5B5FEF] text-white text-sm font-semibold px-6 py-3.5 rounded-xl hover:bg-[#4B4FE0] transition-colors disabled:opacity-50 whitespace-nowrap shadow-md"
+                  className="bg-primary text-primary-foreground text-[13px] font-medium px-4 h-10 rounded-lg shadow-btn hover:brightness-110 transition-colors disabled:opacity-50 whitespace-nowrap shadow-md"
                 >
                   Track Repository
                 </button>
@@ -252,13 +252,12 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                 <span>Enter any public GitHub repository URL to track real-time analytics</span>
               </div>
               
-              <div className="absolute top-0 right-0 w-64 h-64 bg-[#5B5FEF]/10 rounded-full blur-[80px] pointer-events-none transform translate-x-1/3 -translate-y-1/2"></div>
             </div>
           ) : (
             !initialRepo && (
-              <div className="bg-surface-elevated border border-surface-border rounded-2xl p-8 text-center">
+              <div className="bg-surface-elevated border border-surface-border rounded-xl p-8 text-center">
                 <Search size={32} className="mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">No Repository Tracked</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No Repository Tracked</h3>
                 <p className="text-sm text-muted-foreground">
                   An administrator hasn't set up repository tracking for this workspace yet.
                 </p>
@@ -272,13 +271,13 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
         {/* Dashboard UI Skeleton */}
         {loading && !repoData && (
           <div className="space-y-6 animate-pulse">
-            <div className="h-32 bg-surface-elevated border border-surface-border rounded-2xl" />
+            <div className="h-32 bg-surface-elevated border border-surface-border rounded-xl" />
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map((i) => <div key={i} className="h-32 bg-surface-elevated border border-surface-border rounded-2xl" />)}
+              {[1, 2, 3, 4].map((i) => <div key={i} className="h-32 bg-surface-elevated border border-surface-border rounded-xl" />)}
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 h-96 bg-surface-elevated border border-surface-border rounded-2xl" />
-              <div className="h-96 bg-surface-elevated border border-surface-border rounded-2xl" />
+              <div className="lg:col-span-2 h-96 bg-surface-elevated border border-surface-border rounded-xl" />
+              <div className="h-96 bg-surface-elevated border border-surface-border rounded-xl" />
             </div>
           </div>
         )}
@@ -291,30 +290,30 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
               className="space-y-6"
             >
               {/* Repo Title & Meta */}
-              <div className="relative overflow-hidden bg-gradient-to-r from-[#111322] to-[#0d101a] border border-white/5 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-lg">
+              <div className="relative border border-surface-border bg-surface-elevated rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-md">
                 <div className="flex items-center gap-5 z-10">
-                  <div className="w-16 h-16 bg-[#1A1F36] rounded-2xl flex items-center justify-center flex-shrink-0 border border-white/10 shadow-inner">
-                    <Github size={32} className="text-white" />
+                  <div className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 border border-surface-border">
+                    <Github size={22} className="text-foreground" />
                   </div>
                   <div>
                     <div className="flex items-center gap-3 mb-1">
-                      <h2 className="text-2xl font-bold text-white tracking-tight">{repoData.full_name}</h2>
-                      <a href={repoData.html_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-white transition-colors">
+                      <h2 className="text-[20px] font-semibold text-foreground tracking-[-0.02em]">{repoData.full_name}</h2>
+                      <a href={repoData.html_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
                         <ExternalLink size={16} />
                       </a>
                     </div>
-                    <p className="text-[15px] text-muted-foreground mb-3">{repoData.description || "No description provided."}</p>
+                    <p className="text-[13.5px] text-muted-foreground mb-3">{repoData.description || "No description provided."}</p>
                     <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                       {repoData.language && (
                         <>
                           <div className="flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full bg-[#3B82F6]"></span>
-                            <span className="font-medium text-white/80">{repoData.language}</span>
+                            <span className="font-medium text-foreground/80">{repoData.language}</span>
                           </div>
-                          <span className="text-white/20">•</span>
+                          <span className="text-muted-foreground/60">•</span>
                         </>
                       )}
-                      <div className="flex items-center gap-1.5 font-medium text-white/70">
+                      <div className="flex items-center gap-1.5 font-medium text-foreground/80">
                         <Clock size={14} />
                         Updated <RelativeTime date={new Date(repoData.updated_at)} />
                       </div>
@@ -323,17 +322,16 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                 </div>
                 
                 <div className="z-10">
-                  <a href={`${repoData.html_url}/stargazers`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-semibold transition-colors">
+                  <a href={`${repoData.html_url}/stargazers`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 bg-surface-base hover:bg-foreground/[0.06] border border-surface-border rounded-xl text-foreground text-sm font-semibold transition-colors">
                     <Star size={16} className="text-yellow-500 fill-yellow-500/20" />
                     Star Repository
                   </a>
                 </div>
                 
-                <div className="absolute top-1/2 right-0 w-64 h-64 bg-[#5B5FEF]/10 rounded-full blur-[100px] pointer-events-none transform -translate-y-1/2"></div>
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-px overflow-hidden rounded-xl border border-surface-border bg-surface-border shadow-card">
                 <StatCard icon={Star} label="Stars" value={repoData.stargazers_count.toLocaleString()} color="text-yellow-500" bg="bg-yellow-500/10" border="border-yellow-500/20" glowColor="from-yellow-500/10" />
                 <StatCard icon={GitFork} label="Forks" value={repoData.forks_count.toLocaleString()} color="text-emerald-500" bg="bg-emerald-500/10" border="border-emerald-500/20" glowColor="from-emerald-500/10" />
                 <StatCard icon={AlertCircle} label="Open Issues" value={repoData.open_issues_count.toLocaleString()} color="text-rose-500" bg="bg-rose-500/10" border="border-rose-500/20" glowColor="from-rose-500/10" />
@@ -344,13 +342,13 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* Commit Activity Chart */}
-                <div className="lg:col-span-2 bg-[#0B0F19] border border-white/5 rounded-2xl p-6 shadow-sm flex flex-col relative overflow-hidden">
+                <div className="lg:col-span-2 bg-surface-elevated border border-surface-border rounded-xl p-6 shadow-sm flex flex-col relative overflow-hidden">
                   <div className="flex items-center justify-between mb-8 relative z-10">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                      <Activity size={20} className="text-[#5B5FEF]" />
+                    <h3 className="text-[16px] font-semibold tracking-tight text-foreground flex items-center gap-2">
+                      <Activity size={20} className="text-primary" />
                       Commit Activity
                     </h3>
-                    <div className="text-xs font-medium px-3 py-1 bg-white/5 rounded-full text-muted-foreground border border-white/10">
+                    <div className="text-xs font-medium px-3 py-1 bg-surface-base rounded-full text-muted-foreground border border-surface-border">
                       Last 12 Weeks
                     </div>
                   </div>
@@ -360,24 +358,23 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                       <AreaChart data={activity} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorCommits" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#5B5FEF" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#5B5FEF" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                         <XAxis dataKey="name" stroke="rgba(255,255,255,0.2)" fontSize={12} tickLine={false} axisLine={false} dy={10} />
                         <YAxis stroke="rgba(255,255,255,0.2)" fontSize={12} tickLine={false} axisLine={false} />
                         <RechartsTooltip content={<CustomTooltip />} />
-                        <Area type="monotone" dataKey="commits" stroke="#5B5FEF" strokeWidth={3} fillOpacity={1} fill="url(#colorCommits)" activeDot={{ r: 6, fill: '#5B5FEF', stroke: '#0B0F19', strokeWidth: 2 }} />
+                        <Area type="monotone" dataKey="commits" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorCommits)" activeDot={{ r: 6, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--surface-elevated))', strokeWidth: 2 }} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#5B5FEF]/10 rounded-full blur-[100px] pointer-events-none"></div>
                 </div>
 
                 {/* Languages Pie Chart */}
-                <div className="bg-[#0B0F19] border border-white/5 rounded-2xl p-6 shadow-sm flex flex-col">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <div className="bg-surface-elevated border border-surface-border rounded-xl p-6 shadow-sm flex flex-col">
+                  <h3 className="text-[16px] font-semibold tracking-tight text-foreground mb-6 flex items-center gap-2">
                     <Code2 size={20} className="text-[#10B981]" />
                     Languages
                   </h3>
@@ -405,7 +402,7 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                               content={({ active, payload }) => {
                                 if (active && payload && payload.length) {
                                   return (
-                                    <div className="bg-[#0B0F19] border border-white/10 p-2 rounded-lg shadow-xl text-xs font-semibold text-white">
+                                    <div className="bg-surface-elevated border border-surface-border p-2 rounded-lg shadow-pop text-xs font-semibold text-foreground">
                                       {payload[0].name}: {payload[0].value}%
                                     </div>
                                   );
@@ -421,7 +418,7 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                           <div key={lang.name} className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-2">
                               <span className="w-3 h-3 rounded-full" style={{ backgroundColor: lang.color }} />
-                              <span className="text-white font-medium">{lang.name}</span>
+                              <span className="text-foreground font-medium">{lang.name}</span>
                             </div>
                             <span className="text-muted-foreground font-semibold">{lang.value}%</span>
                           </div>
@@ -436,8 +433,8 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                 </div>
 
                 {/* Top Contributors */}
-                <div className="bg-[#0B0F19] border border-white/5 rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <div className="bg-surface-elevated border border-surface-border rounded-xl p-6 shadow-sm">
+                  <h3 className="text-[16px] font-semibold tracking-tight text-foreground mb-6 flex items-center gap-2">
                     <Users size={20} className="text-[#F59E0B]" />
                     Top Contributors
                   </h3>
@@ -448,18 +445,18 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                         href={contributor.html_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-4 group hover:bg-white/5 p-2 -mx-2 rounded-xl transition-colors"
+                        className="flex items-center gap-4 group hover:bg-surface-hover p-2 -mx-2 rounded-xl transition-colors"
                       >
                         <img 
                           src={contributor.avatar_url} 
                           alt={contributor.login} 
-                          className="w-10 h-10 rounded-full border border-white/10 group-hover:border-[#F59E0B]/50 transition-colors"
+                          className="w-10 h-10 rounded-full border border-surface-border group-hover:border-[#F59E0B]/50 transition-colors"
                         />
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-white group-hover:text-[#F59E0B] transition-colors line-clamp-1">{contributor.login}</h4>
+                          <h4 className="text-sm font-semibold text-foreground group-hover:text-[#F59E0B] transition-colors line-clamp-1">{contributor.login}</h4>
                           <p className="text-xs text-muted-foreground">{contributor.contributions} contributions</p>
                         </div>
-                        <ChevronRight size={16} className="text-white/20 group-hover:text-white/50" />
+                        <ChevronRight size={16} className="text-muted-foreground/60 group-hover:text-muted-foreground/60" />
                       </a>
                     ))}
                     {contributors.length === 0 && (
@@ -469,8 +466,8 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                 </div>
 
                 {/* Recent Commits */}
-                <div className="lg:col-span-2 bg-[#0B0F19] border border-white/5 rounded-2xl p-6 shadow-sm">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <div className="lg:col-span-2 bg-surface-elevated border border-surface-border rounded-xl p-6 shadow-sm">
+                  <h3 className="text-[16px] font-semibold tracking-tight text-foreground mb-6 flex items-center gap-2">
                     <GitCommit size={20} className="text-[#EC4899]" />
                     Recent Commits
                   </h3>
@@ -487,7 +484,7 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                       const avatarColor = avatarColors[idx % avatarColors.length];
 
                       return (
-                        <div key={c.sha} className={`flex items-center gap-4 py-4 ${idx !== commits.length - 1 ? 'border-b border-white/5' : ''}`}>
+                        <div key={c.sha} className={`flex items-center gap-4 py-4 ${idx !== commits.length - 1 ? 'border-b border-surface-border' : ''}`}>
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 shadow-inner ${avatarColor}`}>
                             {authorInitials}
                           </div>
@@ -497,18 +494,18 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                               href={c.html_url} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="text-[14px] text-white font-medium hover:text-[#5B5FEF] transition-colors line-clamp-1 block mb-1"
+                              className="text-[14px] text-foreground font-medium hover:underline underline-offset-2 decoration-foreground/30 line-clamp-1 block mb-1"
                             >
                               {c.commit.message}
                             </a>
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <span className="font-medium text-white/70">{c.commit.author.name}</span>
+                              <span className="font-medium text-foreground/80">{c.commit.author.name}</span>
                               <span>•</span>
                               <RelativeTime date={new Date(c.commit.author.date)} />
                             </div>
                           </div>
                           
-                          <a href={c.html_url} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 p-2 hover:bg-white/10 rounded-lg transition-all hidden sm:block">
+                          <a href={c.html_url} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 p-2 hover:bg-foreground/[0.06] rounded-lg transition-all hidden sm:block">
                             <ExternalLink size={16} className="text-muted-foreground" />
                           </a>
                         </div>
@@ -516,12 +513,12 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
                     })}
                   </div>
                   
-                  <div className="mt-6 pt-4 border-t border-white/5 flex justify-center">
+                  <div className="mt-6 pt-4 border-t border-surface-border flex justify-center">
                     <a 
                       href={`${repoData.html_url}/commits`} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-full text-white text-sm font-medium transition-colors"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-surface-base hover:bg-foreground/[0.06] rounded-full text-foreground text-sm font-medium transition-colors"
                     >
                       View All Commits <ArrowRight size={14} />
                     </a>
@@ -537,18 +534,14 @@ export function GithubTracker({ projectId, initialRepo, isAdmin }: GithubTracker
   );
 }
 
-function StatCard({ icon: Icon, label, value, color, bg, border, glowColor }: { icon: any; label: string; value: string; color: string; bg: string; border: string; glowColor: string; }) {
+function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string; bg?: string; border?: string; glowColor?: string }) {
   return (
-    <div className={`bg-[#0B0F19] border border-white/5 rounded-2xl p-5 lg:p-6 flex flex-col gap-5 relative overflow-hidden group hover:border-white/10 transition-colors`}>
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg} ${border} border`}>
-        <Icon size={18} className={color} strokeWidth={2.5} />
-      </div>
-      <div className="z-10">
-        <p className="text-xs lg:text-sm text-muted-foreground font-semibold mb-1 uppercase tracking-wider">{label}</p>
-        <p className="text-2xl lg:text-3xl font-bold text-white tracking-tight">{value}</p>
-      </div>
-      
-      <div className={`absolute -bottom-10 -right-10 w-32 h-32 bg-gradient-radial ${glowColor} to-transparent rounded-full opacity-40 group-hover:opacity-80 transition-opacity blur-xl`}></div>
+    <div className="bg-surface-elevated px-5 py-4">
+      <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
+        <Icon size={13} className={color} />
+        {label}
+      </p>
+      <p className="text-[26px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums mt-2.5">{value}</p>
     </div>
   );
 }

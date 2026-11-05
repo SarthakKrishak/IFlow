@@ -25,7 +25,7 @@ export default async function WikiPage() {
   });
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-surface-base overflow-hidden">
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
       <WikiClient initialNotebooks={notebooks} projectId={projectId} />
     </div>
   );

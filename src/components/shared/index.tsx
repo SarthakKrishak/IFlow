@@ -27,6 +27,8 @@ export function DepartmentTag({ department, className = "" }: DepartmentTagProps
 
 import { ArrowDown, ArrowUp } from "lucide-react";
 
+import { PriorityIcon } from "./StatusGlyphs";
+
 interface PriorityChipProps {
   priority: Priority;
   className?: string;
@@ -42,15 +44,8 @@ const PRIORITY_CONFIG: Record<Priority, { color: string; bg: string; label: stri
 export function PriorityChip({ priority, className = "" }: PriorityChipProps) {
   const config = PRIORITY_CONFIG[priority];
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${className}`}
-      style={{
-        color: config.color,
-        background: config.bg,
-        border: `1px solid ${config.color}30`,
-      }}
-    >
-      {config.icon}
+    <span className={`inline-flex items-center gap-1.5 text-[12.5px] text-foreground/85 ${className}`}>
+      <PriorityIcon priority={priority} size={13} />
       {config.label}
     </span>
   );
@@ -75,7 +70,7 @@ export function Avatar({ displayName, avatarColor, size = "md", className = "", 
   return (
     <div className="relative group">
       <div
-        className={`rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 ${sizeClasses[size]} ${className}`}
+        className={`rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 ${sizeClasses[size]} ${className}`}
         style={{ background: avatarColor }}
         title={displayName}
       >

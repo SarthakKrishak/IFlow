@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Folder, Clock, Calendar as CalendarIcon, Shield, ChevronDown, MessageSquare, LayoutTemplate, PenLine, Plus, AlertCircle, ArrowUp, ArrowDown, UserPlus, UserMinus, Tag, CheckCircle2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Folder, Clock, Calendar as CalendarIcon, Shield, MessageSquare, LayoutTemplate, PenLine, AlertCircle, UserPlus, UserMinus, Tag, CheckCircle2, RotateCcw } from "lucide-react";
+import { Badge, Card, CardHeader, EmptyState, SectionLabel, StatCard, StatGroup } from "@/components/ui";
 import { Avatar, RelativeTime } from "@/components/shared";
 import { ActivityHeatmap } from "@/components/people/ActivityHeatmap";
 import type { ActivityLog } from "@prisma/client";
@@ -60,160 +61,116 @@ export function ProfileClient({
 
   const getActivityIcon = (action: string) => {
     switch (action) {
-      case "COMMENTED": return { icon: <MessageSquare size={16} />, bg: "bg-[#8B8FF5]/10", border: "border-[#8B8FF5]/20", text: "text-[#8B8FF5]" };
-      case "LABEL_ADDED": return { icon: <Tag size={16} />, bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-500" };
-      case "DUE_DATE_CHANGED": return { icon: <PenLine size={16} />, bg: "bg-blue-500/10", border: "border-blue-500/20", text: "text-blue-500" };
-      case "PRIORITY_CHANGED": return { icon: <AlertCircle size={16} />, bg: "bg-orange-500/10", border: "border-orange-500/20", text: "text-orange-500" };
-      case "ASSIGNED": return { icon: <UserPlus size={16} />, bg: "bg-indigo-500/10", border: "border-indigo-500/20", text: "text-indigo-500" };
-      case "CREATED": return { icon: <CheckCircle2 size={16} />, bg: "bg-blue-500/10", border: "border-blue-500/20", text: "text-blue-500" };
-      default: return { icon: <MessageSquare size={16} />, bg: "bg-[#8B8FF5]/10", border: "border-[#8B8FF5]/20", text: "text-[#8B8FF5]" };
+      case "COMMENTED": return { icon: <MessageSquare size={15} />, tone: "bg-purple-500/10 text-purple-500" };
+      case "LABEL_ADDED":
+      case "LABEL_REMOVED": return { icon: <Tag size={15} />, tone: "bg-emerald-500/10 text-emerald-500" };
+      case "DUE_DATE_CHANGED": return { icon: <PenLine size={15} />, tone: "bg-sky-500/10 text-sky-500" };
+      case "PRIORITY_CHANGED": return { icon: <AlertCircle size={15} />, tone: "bg-orange-500/10 text-orange-500" };
+      case "ASSIGNED": return { icon: <UserPlus size={15} />, tone: "bg-indigo-500/10 text-indigo-500" };
+      case "UNASSIGNED": return { icon: <UserMinus size={15} />, tone: "bg-slate-500/10 text-slate-500" };
+      case "CREATED": return { icon: <CheckCircle2 size={15} />, tone: "bg-blue-500/10 text-blue-500" };
+      case "REOPENED": return { icon: <RotateCcw size={15} />, tone: "bg-amber-500/10 text-amber-500" };
+      default: return { icon: <LayoutTemplate size={15} />, tone: "bg-primary/10 text-primary" };
     }
   };
 
+  const DEPT_LABEL: Record<string, string> = { DEV: "Development", DESIGN: "Design", MARKETING: "Marketing", GENERAL: "General" };
+  const ROLE_LABEL: Record<string, string> = { ADMIN: "Admin", MANAGER: "Manager", MEMBER: "Member" };
+  const roleTone = user.role === "ADMIN" ? "primary" : user.role === "MANAGER" ? "purple" : "neutral";
+  const online = !!user.lastSeenAt && Date.now() - new Date(user.lastSeenAt).getTime() < 5 * 60 * 1000;
+
+  const priorityOrder = ["URGENT", "HIGH", "MEDIUM", "LOW"] as const;
+  const priorityTone = { URGENT: "bg-red-500", HIGH: "bg-orange-500", MEDIUM: "bg-amber-500", LOW: "bg-emerald-500" } as const;
+  const priorityTotal = priorityOrder.reduce((n, p) => n + (priorityMap[p] ?? 0), 0);
+
   return (
-    <div className="p-4 sm:p-8 max-w-5xl mx-auto animate-fade-in pb-24">
-      {/* Back Link */}
-      <Link href="/people" className="inline-flex items-center gap-2 text-[13px] font-bold text-primary hover:text-primary/80 transition-colors mb-8">
-        <ArrowLeft size={16} />
-        Back to people
+    <div className="px-4 sm:px-6 lg:px-10 py-6 max-w-5xl mx-auto animate-fade-in pb-24 space-y-5">
+      <Link href="/people" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+        <ArrowLeft size={15} /> All people
       </Link>
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 mb-8">
-        <div className="relative flex-shrink-0" style={{ width: "96px", height: "96px" }}>
+      {/* Hero */}
+      <Card className="p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+        <div className="relative flex-shrink-0" style={{ width: 88, height: 88 }}>
           <Avatar displayName={user.displayName} avatarColor={user.avatarColor} size="xl" />
-          {user.lastSeenAt && (Date.now() - new Date(user.lastSeenAt).getTime() < 5 * 60 * 1000) && (
-            <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full border-[3px] border-surface-base z-10"></div>
-          )}
+          {online && <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full border-[3px] border-surface-elevated" title="Online now" />}
         </div>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">{user.displayName}</h1>
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-[12px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-500 font-bold tracking-wide">
-              {user.department === "engineering" ? "Dev" : user.department === "design" ? "Designer" : "Member"}
+        <div className="min-w-0">
+          <h1 className="text-[26px] font-semibold text-foreground tracking-tight leading-tight">{user.displayName}</h1>
+          <div className="flex flex-wrap items-center gap-2 mt-2.5">
+            <Badge tone={roleTone}>{ROLE_LABEL[user.role] ?? user.role}</Badge>
+            <Badge tone="info">{DEPT_LABEL[user.department] ?? user.department}</Badge>
+            {!user.isActive && <Badge tone="danger">Inactive</Badge>}
+            <span className="text-[13px] text-muted-foreground">
+              {online ? "Online now" : lastActivity ? <>Last active <RelativeTime date={lastActivity.createdAt} /></> : "No activity yet"}
             </span>
-            {lastActivity && (
-              <span className="text-[13px] text-muted-foreground font-medium">
-                Last active <RelativeTime date={lastActivity.createdAt} />
+          </div>
+        </div>
+      </Card>
+
+      <StatGroup className="grid-cols-1 sm:grid-cols-3">
+        <StatCard label="Open workload" value={openTotal} tone="primary" icon={<Folder size={15} />} hint="Tasks across all projects" />
+        <StatCard label="Avg. time in progress" value={avgDaysInProgress ?? "—"} tone="success" icon={<Clock size={15} />} hint="Average time to complete" />
+        <StatCard label="Member since" value={<span className="text-[20px]">{memberSince}</span>} tone="info" icon={<CalendarIcon size={15} />} hint={`${monthsSince} month${monthsSince === 1 ? "" : "s"} on the team`} />
+      </StatGroup>
+
+      {priorityTotal > 0 && (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <SectionLabel>Open work by priority</SectionLabel>
+            <span className="text-[12px] text-muted-foreground tabular-nums">{priorityTotal} open</span>
+          </div>
+          <div className="flex h-2.5 rounded-full overflow-hidden bg-foreground/[0.06]">
+            {priorityOrder.map((p) => (priorityMap[p] ? <div key={p} className={priorityTone[p]} style={{ width: `${(priorityMap[p] / priorityTotal) * 100}%` }} title={`${p}: ${priorityMap[p]}`} /> : null))}
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-3">
+            {priorityOrder.map((p) => (
+              <span key={p} className="text-[12px] text-muted-foreground flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${priorityTone[p]}`} />
+                {p[0] + p.slice(1).toLowerCase()} <b className="text-foreground tabular-nums">{priorityMap[p] ?? 0}</b>
               </span>
-            )}
+            ))}
           </div>
-        </div>
-      </div>
+        </Card>
+      )}
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-        {/* Open Workload */}
-        <div className="rounded-3xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex flex-col justify-between">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center border flex-shrink-0 bg-indigo-500/10 border-indigo-500/20 text-indigo-400">
-              <Folder size={18} />
-            </div>
-            <div>
-              <p className="text-[12px] font-bold text-muted-foreground tracking-wider mb-1">Open Workload</p>
-              <p className="text-2xl font-bold font-mono tracking-tight text-foreground">{openTotal}</p>
-              <p className="text-[12px] font-medium text-muted-foreground mt-1">Across all projects</p>
-            </div>
-          </div>
+      <Card className="overflow-hidden">
+        <CardHeader title="Activity" description="Contributions over the last 12 months" icon={<Shield size={16} />} />
+        <div className="p-5 overflow-x-auto">
+          <ActivityHeatmap data={heatmapData} />
         </div>
+      </Card>
 
-        {/* Time in Progress */}
-        <div className="rounded-3xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center border flex-shrink-0 bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
-            <Clock size={18} />
-          </div>
-          <div>
-            <p className="text-[12px] font-bold text-muted-foreground tracking-wider mb-1">Time in Progress</p>
-            <p className="text-2xl font-bold font-mono tracking-tight text-foreground">{avgDaysInProgress ?? "—"}</p>
-            <p className="text-[12px] font-medium text-muted-foreground mt-1">Average time to complete</p>
-          </div>
-        </div>
-
-        {/* Member Since */}
-        <div className="rounded-3xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center border flex-shrink-0 bg-blue-500/10 border-blue-500/20 text-blue-400">
-            <CalendarIcon size={18} />
-          </div>
-          <div>
-            <p className="text-[12px] font-bold text-muted-foreground tracking-wider mb-1">Member Since</p>
-            <p className="text-xl font-bold font-mono tracking-tight text-foreground">{memberSince}</p>
-            <p className="text-[12px] font-medium text-muted-foreground mt-2">{monthsSince} months</p>
-          </div>
-        </div>
-
-        {/* Role & Permissions */}
-        <div className="rounded-3xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center border flex-shrink-0 bg-indigo-500/10 border-indigo-500/20 text-indigo-400">
-            <Shield size={18} />
-          </div>
-          <div>
-            <p className="text-[12px] font-bold text-muted-foreground tracking-wider mb-1">Role & Permissions</p>
-            <div className="inline-flex mt-1">
-              <span className="text-[13px] px-3 py-1 rounded-lg bg-primary/10 text-primary font-bold">
-                {user.role === "ADMIN" ? "Admin" : "Developer"}
-              </span>
-            </div>
-            <p className="text-[12px] font-medium text-muted-foreground mt-3">Full access to assigned projects</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Heatmap */}
-      <div className="rounded-3xl p-6 mb-8 bg-surface-elevated border border-surface-border shadow-sm">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-[15px] font-bold text-foreground tracking-tight">Activity — last 12 months</h2>
-          <button className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-surface-border bg-surface-base text-foreground text-[12px] font-bold hover:border-primary/50 transition-colors">
-            Last 12 months
-            <ChevronDown size={14} className="text-muted-foreground ml-1" />
-          </button>
-        </div>
-        <ActivityHeatmap data={heatmapData} />
-      </div>
-
-      {/* Recent Activity */}
-      <div className="rounded-3xl border border-surface-border shadow-sm overflow-hidden flex flex-col bg-surface-elevated">
-        <div className="px-6 py-5 border-b border-surface-border flex items-center justify-between">
-          <h2 className="text-[15px] font-bold text-foreground tracking-tight">Recent activity</h2>
-          <button className="text-[13px] font-bold text-primary hover:text-primary/80 transition-colors">
-            View all
-          </button>
-        </div>
-        <div className="p-6">
+      <Card className="overflow-hidden">
+        <CardHeader title="Recent activity" description="Latest changes made by this person" />
+        <div className="p-5">
           {recentActivity.length === 0 ? (
-            <p className="text-[14px] font-medium text-muted-foreground text-center py-4">No activity yet</p>
+            <EmptyState className="py-8" icon={<MessageSquare size={20} />} title="No activity yet" description="Their ticket updates and comments will appear here." />
           ) : (
-            <div className="space-y-6">
+            <ul className="space-y-4">
               {recentActivity.map((log) => {
                 const style = getActivityIcon(log.action);
                 return (
-                  <div key={log.id} className="flex items-center justify-between group">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border flex-shrink-0 ${style.bg} ${style.border} ${style.text}`}>
-                        {style.icon}
-                      </div>
-                      <div>
-                        <Link
-                          href={`/board/${log.ticket.boardId}`}
-                          className="text-[14px] font-bold text-foreground hover:text-primary transition-colors block mb-0.5"
-                        >
+                  <li key={log.id} className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <span className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${style.tone}`}>{style.icon}</span>
+                      <div className="min-w-0">
+                        <Link href={`/board/${log.ticket.boardId}?ticket=${log.ticket.id}`} className="text-[13.5px] font-semibold text-foreground hover:underline underline-offset-2 decoration-foreground/30 block truncate">
                           {log.ticket.title}
                         </Link>
-                        <p className="text-[13px] font-medium text-muted-foreground">
-                          {formatActivityAction(log)}
-                        </p>
+                        <p className="text-[12.5px] text-muted-foreground truncate">{formatActivityAction(log)}</p>
                       </div>
                     </div>
-                    <div className="text-[13px] font-bold text-muted-foreground">
+                    <span className="text-[12px] text-muted-foreground whitespace-nowrap">
                       <RelativeTime date={log.createdAt} />
-                    </div>
-                  </div>
+                    </span>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           )}
         </div>
-      </div>
-
+      </Card>
     </div>
   );
 }

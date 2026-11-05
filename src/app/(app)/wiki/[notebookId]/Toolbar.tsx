@@ -7,14 +7,14 @@ export default function Toolbar({ editor }: { editor: Editor }) {
   if (!editor) return null;
 
   return (
-    <div className="bg-surface-elevated border border-surface-border rounded-xl shadow-sm px-4 py-2 flex flex-wrap items-center gap-2 sticky top-4 z-40 mx-auto max-w-3xl justify-center mb-6 backdrop-blur-sm bg-surface-elevated/90">
+    <div className="bg-surface-elevated border border-surface-border rounded-xl shadow-sm px-4 py-2 flex flex-wrap items-center gap-2 sticky top-4 z-40 mx-auto max-w-3xl justify-center mb-6 bg-surface-elevated/90">
       
       {/* Headings */}
       <div className="flex items-center gap-1 border-r border-surface-border pr-2 mr-1">
         <button
           onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
           className={`p-1.5 rounded-lg transition-colors ${
-            editor.isActive("heading", { level: 1 }) ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface-base hover:text-foreground"
+            editor.isActive("heading", { level: 1 }) ? "bg-surface-hover text-foreground" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
           }`}
           title="Heading 1"
         >
@@ -23,7 +23,7 @@ export default function Toolbar({ editor }: { editor: Editor }) {
         <button
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           className={`p-1.5 rounded-lg transition-colors ${
-            editor.isActive("heading", { level: 2 }) ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface-base hover:text-foreground"
+            editor.isActive("heading", { level: 2 }) ? "bg-surface-hover text-foreground" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
           }`}
           title="Heading 2"
         >
@@ -32,7 +32,7 @@ export default function Toolbar({ editor }: { editor: Editor }) {
         <button
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
           className={`p-1.5 rounded-lg transition-colors ${
-            editor.isActive("heading", { level: 3 }) ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface-base hover:text-foreground"
+            editor.isActive("heading", { level: 3 }) ? "bg-surface-hover text-foreground" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
           }`}
           title="Heading 3"
         >
@@ -45,7 +45,7 @@ export default function Toolbar({ editor }: { editor: Editor }) {
         <button
           onClick={() => editor.chain().focus().toggleBold().run()}
           className={`p-1.5 rounded-lg transition-colors ${
-            editor.isActive("bold") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface-base hover:text-foreground"
+            editor.isActive("bold") ? "bg-surface-hover text-foreground" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
           }`}
           title="Bold"
         >
@@ -54,7 +54,7 @@ export default function Toolbar({ editor }: { editor: Editor }) {
         <button
           onClick={() => editor.chain().focus().toggleItalic().run()}
           className={`p-1.5 rounded-lg transition-colors ${
-            editor.isActive("italic") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface-base hover:text-foreground"
+            editor.isActive("italic") ? "bg-surface-hover text-foreground" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
           }`}
           title="Italic"
         >
@@ -63,7 +63,7 @@ export default function Toolbar({ editor }: { editor: Editor }) {
         <button
           onClick={() => editor.chain().focus().toggleStrike().run()}
           className={`p-1.5 rounded-lg transition-colors ${
-            editor.isActive("strike") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface-base hover:text-foreground"
+            editor.isActive("strike") ? "bg-surface-hover text-foreground" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
           }`}
           title="Strikethrough"
         >
@@ -76,7 +76,7 @@ export default function Toolbar({ editor }: { editor: Editor }) {
         <button
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           className={`p-1.5 rounded-lg transition-colors ${
-            editor.isActive("bulletList") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface-base hover:text-foreground"
+            editor.isActive("bulletList") ? "bg-surface-hover text-foreground" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
           }`}
           title="Bullet List"
         >
@@ -85,7 +85,7 @@ export default function Toolbar({ editor }: { editor: Editor }) {
         <button
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           className={`p-1.5 rounded-lg transition-colors ${
-            editor.isActive("orderedList") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-surface-base hover:text-foreground"
+            editor.isActive("orderedList") ? "bg-surface-hover text-foreground" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
           }`}
           title="Ordered List"
         >
@@ -97,7 +97,7 @@ export default function Toolbar({ editor }: { editor: Editor }) {
       <div className="flex items-center gap-1">
         <button
           onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
-          className="p-1.5 rounded-lg text-muted-foreground hover:bg-surface-base hover:text-red-500 transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-red-500 transition-colors"
           title="Clear Formatting"
         >
           <Eraser size={18} />

@@ -22,12 +22,15 @@ async function verifyAccess(environmentId: string) {
   
   const env = await prisma.environment.findUnique({
     where: { id: environmentId },
-    include: { allowedUsers: { select: { id: true } } }
+    include: { allowedUsers: { select: { id: true } }, writeUsers: { select: { id: true } } }
   });
-  
+
   if (!env) throw new Error("Environment not found");
-  
-  const hasAccess = env.allowedUsers.some(u => u.id === session.user!.id);
+
+  // Write access implies viewing (matches getEnvironments).
+  const hasAccess =
+    env.allowedUsers.some(u => u.id === session.user!.id) ||
+    env.writeUsers.some(u => u.id === session.user!.id);
   if (!hasAccess) throw new Error("Forbidden: You do not have access to this environment");
   
   return session.user;

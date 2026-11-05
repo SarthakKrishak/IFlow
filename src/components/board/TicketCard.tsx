@@ -4,10 +4,12 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Ticket, User, Label } from "@prisma/client";
 import { Avatar, RelativeTime } from "@/components/shared";
-import { MessageSquare, Calendar, MoreVertical, Loader2, CheckCircle2 } from "lucide-react";
+import { MessageSquare, Calendar, MoreHorizontal, Loader2, CheckCircle2, Layers } from "lucide-react";
+import Link from "next/link";
 import { useUIStore } from "@/stores/ui.store";
 import { motion } from "framer-motion";
 import { useRef } from "react";
+import { PriorityIcon, PRIORITY_LABEL } from "@/components/shared/StatusGlyphs";
 
 type ExtraAssignee = { user: Pick<User, "id" | "displayName" | "avatarColor"> };
 
@@ -16,6 +18,8 @@ type TicketWithRelations = Ticket & {
   extraAssignees?: ExtraAssignee[];
   labels: Pick<Label, "id" | "name" | "color">[];
   _count: { comments: number };
+  /** Set when this card mirrors a Page Tracker work item. */
+  trackerLink?: { workItemId: string; pageId: string; pageName: string; workstream: string } | null;
 };
 
 interface TicketCardProps {
@@ -24,36 +28,21 @@ interface TicketCardProps {
   isSaving?: boolean;
 }
 
-const PRIORITY_BAR: Record<Ticket["priority"], string> = {
-  LOW: "#10B981",
-  MEDIUM: "#F59E0B",
-  HIGH: "#EF4444",
-  URGENT: "#B91C1C",
-};
-
-const PRIORITY_LABEL: Record<Ticket["priority"], string> = {
-  LOW: "Low",
-  MEDIUM: "Medium",
-  HIGH: "High",
-  URGENT: "Urgent",
-};
-
-function getDueDateStyle(dueDate: Date | null): { color: string; bg: string; text: string; overdue: boolean } | null {
+function getDueDateStyle(dueDate: Date | null): { cls: string; text: string; overdue: boolean } | null {
   if (!dueDate) return null;
-  const now = new Date();
   const due = new Date(dueDate);
-  const diffMs = due.getTime() - now.getTime();
-  const diffHours = diffMs / (1000 * 60 * 60);
-
-  if (diffMs < 0)
-    return { color: "#E5484D", bg: "rgba(229,72,77,.12)", text: due.toLocaleDateString(), overdue: true };
-  if (diffHours <= 48)
-    return { color: "#F59E0B", bg: "rgba(245,158,11,.12)", text: due.toLocaleDateString(), overdue: false };
-  return { color: "hsl(var(--muted-foreground))", bg: "hsl(var(--surface-base))", text: due.toLocaleDateString(), overdue: false };
+  const diffMs = due.getTime() - Date.now();
+  const text = due.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (diffMs < 0) return { cls: "text-red-600 dark:text-red-400 border-red-500/30", text, overdue: true };
+  if (diffMs <= 48 * 3600 * 1000) return { cls: "text-amber-600 dark:text-amber-400 border-amber-500/30", text, overdue: false };
+  return { cls: "text-muted-foreground border-surface-border", text, overdue: false };
 }
 
 export function TicketCard({ ticket, isDragging = false, isSaving = false }: TicketCardProps) {
   const { setOpenTicketId } = useUIStore();
+  const query = useUIStore((s) => s.boardQuery);
+  const assigneeFilter = useUIStore((s) => s.filterAssigneeId);
+  const priorityFilter = useUIStore((s) => s.filterPriority);
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
   const {
     attributes,
@@ -73,7 +62,15 @@ export function TicketCard({ ticket, isDragging = false, isSaving = false }: Tic
     opacity: isSortableDragging ? 0.35 : 1,
   };
 
-  const isDone = !!ticket.completedAt;
+  const q = query.trim().toLowerCase();
+  const assigneeIds = [ticket.assignee?.id, ...(ticket.extraAssignees ?? []).map((a) => a.user.id)].filter(Boolean) as string[];
+  const matchesFilters =
+    (!q || ticket.title.toLowerCase().includes(q) || (ticket.description ?? "").toLowerCase().includes(q)) &&
+    (priorityFilter === "all" || ticket.priority === priorityFilter) &&
+    (assigneeFilter === "all" ||
+      (assigneeFilter === "unassigned" ? assigneeIds.length === 0 : assigneeIds.includes(assigneeFilter)));
+
+    const isDone = !!ticket.completedAt;
   const dueDateStyle = getDueDateStyle(ticket.dueDate);
 
   // Combined assignees: primary + extra (dedupe)
@@ -95,7 +92,6 @@ export function TicketCard({ ticket, isDragging = false, isSaving = false }: Tic
       {...listeners}
       layout
       layoutId={ticket.id}
-      whileHover={{ scale: isDragging ? 1 : 1.008 }}
       transition={isDragging ? { type: "spring", stiffness: 500, damping: 35 } : { duration: 0.12 }}
       onPointerDown={(e) => {
         pointerDownPos.current = { x: e.clientX, y: e.clientY };
@@ -115,11 +111,13 @@ export function TicketCard({ ticket, isDragging = false, isSaving = false }: Tic
           setOpenTicketId(ticket.id);
         }
       }}
-      className="shrink-0 cursor-pointer rounded-xl transition-all select-none relative group shadow-sm flex flex-col gap-2 bg-surface-elevated border border-surface-border hover:border-primary/40 hover:shadow-md"
+      className={`shrink-0 cursor-pointer rounded-lg select-none relative group bg-surface-elevated border border-surface-border shadow-card transition-[border-color,box-shadow] hover:border-foreground/20 focus-visible:outline-none focus-visible:shadow-ring ${
+        isDragging ? "shadow-xl ring-1 ring-primary/40" : ""
+      }`}
       style={{
         ...style,
-        borderLeft: `3px solid ${PRIORITY_BAR[ticket.priority]}`,
-        opacity: isSortableDragging ? 0.35 : isDone ? 0.78 : 1,
+        display: matchesFilters ? undefined : "none",
+        opacity: isSortableDragging ? 0.35 : 1,
       }}
       role="button"
       tabIndex={0}
@@ -131,75 +129,72 @@ export function TicketCard({ ticket, isDragging = false, isSaving = false }: Tic
         }
       }}
     >
-      <div className="px-3 pt-2.5 pb-3 flex flex-col gap-1.5">
-        {/* Top row: key + menu */}
-        <div className="flex items-center justify-between gap-2">
-          <span className="font-mono text-[10px] font-semibold tracking-wide text-muted-foreground/80">
-            {ticket.id.slice(-6).toUpperCase()}
-          </span>
-          <span className="text-muted-foreground/50 group-hover:text-muted-foreground transition-colors p-0.5 rounded">
-            {isSaving ? <Loader2 size={14} className="animate-spin text-primary" /> : <MoreVertical size={14} />}
+      <div className="px-3 py-2.5 flex flex-col gap-2">
+        {/* Key + saving state */}
+        <div className="flex items-center justify-between gap-2 h-4">
+          <span className="font-mono text-[11px] text-muted-foreground">{ticket.id.slice(-6).toUpperCase()}</span>
+          <span className="text-muted-foreground/0 group-hover:text-muted-foreground transition-colors">
+            {isSaving ? <Loader2 size={13} className="animate-spin text-muted-foreground" /> : <MoreHorizontal size={14} />}
           </span>
         </div>
 
         {/* Title */}
         <p
-          className={`text-[13.5px] leading-snug tracking-tight pr-1 font-semibold ${
-            isDone ? "text-muted-foreground line-through decoration-emerald-500/40" : "text-foreground"
-          }`}
+          className={`text-[13px] leading-[1.4] font-medium pr-1 ${isDone ? "text-muted-foreground line-through decoration-muted-foreground/40" : "text-foreground"}`}
           style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
         >
           {isDone && <CheckCircle2 size={12} className="inline mr-1 -mt-0.5 text-emerald-500" />}
           {ticket.title}
         </p>
 
-        {/* Labels */}
-        {ticket.labels.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {visibleLabels.map((label) => (
-              <span
-                key={label.id}
-                className="inline-flex items-center px-1.5 py-px rounded text-[10px] font-bold"
-                style={{ color: label.color, background: `${label.color}18` }}
-              >
-                {label.name}
-              </span>
-            ))}
-            {extraLabelCount > 0 && (
-              <span className="inline-flex items-center px-1.5 py-px rounded text-[10px] font-bold text-muted-foreground bg-surface-base">
-                +{extraLabelCount}
-              </span>
-            )}
-          </div>
+        {/* Page Tracker breadcrumb (only on mirrored work items) */}
+        {ticket.trackerLink && (
+          <Link
+            href={`/page-tracker/${ticket.trackerLink.pageId}?item=${ticket.trackerLink.workItemId}`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 self-start max-w-full text-[11.5px] text-muted-foreground hover:text-foreground transition-colors"
+            title="Open in Page Tracker"
+          >
+            <Layers size={11} className="shrink-0" />
+            <span className="truncate">
+              {ticket.trackerLink.pageName} › {ticket.trackerLink.workstream.charAt(0) + ticket.trackerLink.workstream.slice(1).toLowerCase()}
+            </span>
+          </Link>
         )}
 
-        {/* Footer: priority + due + assignees + meta */}
-        <div className="flex items-center justify-between gap-2 mt-1">
-          <div className="flex items-center gap-1.5 min-w-0">
+        {/* Meta row: priority · due · labels ··· comments · assignees */}
+        <div className="flex items-center gap-1.5 min-h-6">
+          <span
+            className="h-5 w-5 inline-flex items-center justify-center rounded border border-surface-border"
+            title={`Priority: ${PRIORITY_LABEL[ticket.priority]}`}
+          >
+            <PriorityIcon priority={ticket.priority} size={12} />
+          </span>
+          {dueDateStyle && (
             <span
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap"
-              style={{ color: PRIORITY_BAR[ticket.priority], background: `${PRIORITY_BAR[ticket.priority]}14` }}
-              title={`Priority: ${PRIORITY_LABEL[ticket.priority]}`}
+              className={`h-5 inline-flex items-center gap-1 px-1.5 rounded border text-[11px] whitespace-nowrap tabular-nums ${dueDateStyle.cls}`}
+              title={dueDateStyle.overdue ? "Overdue" : "Due date"}
             >
-              <span className="w-1 h-3 rounded-full" style={{ background: PRIORITY_BAR[ticket.priority] }} />
-              {PRIORITY_LABEL[ticket.priority]}
+              <Calendar size={11} />
+              {dueDateStyle.text}
             </span>
-            {dueDateStyle && (
-              <span
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap"
-                style={{ color: dueDateStyle.color, background: dueDateStyle.bg }}
-                title={dueDateStyle.overdue ? "Overdue" : "Due date"}
-              >
-                <Calendar size={10} strokeWidth={2.5} />
-                {dueDateStyle.text}
-              </span>
-            )}
-          </div>
+          )}
+          {visibleLabels.map((label) => (
+            <span
+              key={label.id}
+              className="h-5 inline-flex items-center gap-1.5 px-1.5 rounded border border-surface-border text-[11px] text-foreground/80 max-w-[110px]"
+            >
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: label.color }} />
+              <span className="truncate">{label.name}</span>
+            </span>
+          ))}
+          {extraLabelCount > 0 && <span className="text-[11px] text-muted-foreground">+{extraLabelCount}</span>}
 
-          <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
+          <div className="flex items-center gap-2 flex-shrink-0 ml-auto pl-1">
             {ticket._count.comments > 0 && (
-              <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-semibold">
-                <MessageSquare size={11} strokeWidth={2} />
+              <span className="flex items-center gap-1 text-[11.5px] text-muted-foreground tabular-nums">
+                <MessageSquare size={12} />
                 {ticket._count.comments}
               </span>
             )}
@@ -209,13 +204,13 @@ export function TicketCard({ ticket, isDragging = false, isSaving = false }: Tic
                   <Avatar key={u.id} displayName={u.displayName} avatarColor={u.avatarColor} size="sm" className="ring-2 ring-surface-elevated" />
                 ))}
                 {extraCount > 0 && (
-                  <span className="w-6 h-6 rounded-full bg-surface-base border border-surface-border text-[9px] font-bold text-muted-foreground flex items-center justify-center ring-2 ring-surface-elevated">
+                  <span className="w-6 h-6 rounded-full bg-surface-hover text-[10px] font-medium text-muted-foreground flex items-center justify-center ring-2 ring-surface-elevated">
                     +{extraCount}
                   </span>
                 )}
               </span>
             ) : (
-              <span className="text-[10px] text-muted-foreground/50">
+              <span className="text-[11px] text-muted-foreground/70">
                 <RelativeTime date={ticket.lastActivityAt} />
               </span>
             )}

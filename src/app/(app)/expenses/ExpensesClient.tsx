@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createExpense, deleteExpense, toggleSplitPaid } from "@/server/actions/expense.actions";
 import type { Expense, ExpenseSplit, User } from "@prisma/client";
-import { Loader2, Plus, Trash2, Users, ChevronDown, ChevronUp, CheckSquare, Square, Wallet } from "lucide-react";
+import { Loader2, Plus, Trash2, Users, CheckSquare, Square, Wallet } from "lucide-react";
+import { Badge, Button, Card, CardHeader, Dialog, EmptyState, Field, IconButton, Input, Progress, SectionLabel, Select, StatCard, StatGroup, Toolbar, useConfirm } from "@/components/ui";
 import { toast } from "sonner";
 import { Avatar } from "@/components/shared";
 
@@ -26,6 +27,7 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isFormExpanded, setIsFormExpanded] = useState(false);
+  const { confirm: ask, dialog: confirmDialog } = useConfirm();
 
   // Form state
   const [name, setName] = useState("");
@@ -93,7 +95,7 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
-    if (!confirm("Are you sure you want to delete this expense?")) return;
+    if (!(await ask({ title: "Delete this expense?", description: "Its splits are removed from everyone’s totals.", confirmLabel: "Delete expense", danger: true }))) return;
     setIsDeleting(expenseId);
     const result = await deleteExpense({ expenseId });
     if (result.success) {
@@ -146,98 +148,160 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
     });
   });
 
+  const fmt = (n: number) => n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const totalOutstanding = Object.values(totals).reduce((a, b) => a + b, 0);
+  const paidShare = totalProjectSpend > 0 ? Math.round(((totalProjectSpend - totalOutstanding) / totalProjectSpend) * 100) : 0;
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-12">
-      {/* Total Spend Header */}
-      <div className="bg-gradient-to-br from-surface-elevated to-surface-base rounded-3xl p-8 border border-surface-border shadow-sm flex items-center justify-between relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none transition-transform group-hover:scale-110 duration-700"></div>
-        
-        <div className="flex items-center gap-5 relative z-10">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary shadow-inner">
-            <Wallet size={32} strokeWidth={1.5} />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-1">Total Project Spend</p>
-            <h2 className="text-4xl font-extrabold text-text-primary tracking-tight">
-              ₹{totalProjectSpend.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </h2>
-          </div>
-        </div>
-      </div>
+    <div className="max-w-6xl mx-auto space-y-5 pb-12 animate-fade-in">
+      <Toolbar title="Shared expenses" description="Log what the team spends and track who has settled their share.">
+        {canEdit && (
+          <Button variant="primary" onClick={() => setIsFormExpanded(true)}>
+            <Plus size={15} /> Add expense
+          </Button>
+        )}
+      </Toolbar>
 
-      {canEdit && (
-        <div className="bg-surface-elevated rounded-3xl border border-surface-border shadow-sm overflow-hidden transition-all duration-300">
-          <button 
-            onClick={() => setIsFormExpanded(!isFormExpanded)}
-            className="w-full flex items-center justify-between p-6 hover:bg-surface-base/50 transition-colors"
-          >
-            <h2 className="text-lg font-semibold text-text-primary">Add New Expense</h2>
-            <div className="flex items-center gap-2 text-primary font-medium text-sm">
-              {!isFormExpanded && <><Plus size={16} /> Add Expense</>}
-              {isFormExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-            </div>
-          </button>
-          
-          {isFormExpanded && (
-            <div className="p-6 pt-0 border-t border-surface-border">
-              <form onSubmit={handleAddExpense} className="space-y-5 pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-1.5 md:col-span-2">
-                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Expense Name</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Dinner, Subscription"
-                  className="w-full px-3 py-2 rounded-xl bg-surface-base border border-surface-border text-sm outline-none focus:border-primary transition-colors"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Amount (₹)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 rounded-xl bg-surface-base border border-surface-border text-sm outline-none focus:border-primary transition-colors"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Date</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-surface-base border border-surface-border text-sm outline-none focus:border-primary transition-colors"
-                />
-              </div>
-            </div>
+      <StatGroup className="grid-cols-1 sm:grid-cols-3">
+        <StatCard label="Total project spend" value={`₹${fmt(totalProjectSpend)}`} tone="primary" icon={<Wallet size={15} />} hint={`${localExpenses.length} expense${localExpenses.length === 1 ? "" : "s"} logged`} />
+        <StatCard label="Still owed" value={`₹${fmt(totalOutstanding)}`} tone={totalOutstanding > 0 ? "warning" : "success"} icon={<Users size={15} />} hint="Unpaid shares across the team" />
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-center justify-between">
+            <SectionLabel>Settled</SectionLabel>
+            <span className="text-[12.5px] font-semibold tabular-nums">{paidShare}%</span>
+          </div>
+          <Progress value={paidShare} tone="success" className="mt-4" />
+          <p className="text-[12px] text-muted-foreground mt-3">Share of total spend that has been paid back</p>
+        </Card>
+      </StatGroup>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Paid By</label>
-              <select
-                value={payerId}
-                onChange={(e) => setPayerId(e.target.value)}
-                className="w-full md:w-1/4 px-3 py-2 rounded-xl bg-surface-base border border-surface-border text-sm outline-none focus:border-primary transition-colors"
-              >
-                {teamMembers.map((u) => (
-                  <option key={u.id} value={u.id} style={{ background: "hsl(var(--surface-base))" }}>
-                    {u.displayName}
-                  </option>
+      <Card className="overflow-hidden">
+        <CardHeader title="Split tracker" description="Tick a share when it has been paid" icon={<Users size={16} />} />
+        {localExpenses.length === 0 ? (
+          <div className="p-5">
+            <EmptyState
+              icon={<Wallet size={22} />}
+              title="No expenses logged yet"
+              description={canEdit ? "Add the first shared expense to start tracking who owes what." : "A manager or admin logs the team’s shared expenses."}
+              action={canEdit ? <Button variant="primary" onClick={() => setIsFormExpanded(true)}><Plus size={15} /> Add expense</Button> : undefined}
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[13px] whitespace-nowrap">
+              <thead>
+                <tr className="border-b border-surface-border">
+                  <th className="px-5 py-3"><SectionLabel>Expense</SectionLabel></th>
+                  <th className="px-5 py-3"><SectionLabel>Total</SectionLabel></th>
+                  <th className="px-5 py-3"><SectionLabel>Paid by</SectionLabel></th>
+                  {teamMembers.map((m) => (
+                    <th key={m.id} className="px-5 py-3">
+                      <div className="flex items-center gap-1.5 normal-case">
+                        <Avatar displayName={m.displayName} avatarColor={m.avatarColor} size="sm" />
+                        <span className="text-[12px] font-semibold text-muted-foreground">{m.displayName}</span>
+                      </div>
+                    </th>
+                  ))}
+                  {canEdit && <th className="px-5 py-3 w-10" />}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-border">
+                {localExpenses.map((expense) => (
+                  <tr key={expense.id} className="hover:bg-surface-hover/60 transition-colors">
+                    <td className="px-5 py-3">
+                      <p className="font-semibold text-foreground">{expense.name}</p>
+                      <p className="text-[12px] text-muted-foreground">{new Date(expense.date).toLocaleDateString()}</p>
+                    </td>
+                    <td className="px-5 py-3 font-semibold tabular-nums">₹{expense.amount.toFixed(2)}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{expense.payer.displayName}</td>
+                    {teamMembers.map((m) => {
+                      const split = expense.splits.find((sp) => sp.userId === m.id);
+                      return (
+                        <td key={m.id} className="px-5 py-3">
+                          {split ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleTogglePaid(split.id, split.isPaid)}
+                                disabled={!canEdit}
+                                className={`flex-shrink-0 transition-colors ${canEdit ? "cursor-pointer" : "cursor-default opacity-70"} ${split.isPaid ? "text-emerald-500" : "text-muted-foreground/50 hover:text-muted-foreground"}`}
+                                aria-label={split.isPaid ? "Mark as unpaid" : "Mark as paid"}
+                              >
+                                {split.isPaid ? <CheckSquare size={16} /> : <Square size={16} />}
+                              </button>
+                              <span className={`font-mono font-medium tabular-nums ${split.isPaid ? "text-muted-foreground/60 line-through" : "text-foreground"}`}>₹{split.amountOwed.toFixed(2)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground/40">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                    {canEdit && (
+                      <td className="px-5 py-3 text-right">
+                        <IconButton label="Delete expense" onClick={() => handleDeleteExpense(expense.id)} disabled={isDeleting === expense.id} className="hover:!text-red-500">
+                          {isDeleting === expense.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                        </IconButton>
+                      </td>
+                    )}
+                  </tr>
                 ))}
-              </select>
-            </div>
+              </tbody>
+              <tfoot className="bg-surface-base/60 border-t border-surface-border">
+                <tr>
+                  <td colSpan={3} className="px-5 py-4 text-right"><SectionLabel>Total owed</SectionLabel></td>
+                  {teamMembers.map((m) => (
+                    <td key={m.id} className="px-5 py-4">
+                      <Badge tone={totals[m.id] > 0 ? "warning" : "success"} className="!h-6 !text-[12px] tabular-nums">
+                        ₹{fmt(totals[m.id])}
+                      </Badge>
+                    </td>
+                  ))}
+                  {canEdit && <td />}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </Card>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Split Among (Auto equally split)</label>
-                <button
-                  type="button"
-                  onClick={handleSelectAll}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  {involvedUserIds.size === teamMembers.length ? "Deselect All" : "Select All"}
+      {confirmDialog}
+      {isFormExpanded && (
+        <Dialog
+          size="lg"
+          title="Add expense"
+          description="The amount is split equally among the people you select."
+          onClose={() => !isSubmitting && setIsFormExpanded(false)}
+          footer={
+            <>
+              <Button onClick={() => setIsFormExpanded(false)} disabled={isSubmitting}>Cancel</Button>
+              <Button variant="primary" form="add-expense-form" type="submit" loading={isSubmitting}>Add expense</Button>
+            </>
+          }
+        >
+          <form id="add-expense-form" onSubmit={handleAddExpense} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Field label="Expense name" className="md:col-span-2">
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Team dinner, subscription" autoFocus />
+              </Field>
+              <Field label="Amount (₹)">
+                <Input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+              </Field>
+              <Field label="Date">
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              </Field>
+            </div>
+            <Field label="Paid by">
+              <Select value={payerId} onChange={(e) => setPayerId(e.target.value)} className="md:max-w-xs">
+                {teamMembers.map((u) => (
+                  <option key={u.id} value={u.id}>{u.displayName}</option>
+                ))}
+              </Select>
+            </Field>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[12px] font-semibold text-foreground/80">Split among</label>
+                <button type="button" onClick={handleSelectAll} className="text-[12px] font-semibold text-primary hover:underline">
+                  {involvedUserIds.size === teamMembers.length ? "Deselect all" : "Select all"}
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -248,137 +312,26 @@ export function ExpensesClient({ expenses, allUsers, currentUserId, currentUserR
                       key={member.id}
                       type="button"
                       onClick={() => handleToggleInvolved(member.id)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm transition-all ${
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-surface-border bg-surface-base text-text-secondary hover:border-text-secondary/30"
+                      aria-pressed={isSelected}
+                      className={`flex items-center gap-2 pl-1.5 pr-3 h-9 rounded-full border text-[13px] font-medium transition-colors ${
+                        isSelected ? "border-foreground/25 bg-surface-hover text-foreground" : "border-surface-border bg-surface-base text-muted-foreground hover:text-foreground hover:border-muted-foreground/40"
                       }`}
                     >
                       <Avatar displayName={member.displayName} avatarColor={member.avatarColor} size="sm" />
-                      <span className="font-medium">{member.displayName}</span>
+                      {member.displayName}
                     </button>
                   );
                 })}
               </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                Add Expense
-              </button>
-            </div>
-              </form>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Split Tracker Table */}
-      <div className="bg-surface-elevated rounded-3xl border border-surface-border shadow-sm overflow-hidden flex flex-col">
-        <div className="p-5 border-b border-surface-border flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text-primary">Split Tracker</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead>
-              <tr className="border-b border-surface-border bg-surface-base/50">
-                <th className="px-5 py-3 font-medium text-text-secondary uppercase tracking-wider text-xs">Event Name</th>
-                <th className="px-5 py-3 font-medium text-text-secondary uppercase tracking-wider text-xs">Total Amount</th>
-                <th className="px-5 py-3 font-medium text-text-secondary uppercase tracking-wider text-xs">Paid By</th>
-                {teamMembers.map((m) => (
-                  <th key={m.id} className="px-5 py-3 font-medium text-text-secondary uppercase tracking-wider text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <Avatar displayName={m.displayName} avatarColor={m.avatarColor} size="sm" />
-                      {m.displayName}
-                    </div>
-                  </th>
-                ))}
-                {canEdit && <th className="px-5 py-3 w-10"></th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-border">
-              {localExpenses.length === 0 ? (
-                <tr>
-                  <td colSpan={teamMembers.length + 4} className="px-5 py-8 text-center text-text-secondary">
-                    No expenses logged yet.
-                  </td>
-                </tr>
-              ) : (
-                localExpenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-surface-base/50 transition-colors">
-                    <td className="px-5 py-3">
-                      <p className="font-medium text-text-primary">{expense.name}</p>
-                      <p className="text-xs text-text-secondary">{new Date(expense.date).toLocaleDateString()}</p>
-                    </td>
-                    <td className="px-5 py-3 font-medium text-text-primary">₹{expense.amount.toFixed(2)}</td>
-                    <td className="px-5 py-3 text-text-secondary">{expense.payer.displayName}</td>
-                    {teamMembers.map((m) => {
-                      const split = expense.splits.find((s) => s.userId === m.id);
-                      return (
-                        <td key={m.id} className="px-5 py-3">
-                          {split ? (
-                            <div className="flex items-center gap-2 group/split">
-                              <button
-                                onClick={() => handleTogglePaid(split.id, split.isPaid)}
-                                disabled={!canEdit}
-                                className={`flex-shrink-0 ${canEdit ? 'cursor-pointer' : 'cursor-default opacity-70'} ${split.isPaid ? 'text-emerald-500' : 'text-surface-border hover:text-text-secondary transition-colors'}`}
-                                aria-label={split.isPaid ? "Mark as unpaid" : "Mark as paid"}
-                              >
-                                {split.isPaid ? <CheckSquare size={16} /> : <Square size={16} />}
-                              </button>
-                              <span className={`font-mono font-medium transition-all ${split.isPaid ? 'text-text-secondary/50 line-through' : 'text-text-primary'}`}>
-                                ₹{split.amountOwed.toFixed(2)}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-text-secondary/50">-</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                    {canEdit && (
-                      <td className="px-5 py-3 text-right">
-                        <button
-                          onClick={() => handleDeleteExpense(expense.id)}
-                          disabled={isDeleting === expense.id}
-                          className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        >
-                          {isDeleting === expense.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))
+              {involvedUserIds.size > 0 && amount && (
+                <p className="text-[12px] text-muted-foreground mt-2.5">
+                  ₹{fmt((parseFloat(amount) || 0) / involvedUserIds.size)} each · {involvedUserIds.size} {involvedUserIds.size === 1 ? "person" : "people"}
+                </p>
               )}
-            </tbody>
-            {/* Footer with totals */}
-            {localExpenses.length > 0 && (
-              <tfoot className="bg-surface-base/80 border-t-2 border-surface-border backdrop-blur-sm">
-                <tr>
-                  <td colSpan={3} className="px-5 py-5 text-right font-bold text-text-secondary uppercase tracking-wider text-xs">
-                    Total Amount Owed:
-                  </td>
-                  {teamMembers.map((m) => (
-                    <td key={m.id} className="px-5 py-5">
-                      <div className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
-                        <span className="font-bold text-base text-primary tracking-tight">
-                          ₹{totals[m.id].toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    </td>
-                  ))}
-                  {canEdit && <td></td>}
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-      </div>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }

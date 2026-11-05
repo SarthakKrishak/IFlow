@@ -1,5 +1,5 @@
 export function ProfileLoading() {
-  const skeletonClass = "bg-surface-border/50 rounded-md animate-pulse";
+  const skeletonClass = "bg-foreground/[0.06] rounded-md animate-pulse";
 
   return (
     <div className="p-8 max-w-5xl mx-auto animate-pulse pb-24">
@@ -21,8 +21,8 @@ export function ProfileLoading() {
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="rounded-3xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex items-start gap-4 h-32">
-            <div className={`w-12 h-12 rounded-2xl flex-shrink-0 ${skeletonClass}`} />
+          <div key={i} className="rounded-xl p-6 bg-surface-elevated border border-surface-border shadow-sm flex items-start gap-4 h-32">
+            <div className={`w-12 h-12 rounded-xl flex-shrink-0 ${skeletonClass}`} />
             <div className="space-y-2 flex-1">
               <div className={`h-3 w-24 ${skeletonClass}`} />
               <div className={`h-8 w-16 ${skeletonClass}`} />
@@ -33,7 +33,7 @@ export function ProfileLoading() {
       </div>
 
       {/* Heatmap */}
-      <div className="rounded-3xl p-6 mb-8 bg-surface-elevated border border-surface-border shadow-sm h-64 flex flex-col">
+      <div className="rounded-xl p-6 mb-8 bg-surface-elevated border border-surface-border shadow-sm h-64 flex flex-col">
         <div className="flex items-center justify-between mb-8">
           <div className={`h-5 w-48 ${skeletonClass}`} />
           <div className={`h-8 w-32 rounded-xl ${skeletonClass}`} />
@@ -42,7 +42,7 @@ export function ProfileLoading() {
       </div>
 
       {/* Recent Activity */}
-      <div className="rounded-3xl border border-surface-border shadow-sm overflow-hidden flex flex-col bg-surface-elevated h-[400px]">
+      <div className="rounded-xl border border-surface-border shadow-sm overflow-hidden flex flex-col bg-surface-elevated h-[400px]">
         <div className="px-6 py-5 border-b border-surface-border flex items-center justify-between">
           <div className={`h-5 w-32 ${skeletonClass}`} />
           <div className={`h-4 w-16 ${skeletonClass}`} />
