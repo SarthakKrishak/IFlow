@@ -49,6 +49,7 @@ export function IconButton({
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
   return (
     <button
+      type="button"
       aria-label={label}
       title={label}
       className={cn(
@@ -305,6 +306,7 @@ export function Segmented<T extends string>({
       {options.map((o) => (
         <button
           key={o.value}
+          type="button"
           role="tab"
           aria-selected={value === o.value}
           onClick={() => onChange(o.value)}
@@ -413,22 +415,43 @@ export function Dialog({
   const titleId = useId();
   const ref = useRef<HTMLDivElement>(null);
 
+  // Callers usually pass an inline `onClose`, which is a new function on every render.
+  // Keep the latest one in a ref so the effect below runs ONCE per open — re-running it
+  // on each render stole focus from the field being typed in and scrolled the dialog to the top.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // Let an open native picker / menu inside the dialog handle Escape first.
+      if (e.defaultPrevented) return;
+      onCloseRef.current();
+    };
     document.addEventListener("keydown", onKey);
-    ref.current?.focus();
+    // Initial focus for screen readers / keyboard users, without jumping the scroll position,
+    // and never over a field that already took focus (e.g. an autoFocus input).
+    if (ref.current && !ref.current.contains(document.activeElement)) {
+      ref.current.focus({ preventScroll: true });
+    }
+    // Background page must not scroll behind the dialog (also stops iOS "scroll chaining").
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      prev?.focus?.();
+      document.body.style.overflow = prevOverflow;
+      prev?.focus?.({ preventScroll: true });
     };
-  }, [onClose]);
+  }, []);
 
   const width = { sm: "sm:max-w-sm", md: "sm:max-w-lg", lg: "sm:max-w-2xl", xl: "sm:max-w-4xl" }[size];
   return (
     <div
       className="fixed inset-0 z-[60] bg-black/45 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onMouseDown={(e) => e.target === e.currentTarget && onCloseRef.current()}
     >
       <div
         ref={ref}
